@@ -1,0 +1,51 @@
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const authRoutes = require("./routes/auth.routes");
+const userRoutes = require("./routes/user.routes");
+const organizationRoutes = require("./routes/organization.routes");
+const organizationManagerRoutes = require("./routes/organizationManager.routes");
+const teachingManagementRoutes = require("./features/teaching-management");
+const { authRequired } = require("./middleware/auth.middleware");
+const { specs, swaggerUi } = require("./swagger/index");
+
+const app = express();
+
+// CORS - cho phép FE từ mọi domain gọi API
+app.use(cors());
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Swagger Documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
+
+const uploadRoutes = require("./routes/upload.routes");
+app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
+app.use("/organizations", organizationRoutes);
+app.use("/organization-managers", organizationManagerRoutes);
+app.use("/teaching-management", teachingManagementRoutes);
+app.use("/upload", uploadRoutes);
+const path = require("path");
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
+//router login
+app.get("/me", authRequired, (req, res) => {
+  return res.json({
+    message: "This is protected data.",
+    user: req.user,
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, async () => {
+  console.log(`Server is running on port ${PORT}`);
+  try {
+    const db = require("./db");
+    const [rows] = await db.query("DESCRIBE `user`");
+  } catch (err) {
+    console.error("DEBUG TABLE ERROR:", err);
+  }
+});

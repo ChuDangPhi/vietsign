@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  template:
+    spec:
+      containers:
+        - name: frontend-container
+          image: fossbk/vietsign-fe:latest
+          volumeMounts:
+            - name: config-vol
+              mountPath: /app/public/config.js # Đường dẫn khớp với Dockerfile (thường là /app)
+              subPath: config.js # Quan trọng: Chỉ đè file, không đè cả folder public
+      volumes:
+        - name: config-vol
+          configMap:
+            name: fe-config

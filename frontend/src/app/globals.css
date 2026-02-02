@@ -1,0 +1,174 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+@import "tailwindcss";
+
+@theme {
+  /* Primary colors (green - light palette) */
+  --color-primary-50: #ecfdf5;
+  --color-primary-100: #d1fae5;
+  --color-primary-200: #a7f3d0;
+  --color-primary-300: #6ee7b7;
+  --color-primary-400: #34d399;
+  --color-primary-500: #10b981;
+  --color-primary-600: #059669;
+  --color-primary-700: #047857;
+  --color-primary-800: #065f46;
+  --color-primary-900: #064e3b;
+  --color-primary-950: #022c22;
+
+  /* Dark palette colors */
+  --color-dark-50: #f9fafb;
+  --color-dark-100: #f3f4f6;
+  --color-dark-200: #e5e7eb;
+  --color-dark-300: #d1d5db;
+  --color-dark-400: #9ca3af;
+  --color-dark-500: #6b7280;
+  --color-dark-600: #4b5563;
+  --color-dark-700: #374151;
+  --color-dark-800: #1f2937;
+  --color-dark-900: #111827;
+  --color-dark-950: #030712;
+
+  /* Stone accent colors */
+  --color-stone-900: #1c1917;
+  --color-stone-950: #0c0a09;
+}
+
+/* Light Theme (default) - using light palette */
+:root {
+  color-scheme: light;
+  --bg-primary: #f9fafb;      /* dark-50 */
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f3f4f6;     /* dark-100 */
+  --bg-card: #ffffff;
+  --text-primary: #111827;    /* dark-900 */
+  --text-secondary: #4b5563;  /* dark-600 */
+  --text-tertiary: #6b7280;   /* dark-500 */
+  --text-muted: #9ca3af;      /* dark-400 */
+  --border-color: #e5e7eb;    /* dark-200 */
+  --border-light: #f3f4f6;    /* dark-100 */
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --scrollbar-track: #f3f4f6;
+  --scrollbar-thumb: #d1d5db; /* dark-300 */
+  --scrollbar-thumb-hover: #9ca3af;
+}
+
+/* Dark Theme - using dark palette with stone accents */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-primary: #030712;      /* dark-950 */
+  --bg-secondary: #111827;    /* dark-900 */
+  --bg-tertiary: #1f2937;     /* dark-800 */
+  --bg-card: #1f2937;         /* dark-800 */
+  --text-primary: #f9fafb;    /* dark-50 */
+  --text-secondary: #e5e7eb;  /* dark-200 */
+  --text-tertiary: #d1d5db;   /* dark-300 */
+  --text-muted: #9ca3af;      /* dark-400 */
+  --border-color: #374151;    /* dark-700 */
+  --border-light: #1f2937;    /* dark-800 */
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --scrollbar-track: #111827;
+  --scrollbar-thumb: #374151;
+  --scrollbar-thumb-hover: #4b5563;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode overrides for common elements */
+[data-theme="dark"] .bg-white {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .bg-gray-50 {
+  background-color: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .bg-gray-100 {
+  background-color: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .text-gray-900 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .text-gray-800 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .text-gray-700 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .text-gray-500 {
+  color: var(--text-tertiary) !important;
+}
+
+[data-theme="dark"] .text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .border-gray-100 {
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .border-gray-200 {
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .shadow-lg,
+[data-theme="dark"] .shadow-xl,
+[data-theme="dark"] .shadow-2xl {
+  box-shadow: 0 10px 40px var(--shadow-color) !important;
+}
+
+[data-theme="dark"] .hover\:bg-gray-50:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .hover\:bg-gray-100:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Smooth transitions for theme switching */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
