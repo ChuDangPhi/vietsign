@@ -101,7 +101,7 @@ CREATE TABLE `class_learning_progress` (
   KEY `idx_user` (`user_id`),
   KEY `idx_class_room` (`class_room_id`),
   CONSTRAINT `fk_progress_class_room` FOREIGN KEY (`class_room_id`) REFERENCES `class_room` (`class_room_id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_progress_user` FOREIGN KEY (`id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE
+  CONSTRAINT `fk_progress_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
