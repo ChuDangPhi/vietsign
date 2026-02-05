@@ -1,8 +1,10 @@
 import http from "@/core/services/api/http";
+import { API_BASE_URL, API_BASE_URL_NODE } from "@/core/config/api";
 
-export const API_ROOT = process.env.NEXT_PUBLIC_API_ROOT;
-export const API_ROOT_NODE = process.env.NEXT_PUBLIC_API_ROOT_NODE;
+export const API_ROOT = API_BASE_URL;
+export const API_ROOT_NODE = API_BASE_URL_NODE;
 export const API_SOCKET = process.env.NEXT_PUBLIC_API_SOCKET;
+
 export class Base {
   private readonly apiRoot: string | undefined;
   private readonly apiRootNode: string | undefined;

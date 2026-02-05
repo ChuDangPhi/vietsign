@@ -1,5 +1,6 @@
 import { Store } from "@reduxjs/toolkit";
 import axios from "axios";
+import { API_BASE_URL, API_BASE_URL_NODE } from "@/core/config/api";
 import { logout } from "../../store/slices/adminSlice";
 
 let store: Store;
@@ -9,12 +10,10 @@ export const injectStore = (_store: Store) => {
 };
 
 export const defaultHttp = axios.create({
-  baseURL:
-    process.env.NEXT_PUBLIC_API_ROOT_NODE || process.env.NEXT_PUBLIC_API_ROOT,
+  baseURL: API_BASE_URL_NODE || API_BASE_URL,
 });
 const http = axios.create({
-  baseURL:
-    process.env.NEXT_PUBLIC_API_ROOT_NODE || process.env.NEXT_PUBLIC_API_ROOT,
+  baseURL: API_BASE_URL_NODE || API_BASE_URL,
 });
 
 http.interceptors.request.use(

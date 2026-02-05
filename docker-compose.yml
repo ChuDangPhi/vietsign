@@ -1,15 +1,57 @@
 services:
   db:
     image: mysql:8.0
+    container_name: vietsign_db
     environment:
       MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: vietsign
+    ports:
+      - "3308:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      # Map thư mục chứa file .sql vào đây để tự động chạy khi khởi tạo DB lần đầu
+      - ./database:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vietsign_backend
     ports:
       - "5000:5000"
+    environment:
+      PORT: 5000
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: vietsign
+      DB_PORT: 3306
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.local
+    container_name: vietsign_frontend
     ports:
       - "3000:3000"
+    environment:
+      # Configurations are now loaded from public/config.js (mapped from frontend-configmap.yaml concept)
+      - NODE_ENV=development
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  db_data:

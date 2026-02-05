@@ -31,6 +31,7 @@ import {
   deleteWord,
 } from "@/services/dictionaryService";
 import { removeVietnameseTones } from "@/shared/utils/text";
+import { API_BASE_URL } from "@/core/config/api";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -527,7 +528,7 @@ export function DictionaryManagementComponent() {
                           const path = await uploadFile(e.target.files[0]);
                           setFormData({
                             ...formData,
-                            imageUrl: `${process.env.NEXT_PUBLIC_API_ROOT || "http://localhost:5000"}${path}`,
+                            imageUrl: `${API_BASE_URL}${path}`,
                           });
                         } catch (err) {
                           alert("Lỗi tải ảnh");
@@ -577,7 +578,7 @@ export function DictionaryManagementComponent() {
                           const path = await uploadFile(e.target.files[0]);
                           setFormData({
                             ...formData,
-                            videoUrl: `${process.env.NEXT_PUBLIC_API_ROOT || "http://localhost:5000"}${path}`,
+                            videoUrl: `${API_BASE_URL}${path}`,
                           });
                         } catch (err) {
                           alert("Lỗi tải video");

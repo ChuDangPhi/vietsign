@@ -1,14 +1,12 @@
 import DictionaryModel from "@/domain/entities/Dictionary";
 import { DictionaryItem } from "@/data/dictionaryData";
+import { API_BASE_URL, API_BASE_URL_NODE } from "@/core/config/api";
 
 /**
  * Convert API response to DictionaryItem
  */
 function convertApiToDictionaryItem(item: any): DictionaryItem {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_ROOT_NODE ||
-    process.env.NEXT_PUBLIC_API_ROOT ||
-    "http://localhost:5000";
+  const baseUrl = API_BASE_URL_NODE || API_BASE_URL || "http://localhost:5000";
 
   const getFullUrl = (path?: string) => {
     if (!path) return undefined;

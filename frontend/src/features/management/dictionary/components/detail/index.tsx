@@ -26,6 +26,7 @@ import {
   updateWord,
   deleteWord,
 } from "@/services/dictionaryService";
+import { API_BASE_URL } from "@/core/config/api";
 
 const VOCAB_TYPE_LABELS: Record<string, string> = {
   all: "Tất cả",
@@ -101,7 +102,7 @@ export function DictionaryManagementDetail() {
       setIsUploading(true);
       const { uploadFile } = await import("@/services/uploadService");
       const path = await uploadFile(file);
-      const fullPath = `${process.env.NEXT_PUBLIC_API_ROOT || "http://localhost:5000"}${path}`;
+      const fullPath = `${API_BASE_URL}${path}`;
       setEditForm((prev) => ({ ...prev, [field]: fullPath }));
     } catch (err) {
       alert("Tải lên thất bại");
