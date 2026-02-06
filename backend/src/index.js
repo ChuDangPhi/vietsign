@@ -6,6 +6,7 @@ const userRoutes = require("./routes/user.routes");
 const organizationRoutes = require("./routes/organization.routes");
 const organizationManagerRoutes = require("./routes/organizationManager.routes");
 const teachingManagementRoutes = require("./features/teaching-management");
+const learnRoutes = require("./features/learn");
 const { authRequired } = require("./middleware/auth.middleware");
 const { specs, swaggerUi } = require("./swagger/index");
 
@@ -26,6 +27,7 @@ app.use("/users", userRoutes);
 app.use("/organizations", organizationRoutes);
 app.use("/organization-managers", organizationManagerRoutes);
 app.use("/teaching-management", teachingManagementRoutes);
+app.use("/learn", learnRoutes);
 app.use("/upload", uploadRoutes);
 const path = require("path");
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));

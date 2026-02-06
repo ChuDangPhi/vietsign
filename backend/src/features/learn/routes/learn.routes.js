@@ -1,0 +1,44 @@
+const express = require("express");
+const learnController = require("../controllers/learn.controller");
+const { authRequired } = require("../../../middleware/auth.middleware");
+
+const router = express.Router();
+
+// ============================================================================
+// PUBLIC ROUTES (authentication optional, used for user progress if logged in)
+// ============================================================================
+
+// Categories
+router.get("/categories", authRequired, learnController.getCategories);
+router.get("/categories/:slug", authRequired, learnController.getCategoryBySlug);
+
+// Learn Items
+router.get("/items/:itemId", authRequired, learnController.getItemById);
+router.get("/items/:itemId/lessons", authRequired, learnController.getLessonsByItemId);
+
+// Lessons & Steps
+router.get("/lessons/:lessonId", authRequired, learnController.getLessonById);
+router.get("/lessons/:lessonId/steps", authRequired, learnController.getStepsForLesson);
+
+// Search
+router.get("/search", authRequired, learnController.searchItems);
+
+// Topic-based Learning (using existing topics)
+router.get("/topics", authRequired, learnController.getTopicsForLearning);
+router.get("/topics/:topicId", authRequired, learnController.getTopicWithVocabularies);
+router.get("/topics/:topicId/steps", authRequired, learnController.getTopicLearningSteps);
+
+// ============================================================================
+// PROTECTED ROUTES (requires authentication)
+// ============================================================================
+
+// Progress tracking
+router.post("/progress", authRequired, learnController.updateProgress);
+router.get("/progress", authRequired, learnController.getUserProgress);
+router.get("/progress/:itemId", authRequired, learnController.getItemProgress);
+
+// Vocabulary progress
+router.post("/vocabulary/learned", authRequired, learnController.markVocabularyLearned);
+router.get("/vocabulary/progress", authRequired, learnController.getVocabularyProgress);
+
+module.exports = router;
