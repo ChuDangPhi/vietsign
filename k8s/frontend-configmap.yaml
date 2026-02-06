@@ -1,10 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: fe-config
-  namespace: vietsign
+  name: frontend-config
 data:
   config.js: |
     window.ENV = {
-      NEXT_PUBLIC_API_URL: "https://api.vietsign.lab.edu.vn",
+      NEXT_PUBLIC_API_ROOT: "http://vietsign-backend-service:5000",
+      NEXT_PUBLIC_API_ROOT_NODE: "http://vietsign-backend-service:5000",
+      NEXT_PUBLIC_SUPABASE_URL: "https://yquscrbjluhkeslhagnz.supabase.co",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY: "sb_publishable_UrRQWweNkHXcHz4yg6olUg_3QKdjxi4"
     };

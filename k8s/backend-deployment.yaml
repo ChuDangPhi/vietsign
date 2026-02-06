@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vietsign-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vietsign-backend
+  template:
+    metadata:
+      labels:
+        app: vietsign-backend
+    spec:
+      containers:
+        - name: backend
+          image: fossbk/vietsign-be:latest # Updated to use potential image name
+          ports:
+            - containerPort: 5000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          envFrom:
+            - configMapRef:
+                name: vietsign-backend-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vietsign-secrets
+                  key: db-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vietsign-secrets
+                  key: jwt-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vietsign-backend-service
+spec:
+  selector:
+    app: vietsign-backend
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP
