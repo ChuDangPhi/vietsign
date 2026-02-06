@@ -93,3 +93,30 @@ export async function fetchExamsByClassroom(
     return [];
   }
 }
+
+export async function fetchPracticeExamDetail(examId: number) {
+  try {
+    const response = await ExamModel.getDetailPracticeExam(examId);
+    // Unwind api response
+    return response.data || response; // Should be the array of questions
+  } catch (error) {
+    console.error("Error fetching practice exam:", error);
+    return [];
+  }
+}
+
+export async function submitPracticeExam(formData: FormData) {
+  return await ExamModel.submitPracticeVideos(formData);
+}
+
+export async function submitExam(id: number, data: any) {
+  return await ExamModel.submitExam(id, data);
+}
+
+export async function fetchPracticeSubmission(examId: number, userId: number) {
+  return await ExamModel.getPracticeExamSubmission(examId, userId);
+}
+
+export async function markPracticeSubmission(data: any) {
+  return await ExamModel.markPracticeExam(data);
+}

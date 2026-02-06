@@ -175,12 +175,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/dictionary-management",
       allowedRoles: ["ADMIN", "TEST"],
     },
-    {
-      icon: <Gamepad2 size={22} />,
-      label: "Quản lý trò chơi",
-      path: "/games-management",
-      allowedRoles: ["ADMIN", "TEST"],
-    },
+    // {
+    //   icon: <Gamepad2 size={22} />,
+    //   label: "Quản lý trò chơi",
+    //   path: "/games-management",
+    //   allowedRoles: ["ADMIN", "TEST"],
+    // },
     {
       icon: <HelpCircle size={22} />,
       label: "Quản lý câu hỏi",

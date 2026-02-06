@@ -15,12 +15,15 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { fetchClassById } from "@/services/classService";
 import {
-  getLessonById,
+  fetchLessonById,
+  fetchLessonsByClassroom,
+  Lesson,
+} from "@/services/lessonService";
+import {
   getStepsByLessonId,
   getStepById,
-  getLessonsByClassId,
   StepItem,
-  LessonItem,
+  // LessonItem, // Remove if not needed or alias Lesson
 } from "@/data/lessonsData";
 
 // Step type components
@@ -47,8 +50,9 @@ export function StepDetail() {
 
   const [currentStep, setCurrentStep] = useState<StepItem | null>(null);
   const [steps, setSteps] = useState<StepItem[]>([]);
-  const [lesson, setLesson] = useState<LessonItem | null>(null);
+  const [lesson, setLesson] = useState<Lesson | null>(null);
   const [classItem, setClassItem] = useState<any>(null);
+  const [allLessons, setAllLessons] = useState<Lesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -58,8 +62,11 @@ export function StepDetail() {
         const foundClass = await fetchClassById(classId);
         setClassItem(foundClass);
 
-        const foundLesson = getLessonById(lessonId);
+        const foundLesson = await fetchLessonById(lessonId);
         setLesson(foundLesson || null);
+
+        const lessonsData = await fetchLessonsByClassroom(classId);
+        setAllLessons(lessonsData);
 
         const allSteps = getStepsByLessonId(lessonId);
         setSteps(allSteps);
@@ -163,7 +170,6 @@ export function StepDetail() {
   };
 
   // Get next lesson info
-  const allLessons = getLessonsByClassId(classId);
   const currentLessonIndex = allLessons.findIndex((l) => l.id === lessonId);
   const nextLesson =
     currentLessonIndex !== -1 && currentLessonIndex < allLessons.length - 1
@@ -207,7 +213,7 @@ export function StepDetail() {
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
             {currentStep.title}
           </h1>
-          <p className="text-sm text-gray-500">{lesson.title}</p>
+          <p className="text-sm text-gray-500">{lesson.name}</p>
         </div>
 
         {/* Progress indicator */}

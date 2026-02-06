@@ -13,17 +13,10 @@ import {
 import { ClassItem } from "@/data/classesData";
 import { fetchAllClasses } from "@/services/classService";
 import { fetchUsersByRole } from "@/services/userService";
-import { mockOrganizations } from "@/data/organizationsData";
+
 import Link from "next/link";
 
 import { ClassRegistrationModal } from "./ClassRegistrationModal";
-
-// Helper to get facility name
-const getFacilityName = (organizationId: number | null) => {
-  if (organizationId === null) return "Online";
-  const facility = mockOrganizations.find((f) => f.id === organizationId);
-  return facility ? facility.name : "Không xác định";
-};
 
 export const Study: React.FC = () => {
   // Simulate registered classes (hardcoded IDs for demo)
@@ -32,30 +25,39 @@ export const Study: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [teachersMap, setTeachersMap] = useState<Record<number, string>>({});
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [allClasses, teachers] = await Promise.all([
-          fetchAllClasses(),
-          fetchUsersByRole("TEACHER"),
-        ]);
+        const userJson = localStorage.getItem("user");
+        const user = userJson ? JSON.parse(userJson) : null;
+        setCurrentUser(user);
 
-        // Simulation logic:
-        const myClassIds = [1, 5, 11, 3];
-        const myClasses = allClasses.filter((c) => myClassIds.includes(c.id));
-        setRegisteredClasses(myClasses);
+        const teachers = await fetchUsersByRole("TEACHER");
 
-        // Create map
+        // Create teacher map
         const map: Record<number, string> = {};
         teachers.forEach((t: any) => {
           map[t.id] = t.name;
         });
         setTeachersMap(map);
+
+        let myClasses: ClassItem[] = [];
+
+        if (user) {
+          if (user.role === "TEACHER") {
+            myClasses = await fetchAllClasses({ teacherId: user.id });
+          } else {
+            // STUDENT & TEST roles: fetch enrolled classes
+            myClasses = await fetchAllClasses({ studentId: user.id });
+          }
+        }
+
+        setRegisteredClasses(myClasses);
       } catch (error) {
         console.error("Failed to load classes", error);
-        // Fallback or empty logic if API fails
         setRegisteredClasses([]);
       } finally {
         setIsLoading(false);
@@ -87,17 +89,20 @@ export const Study: React.FC = () => {
             Lớp học của tôi
           </h1>
           <p className="text-gray-600 mt-1">
-            Danh sách các lớp học bạn đã đăng ký ({registeredClasses.length}{" "}
-            lớp)
+            {currentUser?.role === "TEACHER"
+              ? `Danh sách các lớp bạn đang giảng dạy (${registeredClasses.length} lớp)`
+              : `Danh sách các lớp học bạn đã đăng ký (${registeredClasses.length} lớp)`}
           </p>
         </div>
-        <button
-          onClick={() => setIsRegistrationModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-sm"
-        >
-          Đăng ký lớp mới
-          <ChevronRight size={18} />
-        </button>
+        {currentUser?.role !== "TEACHER" && (
+          <button
+            onClick={() => setIsRegistrationModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-sm"
+          >
+            Đăng ký lớp mới
+            <ChevronRight size={18} />
+          </button>
+        )}
       </div>
 
       {/* Class List */}
@@ -141,7 +146,7 @@ export const Study: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin size={16} className="text-primary-500" />
-                    <span>{getFacilityName(cls.organizationId)}</span>
+                    <span>{cls.organizationName || "Online"}</span>
                   </div>
                 </div>
 
@@ -150,7 +155,9 @@ export const Study: React.FC = () => {
                     href={`/study/${cls.id}`}
                     className="w-full py-2.5 bg-primary-50 text-primary-600 font-medium rounded-xl hover:bg-primary-600 hover:text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
                   >
-                    Vào lớp học
+                    {currentUser?.role === "TEACHER"
+                      ? "Quản lý lớp học"
+                      : "Vào lớp học"}
                     <ChevronRight size={16} />
                   </Link>
                 </div>
@@ -161,17 +168,23 @@ export const Study: React.FC = () => {
           <div className="col-span-full py-12 text-center bg-white rounded-2xl border border-gray-100 border-dashed">
             <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Chưa có lớp học nào
+              {currentUser?.role === "TEACHER"
+                ? "Chưa có lớp giảng dạy"
+                : "Chưa có lớp học nào"}
             </h3>
             <p className="text-gray-500 mb-6">
-              Bạn chưa đăng ký lớp học nào. Hãy đăng ký ngay!
+              {currentUser?.role === "TEACHER"
+                ? "Bạn chưa được phân công giảng dạy lớp nào."
+                : "Bạn chưa đăng ký lớp học nào. Hãy đăng ký ngay!"}
             </p>
-            <button
-              onClick={() => setIsRegistrationModalOpen(true)}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium"
-            >
-              Đăng ký lớp học
-            </button>
+            {currentUser?.role !== "TEACHER" && (
+              <button
+                onClick={() => setIsRegistrationModalOpen(true)}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium"
+              >
+                Đăng ký lớp học
+              </button>
+            )}
           </div>
         )}
       </div>

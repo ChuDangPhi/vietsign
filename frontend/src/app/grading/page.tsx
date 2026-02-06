@@ -1,17 +1,8 @@
-import { Metadata } from "next";
-import { DashboardLayout } from "@/shared/components/layout";
-import { GradingManagement } from "@/features/management/grading";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Chấm điểm - VietSignSchool",
-  description: "Chấm điểm VietSignSchool",
-  
-};
+import React from "react";
+import ScoreList from "@/features/grading/components/ScoreList";
 
 export default function GradingPage() {
-  return (
-    <DashboardLayout>
-      <GradingManagement />
-    </DashboardLayout>
-  );
+  return <ScoreList />;
 }

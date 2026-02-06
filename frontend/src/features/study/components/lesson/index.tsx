@@ -13,12 +13,8 @@ import {
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchClassById } from "@/services/classService";
-import {
-  getLessonById,
-  getStepsByLessonId,
-  LessonItem,
-  StepItem,
-} from "@/data/lessonsData";
+import { fetchLessonById, Lesson } from "@/services/lessonService";
+import { getStepsByLessonId, StepItem } from "@/data/lessonsData";
 import Link from "next/link";
 
 const stepTypeConfig: Record<
@@ -58,7 +54,7 @@ export function LessonDetail() {
   const classId = Number(params.id);
   const lessonId = Number(params.lessonId);
 
-  const [lesson, setLesson] = useState<LessonItem | null>(null);
+  const [lesson, setLesson] = useState<Lesson | null>(null);
   const [steps, setSteps] = useState<StepItem[]>([]);
   const [classItem, setClassItem] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,7 +66,7 @@ export function LessonDetail() {
         const foundClass = await fetchClassById(classId);
         setClassItem(foundClass);
 
-        const foundLesson = getLessonById(lessonId);
+        const foundLesson = await fetchLessonById(lessonId);
         setLesson(foundLesson || null);
 
         if (foundLesson) {
@@ -135,13 +131,13 @@ export function LessonDetail() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {lesson.title}
+              {lesson.name}
             </h1>
             <p className="text-gray-600">{lesson.description}</p>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Clock size={16} />
-            <span>{lesson.duration}</span>
+            <span>{lesson.duration || "15 phút"}</span>
           </div>
         </div>
 

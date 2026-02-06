@@ -96,15 +96,35 @@ async function createExam(data, userId) {
 
 async function getExams(filters) {
   try {
-    const { page = 1, limit = 1000, class_room_id, exam_type } = filters;
+    const {
+      page = 1,
+      limit = 1000,
+      class_room_id,
+      class_room_ids,
+      exam_type,
+    } = filters;
     const offset = (page - 1) * limit;
 
     let whereClause = " WHERE 1=1";
     const params = [];
 
+    // Filter by single class_room_id
     if (class_room_id) {
       whereClause += " AND class_room_id = ?";
       params.push(class_room_id);
+    }
+
+    // Filter by multiple class_room_ids (comma-separated or array)
+    if (class_room_ids) {
+      let classIdsArray = Array.isArray(class_room_ids)
+        ? class_room_ids.map((id) => parseInt(id))
+        : class_room_ids.split(",").map((id) => parseInt(id.trim()));
+
+      if (classIdsArray.length > 0) {
+        const placeholders = classIdsArray.map(() => "?").join(",");
+        whereClause += ` AND class_room_id IN (${placeholders})`;
+        params.push(...classIdsArray);
+      }
     }
 
     if (exam_type) {
@@ -176,9 +196,27 @@ async function getExamById(examId) {
         [examId],
       );
 
+      const questionsWithAnswers = await Promise.all(
+        questions.map(async (q) => {
+          const [answers] = await db.execute(
+            "SELECT answer_id as answerId, content, is_correct as correct, video_location as videoLocation, NULL as imageLocation FROM answer WHERE question_id = ?",
+            [q.question_id],
+          );
+          return {
+            ...q,
+            questionId: q.question_id,
+            questionType: q.question_type,
+            answerResList: answers.map((a) => ({
+              ...a,
+              correct: a.correct === 1, // Ensure boolean
+            })),
+          };
+        }),
+      );
+
       return {
         ...exam,
-        questionsList: questions,
+        questionsList: questionsWithAnswers,
       };
     }
   } catch (err) {

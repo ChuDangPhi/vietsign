@@ -55,6 +55,7 @@ export interface ClassItem {
   endDate?: string;
   status: string; // Allow any status from BE (APPROVED, PENDING, etc)
   organizationId: number | null; // ID cơ sở (null = Online)
+  organizationName?: string;
   description?: string;
   classLevel: GradeLevel | string; // Allow string fallbacks
   thumbnail?: string; // Đường dẫn ảnh

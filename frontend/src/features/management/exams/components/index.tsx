@@ -13,11 +13,15 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useSelector } from "react-redux";
+import { RootState } from "@/core/store";
 import { ExamItem } from "@/data/examsData";
 import { fetchAllExams, createExam, deleteExam } from "@/services/examService";
 import { fetchAllClasses } from "@/services/classService";
+import { fetchAllOrganizations } from "@/services/organizationService";
+import { OrganizationItem } from "@/data";
 import {
   fetchTopicsByClassroom,
   fetchVocabulariesByTopic,
@@ -39,40 +43,36 @@ export function ExamsManagement() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // User role from Redux
+  const { user } = useSelector((state: RootState) => state.admin);
+  const userRole = user?.role?.role || user?.code;
+  const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(userRole);
+  const isFacilityManager =
+    userRole === "FacilityManager" || userRole === "FACILITY_MANAGER";
+  const isTeacher = userRole === "Teacher" || userRole === "TEACHER";
+  const userOrgId = user?.organizationId || (user as any)?.organization_id;
+  const userId = user?.id || (user as any)?.user_id;
+
   // State
   const [exams, setExams] = useState<ExamItem[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
+  const [facilities, setFacilities] = useState<OrganizationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [classesMap, setClassesMap] = useState<Record<number, string>>({});
+  const [classOrgMap, setClassOrgMap] = useState<Record<number, number | null>>(
+    {},
+  );
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [examsData, classesData] = await Promise.all([
-        fetchAllExams(),
-        fetchAllClasses(),
+      // First load facilities and classes to build query params
+      const [facilitiesData, classesData] = await Promise.all([
+        fetchAllOrganizations().catch(() => []),
+        fetchAllClasses().catch(() => []),
       ]);
 
-      // Normalize exams data if needed
-      // Backend returns: exam_id, name, class_room_id, is_active, etc.
-      // Need to map to ExamItem interface expected by UI or update UI
-      // For now, let's map commonly used fields.
-      const mappedExams = examsData.map((e: any) => ({
-        ...e,
-        id: e.exam_id || e.id,
-        title: e.name || e.title,
-        classId: e.class_room_id || e.classId,
-        date: new Date(e.created_at).toLocaleDateString("vi-VN"), // Use created_at as date placeholder
-        time: new Date(e.created_at).toLocaleTimeString("vi-VN", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        duration: (e.duration_minutes || 60) + " phút",
-        questions: e.total_points || 0, // Placeholder
-        students: 0, // Placeholder
-        status: e.is_active ? "ongoing" : "completed", // Simple mapping
-        type: e.exam_type || "Định kỳ",
-      }));
+      setFacilities(facilitiesData || []);
 
       // Ensure unique classes by id
       const uniqueClasses = Array.isArray(classesData)
@@ -81,21 +81,108 @@ export function ExamsManagement() {
               index === self.findIndex((t) => t.id === c.id),
           )
         : [];
-
-      setExams(mappedExams);
       setClasses(uniqueClasses);
 
+      // Build class maps
       const map: Record<number, string> = {};
+      const orgMap: Record<number, number | null> = {};
       classesData.forEach((c: any) => {
         map[c.id] = c.name;
+        orgMap[c.id] = c.organizationId || c.organization_id || null;
       });
       setClassesMap(map);
+      setClassOrgMap(orgMap);
+
+      // Build exams query params based on role
+      let examsQuery: any = {};
+
+      if (!isAdmin) {
+        let allowedClassIds: number[] = [];
+
+        if (isTeacher && userId) {
+          // TEACHER: get classes they teach
+          allowedClassIds = classesData
+            .filter((c: any) => c.teacherId === Number(userId))
+            .map((c: any) => c.id);
+        } else if (isFacilityManager && userOrgId) {
+          // FACILITY_MANAGER: get classes in their org hierarchy
+          const userOrg = facilitiesData.find((f: any) => f.id === userOrgId);
+          if (userOrg) {
+            let allowedSchoolIds: number[] = [];
+
+            if (userOrg.type === "PROVINCE") {
+              const childDeptIds = facilitiesData
+                .filter(
+                  (f: any) =>
+                    f.type === "DEPARTMENT" && f.parentId === userOrgId,
+                )
+                .map((f: any) => f.id);
+              allowedSchoolIds = facilitiesData
+                .filter(
+                  (f: any) =>
+                    f.type === "SCHOOL" &&
+                    f.parentId !== null &&
+                    childDeptIds.includes(f.parentId),
+                )
+                .map((f: any) => f.id);
+            } else if (userOrg.type === "DEPARTMENT") {
+              allowedSchoolIds = facilitiesData
+                .filter(
+                  (f: any) => f.type === "SCHOOL" && f.parentId === userOrgId,
+                )
+                .map((f: any) => f.id);
+            } else if (userOrg.type === "SCHOOL") {
+              allowedSchoolIds = [userOrgId];
+            }
+
+            allowedClassIds = classesData
+              .filter((c: any) =>
+                allowedSchoolIds.includes(
+                  c.organizationId || c.organization_id,
+                ),
+              )
+              .map((c: any) => c.id);
+          }
+        }
+
+        if (allowedClassIds.length > 0) {
+          examsQuery.class_room_ids = allowedClassIds.join(",");
+        } else {
+          // No allowed classes, set empty result
+          setExams([]);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Fetch exams with query params
+      const examsData = await fetchAllExams(examsQuery);
+
+      // Normalize exams data
+      const mappedExams = examsData.map((e: any) => ({
+        ...e,
+        id: e.exam_id || e.id,
+        title: e.name || e.title,
+        classId: e.class_room_id || e.classId,
+        date: new Date(e.created_at).toLocaleDateString("vi-VN"),
+        time: new Date(e.created_at).toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        duration: (e.duration_minutes || 60) + " phút",
+        questions: e.total_points || 0,
+        students: 0,
+        status: e.is_active ? "ongoing" : "completed",
+        type: e.exam_type || "Định kỳ",
+      }));
+
+      setExams(mappedExams);
     } catch (error) {
       console.error("Failed to load data", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAdmin, isFacilityManager, isTeacher, userId, userOrgId]);
 
   useEffect(() => {
     loadData();
@@ -109,9 +196,36 @@ export function ExamsManagement() {
     return classesMap[classId] || "Không xác định";
   };
 
-  const filteredExams = exams.filter(
+  // Role-based filtering logic
+  // NOTE: Dữ liệu đã được lọc server-side dựa trên query params (class_room_ids)
+  // Hàm này giữ lại để backward compatibility
+  const getExamsByRole = useCallback((): ExamItem[] => {
+    // Dữ liệu đã được lọc từ server, trả về trực tiếp
+    return exams;
+  }, [exams]);
+
+  const roleFilteredExams = useMemo(() => getExamsByRole(), [getExamsByRole]);
+
+  const filteredExams = roleFilteredExams.filter(
     (exam) => filterStatus === "all" || exam.status === filterStatus,
   );
+
+  // Helper để tạo mô tả theo role
+  const getRoleDescription = (): string => {
+    if (isAdmin) {
+      return `Quản lý tất cả bài kiểm tra trong hệ thống (${roleFilteredExams.length} bài)`;
+    }
+    if (isFacilityManager) {
+      const userOrg = facilities.find((f) => f.id === userOrgId);
+      if (userOrg) {
+        return `Quản lý bài kiểm tra trong phạm vi ${userOrg.name} (${roleFilteredExams.length} bài)`;
+      }
+    }
+    if (isTeacher) {
+      return `Các bài kiểm tra trong lớp bạn phụ trách (${roleFilteredExams.length} bài)`;
+    }
+    return `Quản lý bài kiểm tra (${roleFilteredExams.length} bài)`;
+  };
 
   const {
     currentPage,
@@ -158,9 +272,7 @@ export function ExamsManagement() {
             <ClipboardCheck className="w-8 h-8 text-primary-600" />
             Quản lý kiểm tra
           </h1>
-          <p className="text-gray-600 mt-1">
-            Tạo và quản lý các bài kiểm tra ({exams.length} bài)
-          </p>
+          <p className="text-gray-600 mt-1">{getRoleDescription()}</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}

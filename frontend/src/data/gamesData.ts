@@ -117,6 +117,39 @@ export const gamesList: GameItem[] = [
   },
   {
     id: 2,
+    name: "Đoán từ qua hình ảnh",
+    description:
+      "Quan sát hình ảnh minh họa và chọn từ tương ứng. Giúp nhận diện ý nghĩa của từ qua hình ảnh trực quan.",
+    icongame: "/assets/games/memory-match.png", // Tạm dùng icon này
+    isActive: true,
+    levels: [
+      {
+        level: 1,
+        difficulty: "Dễ",
+        detail:
+          "Các từ đơn giản (xin chào, cảm ơn, ăn cơm), tốc độ ký hiệu chậm.",
+        requiredScore: 300,
+        questions: mockGameQuestions.slice(0, 3),
+      },
+      {
+        level: 2,
+        difficulty: "Trung bình",
+        detail: "Các từ phức tạp hơn về chủ đề trường học, công việc.",
+        requiredScore: 400,
+        questions: [],
+      },
+      {
+        level: 3,
+        difficulty: "Khó",
+        detail:
+          "Các câu ngắn hoặc từ ghép, chuyên gia thực hiện ở tốc độ giao tiếp thực tế.",
+        requiredScore: 500,
+        questions: [],
+      },
+    ],
+  },
+  {
+    id: 3,
     name: "Lật bài trí nhớ",
     description:
       "Tìm cặp bài trùng khớp giữa hình ảnh minh họa và ký hiệu thủ ngữ. Rèn luyện khả năng ghi nhớ hình ảnh và ý nghĩa từ vựng.",
@@ -148,7 +181,7 @@ export const gamesList: GameItem[] = [
     ],
   },
   {
-    id: 3,
+    id: 4,
     name: "Thử thách Đánh vần",
     description:
       "Hệ thống hiển thị chuỗi hình ảnh các chữ cái ngón tay tạo thành một từ hoàn chỉnh. Người chơi nhìn hình và nhập lại từ đó bằng bàn phím.",
@@ -198,7 +231,7 @@ export function getActiveGames(): GameItem[] {
 
 export function getGameLevel(
   gameId: number,
-  level: number
+  level: number,
 ): GameLevel | undefined {
   const game = getGameById(gameId);
   if (!game) return undefined;

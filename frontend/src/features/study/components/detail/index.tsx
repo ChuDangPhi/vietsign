@@ -29,15 +29,18 @@ import { useParams, useRouter } from "next/navigation";
 import { ClassItem, statusConfig, getClassStudents } from "@/data/classesData";
 import { fetchClassById } from "@/services/classService";
 import { fetchUserById } from "@/services/userService";
+import {
+  fetchLessonsByClassroom,
+  Lesson,
+  deleteLesson,
+} from "@/services/lessonService";
 import { mockOrganizations } from "@/data/organizationsData";
 import { getUserById } from "@/data/usersData";
 import {
-  getLessonsByClassId,
   getExamsByClassId,
   getDocumentsByClassId,
-  LessonItem,
   DocumentItem,
-  ExamItem, // Ensure ExamItem is imported
+  ExamItem,
 } from "@/data/lessonsData";
 import Link from "next/link";
 import { ConfirmModal } from "@/shared/components/common/ConfirmModal";
@@ -61,8 +64,7 @@ export function StudyDetail() {
   const [isTeacher, setIsTeacher] = useState(false);
 
   // Data states
-  // Data states
-  const [lessons, setLessons] = useState<LessonItem[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [exams, setExams] = useState<
     (ExamItem & { studentStatus: string; score?: number })[]
   >([]);
@@ -85,7 +87,7 @@ export function StudyDetail() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // Try fetch from API first
+        // Fetch class from API
         const fetchedClass = await fetchClassById(id);
         if (fetchedClass) {
           setClassItem(fetchedClass);
@@ -93,25 +95,24 @@ export function StudyDetail() {
             const teacher = await fetchUserById(fetchedClass.teacherId);
             setTeacherName(teacher?.name || "Không xác định");
           }
-          // Simulate: If loaded, set permissions (Assuming current user is teacher for this task)
+          // Simulate: If loaded, set permissions
           setIsTeacher(true);
         } else {
-          // Handle case where class is not found
           setClassItem(null);
         }
 
-        // Load lessons, exams, documents
-        setLessons(getLessonsByClassId(id));
+        // Load lessons from API, exams and documents from mock
+        const lessonsData = await fetchLessonsByClassroom(id);
+        setLessons(lessonsData);
         setExams(getExamsByClassId(id));
         setDocuments(getDocumentsByClassId(id));
       } catch (error) {
         console.error("Failed to load class", error);
         setClassItem(null);
         setTeacherName("Không xác định");
-        setLessons(getLessonsByClassId(id));
+        setLessons([]);
         setExams(getExamsByClassId(id));
         setDocuments(getDocumentsByClassId(id));
-        // setIsTeacher(true);
       } finally {
         setIsLoading(false);
       }
@@ -142,27 +143,31 @@ export function StudyDetail() {
     });
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     const { type, itemId } = deleteModal;
     if (!type || !itemId) return;
 
-    // Simulate deletion
-    switch (type) {
-      case "lesson":
-        setLessons((prev) => prev.filter((i) => i.id !== itemId));
-        break;
-      case "exam":
-        setExams((prev) => prev.filter((i) => i.id !== itemId));
-        break;
-      case "document":
-        setDocuments((prev) => prev.filter((i) => i.id !== itemId));
-        break;
-      case "member":
-        // Logic to remove member (e.g., update class students list)
-        toast.success("Đã xóa thành viên khỏi lớp");
-        break;
+    try {
+      switch (type) {
+        case "lesson":
+          await deleteLesson(itemId);
+          setLessons((prev) => prev.filter((i) => i.id !== itemId));
+          break;
+        case "exam":
+          setExams((prev) => prev.filter((i) => i.id !== itemId));
+          break;
+        case "document":
+          setDocuments((prev) => prev.filter((i) => i.id !== itemId));
+          break;
+        case "member":
+          toast.success("Đã xóa thành viên khỏi lớp");
+          break;
+      }
+      toast.success("Đã xóa thành công");
+    } catch (error) {
+      console.error("Failed to delete:", error);
+      toast.error("Xóa thất bại");
     }
-    toast.success("Đã xóa thành công");
     setDeleteModal({ isOpen: false, type: null, itemId: null, itemName: "" });
   };
 
@@ -384,7 +389,7 @@ export function StudyDetail() {
                       lesson.completed ? "text-gray-900" : "text-gray-700"
                     }`}
                   >
-                    {lesson.title}
+                    {lesson.name}
                   </h3>
                   <p className="text-sm text-gray-500 truncate">
                     {lesson.description}
@@ -402,7 +407,7 @@ export function StudyDetail() {
                       </button>
                       <button
                         onClick={() =>
-                          handleDeleteClick("lesson", lesson.id, lesson.title)
+                          handleDeleteClick("lesson", lesson.id, lesson.name)
                         }
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                       >

@@ -4,13 +4,13 @@
 import { type UserItem } from "./usersData";
 
 // Loại tổ chức
-export type OrganizationType = "DEPARTMENT" | "SCHOOL";
+export type OrganizationType = "PROVINCE" | "DEPARTMENT" | "SCHOOL";
 
 export interface OrganizationItem {
   id: number;
   name: string;
-  type: OrganizationType; // DEPARTMENT = Sở GD, SCHOOL = Trường
-  parentId: number | null; // null nếu là Sở, ID của Sở nếu là Trường
+  type: OrganizationType; // PROVINCE = Tỉnh/TP, DEPARTMENT = Sở GD, SCHOOL = Trường
+  parentId: number | null; // -1 nếu là Tỉnh, ID của Province nếu là Sở, ID của Sở nếu là Trường
   // Thông tin địa chỉ
   street: string; // Số nhà, đường (tên mới)
   ward: number; // Mã phường/xã (tên mới)

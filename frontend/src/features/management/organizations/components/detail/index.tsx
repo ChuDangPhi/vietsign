@@ -22,6 +22,8 @@ import {
   Plus,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { useSelector } from "react-redux";
+import { RootState } from "@/core/store";
 import { OrganizationItem } from "@/data";
 import {
   fetchProvinces,
@@ -220,6 +222,20 @@ export function OrganizationDetail() {
   const deleteMutation = useDeleteOrganization();
   const createMutation = useCreateOrganization();
 
+  // ===== USER & ROLE-BASED ACCESS CONTROL =====
+  const { user } = useSelector((state: RootState) => state.admin);
+  const userRole = user?.role?.role || user?.code;
+  const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(userRole);
+  const isFacilityManager =
+    userRole === "FacilityManager" || userRole === "FACILITY_MANAGER";
+  const userOrgId = user?.organizationId || (user as any)?.organization_id;
+
+  // FACILITY_MANAGER can only edit/manage organizations they are assigned to (or children thereof)
+  // For simplicity: Admin can do everything, FM can edit info but not delete Province
+  const canEdit = isAdmin || isFacilityManager;
+  const canDelete = isAdmin; // Only Admin can delete organizations
+  const canAddChildren = isAdmin || isFacilityManager; // Both can add children under their jurisdiction
+
   // Fetch users separately - with error handling
   const { data: facilityUsers = [], isError: usersError } = useQuery({
     queryKey: ["users", "facility", id],
@@ -250,6 +266,13 @@ export function OrganizationDetail() {
   const [addSchoolProvince, setAddSchoolProvince] = useState<number | "">("");
   const [addSchoolWards, setAddSchoolWards] = useState<Commune[]>([]);
   const [loadingAddSchoolWards, setLoadingAddSchoolWards] = useState(false);
+
+  // Add Department Modal State (New)
+  const [isAddDepartmentModalOpen, setIsAddDepartmentModalOpen] =
+    useState(false);
+  const [addDepartmentWards, setAddDepartmentWards] = useState<Commune[]>([]);
+  const [loadingAddDepartmentWards, setLoadingAddDepartmentWards] =
+    useState(false);
 
   // Manager Assignment State
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -296,15 +319,11 @@ export function OrganizationDetail() {
       organization_id: id,
       user_id: Number(selectedAssignUser),
       role_in_org: "FACILITY_MANAGER",
-      is_primary: true, // Default to true or let user choose? Requirement says "is_primary: true -> others demoted". For simplicity, set true.
+      is_primary: true,
     });
   };
 
   const handleRevokeManager = (user: UserItem) => {
-    // Confirm logic handled by window.confirm below
-    // Since I don't want to add another modal state right now, and the requirement was just "DELETE" endpoint support,
-    // I will use window.confirm for now or trusting the user.
-    // Wait, I should better use a confirmation.
     if (
       window.confirm(
         `Bạn có chắc chắn muốn hủy quyền quản lý của ${user.name}?`,
@@ -321,13 +340,22 @@ export function OrganizationDetail() {
   const [wardName, setWardName] = useState<string>("");
 
   const [activeTab, setActiveTab] = useState<
-    "info" | "managers" | "teachers" | "students" | "schools"
+    "info" | "managers" | "teachers" | "students" | "schools" | "departments"
   >("info");
 
   // Fetch all organizations to find children/parent
   const { data: allOrgs = [] } = useOrganizations();
 
-  // Lấy danh sách trường con nếu là Sở Giáo dục
+  // Child Departments if PROVINCE
+  const childDepartments = React.useMemo(() => {
+    if (organization?.type !== "PROVINCE" || !Array.isArray(allOrgs)) return [];
+    return allOrgs.filter(
+      (org: OrganizationItem) =>
+        org.type === "DEPARTMENT" && org.parentId === organization.id,
+    );
+  }, [organization, allOrgs]);
+
+  // Child Schools if DEPARTMENT
   const childSchools = React.useMemo(() => {
     if (organization?.type !== "DEPARTMENT" || !Array.isArray(allOrgs))
       return [];
@@ -337,17 +365,19 @@ export function OrganizationDetail() {
     );
   }, [organization, allOrgs]);
 
-  // Lấy thông tin Sở cha nếu là Trường
-  const parentDepartment = React.useMemo(() => {
+  // Parent Organization (Department or Province)
+  const parentOrganization = React.useMemo(() => {
     if (
-      organization?.type !== "SCHOOL" ||
-      !organization.parentId ||
-      !Array.isArray(allOrgs)
-    )
-      return null;
-    return allOrgs.find(
-      (org: OrganizationItem) => org.id === organization.parentId,
-    );
+      (organization?.type === "SCHOOL" ||
+        organization?.type === "DEPARTMENT") &&
+      organization.parentId &&
+      Array.isArray(allOrgs)
+    ) {
+      return allOrgs.find(
+        (org: OrganizationItem) => org.id === organization.parentId,
+      );
+    }
+    return null;
   }, [organization, allOrgs]);
 
   const [provincesList, setProvincesList] = useState<Province[]>([]);
@@ -418,7 +448,24 @@ export function OrganizationDetail() {
     }
   }, [addSchoolProvince]);
 
-  // Handler to create a new school under this department
+  // Load wards for Add Department (uses current Province city code)
+  useEffect(() => {
+    if (
+      isAddDepartmentModalOpen &&
+      organization?.type === "PROVINCE" &&
+      organization.city
+    ) {
+      setLoadingAddDepartmentWards(true);
+      fetchProvinceById(organization.city)
+        .then((p) => {
+          if (p && p.communes) setAddDepartmentWards(p.communes);
+          else setAddDepartmentWards([]);
+        })
+        .finally(() => setLoadingAddDepartmentWards(false));
+    }
+  }, [isAddDepartmentModalOpen, organization]);
+
+  // Handler to create a new School
   const handleCreateSchool = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -444,6 +491,37 @@ export function OrganizationDetail() {
       },
       onError: (error: any) => {
         message.error(error.message || "Thêm trường thất bại");
+      },
+    });
+  };
+
+  // Handler to create a new Department
+  const handleCreateDepartment = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    if (!organization || organization.type !== "PROVINCE") return;
+
+    const newDeptData = {
+      name: formData.get("name") as string,
+      type: "DEPARTMENT" as const,
+      parentId: id, // This Province's ID
+      street: formData.get("address") as string,
+      city: organization.city, // Department belongs to same city as province
+      ward: Number(formData.get("ward")),
+      phone: formData.get("phone") as string,
+      email: formData.get("email") as string,
+    };
+
+    createMutation.mutate(newDeptData as any, {
+      onSuccess: () => {
+        message.success("Thêm Sở Giáo dục mới thành công");
+        setIsAddDepartmentModalOpen(false);
+        setAddDepartmentWards([]);
+        queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      },
+      onError: (error: any) => {
+        message.error(error.message || "Thêm Sở GD thất bại");
       },
     });
   };
@@ -495,7 +573,7 @@ export function OrganizationDetail() {
     const parts = [];
     if (organization.street) parts.push(organization.street);
     if (wardName) parts.push(wardName);
-    if (provinceName) parts.push(provinceName); // Province name lấy từ API locations
+    if (provinceName) parts.push(provinceName);
     return parts.length > 0 ? parts.join(", ") : "Chưa cập nhật địa chỉ";
   };
 
@@ -526,17 +604,39 @@ export function OrganizationDetail() {
     );
   }
 
+  // Define logic for gradients and labels based on type
+  const getBannerGradient = (type: string) => {
+    switch (type) {
+      case "PROVINCE":
+        return "from-purple-600 to-indigo-700";
+      case "DEPARTMENT":
+        return "from-indigo-500 to-purple-600";
+      default:
+        return "from-primary-500 to-primary-600";
+    }
+  };
+
+  const getTypeName = (type: string) => {
+    switch (type) {
+      case "PROVINCE":
+        return "Tỉnh / Thành phố";
+      case "DEPARTMENT":
+        return "Sở Giáo dục";
+      default:
+        return "Trường";
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center">
         <button
           onClick={() => {
-            // Nếu là Trường, quay lại trang chi tiết Sở cha
-            if (currentOrganization.type === "SCHOOL" && parentDepartment) {
-              router.push(`/organizations-management/${parentDepartment.id}`);
+            // Updated Navigation Logic
+            if (parentOrganization) {
+              router.push(`/organizations-management/${parentOrganization.id}`);
             } else {
-              // Nếu là Sở, quay lại danh sách
               router.push("/organizations-management");
             }
           }}
@@ -547,8 +647,8 @@ export function OrganizationDetail() {
             className="group-hover:-translate-x-1 transition-transform"
           />
           <span>
-            {currentOrganization.type === "SCHOOL" && parentDepartment
-              ? `Quay lại ${parentDepartment.name}`
+            {parentOrganization
+              ? `Quay lại ${parentOrganization.name}`
               : "Quay lại danh sách"}
           </span>
         </button>
@@ -558,7 +658,7 @@ export function OrganizationDetail() {
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Banner Header */}
         <div
-          className={`bg-gradient-to-r ${currentOrganization.type === "DEPARTMENT" ? "from-indigo-500 to-purple-600" : "from-primary-500 to-primary-600"} p-8`}
+          className={`bg-gradient-to-r ${getBannerGradient(currentOrganization.type)} p-8`}
         >
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
@@ -567,12 +667,8 @@ export function OrganizationDetail() {
               </div>
               <div className="text-white">
                 <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${currentOrganization.type === "DEPARTMENT" ? "bg-white/30" : "bg-white/20"}`}
-                  >
-                    {currentOrganization.type === "DEPARTMENT"
-                      ? "Sở Giáo dục"
-                      : "Trường"}
+                  <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-white/30">
+                    {getTypeName(currentOrganization.type)}
                   </span>
                 </div>
                 <h1 className="text-2xl font-bold">
@@ -584,16 +680,26 @@ export function OrganizationDetail() {
                       {provinceName}
                     </span>
                   )}
-                  {parentDepartment && (
+                  {parentOrganization && (
                     <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-white/20">
-                      thuộc {parentDepartment.name}
+                      thuộc {parentOrganization.name}
                     </span>
                   )}
                 </div>
               </div>
             </div>
             <div className="flex gap-6 text-white text-center">
-              {currentOrganization.type === "DEPARTMENT" ? (
+              {currentOrganization.type === "PROVINCE" && (
+                <>
+                  <div>
+                    <p className="text-3xl font-bold">
+                      {childDepartments.length}
+                    </p>
+                    <p className="text-xs text-white/80">Sở GD</p>
+                  </div>
+                </>
+              )}
+              {currentOrganization.type === "DEPARTMENT" && (
                 <>
                   <div>
                     <p className="text-3xl font-bold">{childSchools.length}</p>
@@ -604,7 +710,8 @@ export function OrganizationDetail() {
                     <p className="text-xs text-white/80">Quản lý</p>
                   </div>
                 </>
-              ) : (
+              )}
+              {currentOrganization.type === "SCHOOL" && (
                 <>
                   <div>
                     <p className="text-3xl font-bold">{students.length}</p>
@@ -637,7 +744,25 @@ export function OrganizationDetail() {
             )}
           </button>
 
-          {/* Tab Trường - chỉ hiện với DEPARTMENT */}
+          {/* Tab Departments - chỉ hiện với PROVINCE */}
+          {currentOrganization.type === "PROVINCE" && (
+            <button
+              onClick={() => setActiveTab("departments")}
+              className={`pb-4 px-2 font-medium text-sm flex items-center gap-2 transition-colors relative ${
+                activeTab === "departments"
+                  ? "text-primary-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Building size={18} />
+              Danh sách Sở GD ({childDepartments.length})
+              {activeTab === "departments" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-t-full" />
+              )}
+            </button>
+          )}
+
+          {/* Tab Schools - chỉ hiện với DEPARTMENT */}
           {currentOrganization.type === "DEPARTMENT" && (
             <button
               onClick={() => setActiveTab("schools")}
@@ -709,7 +834,6 @@ export function OrganizationDetail() {
         <div className="p-8 bg-white min-h-[400px]">
           {activeTab === "info" && (
             <div className="animate-in fade-in duration-300">
-              {/* Info Section (Old Content) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-semibold text-gray-700">
@@ -737,6 +861,8 @@ export function OrganizationDetail() {
                   </label>
                   {isEditing ? (
                     <div className="space-y-3">
+                      {/* Editing Address Logic - Keep simple or reusing components */}
+                      {/* For brevity, keeping it simpler here as in original code */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-xs text-gray-500 mb-1 block">
@@ -748,7 +874,7 @@ export function OrganizationDetail() {
                               setEditForm({
                                 ...editForm,
                                 city: Number(e.target.value),
-                                ward: 0, // Reset ward
+                                ward: 0,
                               });
                             }}
                             className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
@@ -880,7 +1006,7 @@ export function OrganizationDetail() {
                   </div>
                 )}
 
-                {/* Edit Controls for Info Tab */}
+                {/* Edit Controls */}
                 <div className="md:col-span-2 flex items-center justify-end gap-3 pt-6 border-t border-gray-100 mt-2">
                   {isEditing ? (
                     <>
@@ -907,20 +1033,44 @@ export function OrganizationDetail() {
                     </>
                   ) : (
                     <>
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-white transition-colors font-medium flex items-center gap-2"
-                      >
-                        <Edit size={18} />
-                        Chỉnh sửa
-                      </button>
-                      <button
-                        onClick={() => setIsDeleteModalOpen(true)}
-                        className="px-6 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
-                      >
-                        <Trash2 size={18} />
-                        Xóa
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-white transition-colors font-medium flex items-center gap-2"
+                        >
+                          <Edit size={18} />
+                          Chỉnh sửa
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={() => {
+                            if (
+                              currentOrganization.type === "PROVINCE" &&
+                              childDepartments.length > 0
+                            ) {
+                              message.warning(
+                                `Không thể xóa vì còn ${childDepartments.length} Sở GD trực thuộc. Hãy xóa các Sở trước.`,
+                              );
+                              return;
+                            }
+                            if (
+                              currentOrganization.type === "DEPARTMENT" &&
+                              childSchools.length > 0
+                            ) {
+                              message.warning(
+                                `Không thể xóa vì còn ${childSchools.length} Trường trực thuộc. Hãy xóa các Trường trước.`,
+                              );
+                              return;
+                            }
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="px-6 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+                        >
+                          <Trash2 size={18} />
+                          Xóa
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -930,35 +1080,112 @@ export function OrganizationDetail() {
 
           {activeTab === "managers" && (
             <div className="animate-in fade-in duration-300 space-y-4">
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setIsAssignModalOpen(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
-                >
-                  <Plus size={16} /> Thêm quản lý
-                </button>
-              </div>
+              {canAddChildren && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setIsAssignModalOpen(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
+                  >
+                    <Plus size={16} /> Thêm quản lý
+                  </button>
+                </div>
+              )}
               <UserListTable
                 users={managers}
                 emptyMessage="Chưa có quản lý nào được gán cho cơ sở này"
-                onRevoke={handleRevokeManager}
+                onRevoke={isAdmin ? handleRevokeManager : undefined}
               />
             </div>
           )}
+
+          {/* Departments Tab - Danh sách Sở thuộc Tỉnh */}
+          {activeTab === "departments" &&
+            currentOrganization.type === "PROVINCE" && (
+              <div className="animate-in fade-in duration-300">
+                {canAddChildren && (
+                  <div className="flex justify-end mb-4">
+                    <button
+                      onClick={() => setIsAddDepartmentModalOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition"
+                    >
+                      <Plus size={18} /> Thêm Sở Giáo dục
+                    </button>
+                  </div>
+                )}
+
+                {childDepartments.length === 0 ? (
+                  <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-2xl border border-gray-100 border-dashed">
+                    <Building className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>Chưa có Sở Giáo dục nào thuộc Tỉnh/TP này</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {childDepartments.map((dept) => (
+                      <div
+                        key={dept.id}
+                        onClick={() =>
+                          router.push(`/organizations-management/${dept.id}`)
+                        }
+                        className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
+                      >
+                        <div className="p-6">
+                          <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center group-hover:bg-purple-100 transition-colors shrink-0">
+                              <Building size={24} className="text-purple-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-lg font-bold text-gray-900 group-hover:text-purple-600 transition-colors truncate">
+                                {dept.name}
+                              </h3>
+                              {/* Simple styling for department card */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-50">
+                                {dept.phone && (
+                                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <Phone
+                                      size={16}
+                                      className="text-gray-400 shrink-0"
+                                    />
+                                    <span className="truncate">
+                                      {dept.phone}
+                                    </span>
+                                  </div>
+                                )}
+                                {dept.email && (
+                                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <Mail
+                                      size={16}
+                                      className="text-gray-400 shrink-0"
+                                    />
+                                    <span className="truncate">
+                                      {dept.email}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
           {/* Schools Tab - Danh sách trường thuộc Sở */}
           {activeTab === "schools" &&
             currentOrganization.type === "DEPARTMENT" && (
               <div className="animate-in fade-in duration-300">
-                {/* Add School Button */}
-                <div className="flex justify-end mb-4">
-                  <button
-                    onClick={() => setIsAddSchoolModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition"
-                  >
-                    <Plus size={18} /> Thêm trường
-                  </button>
-                </div>
+                {canAddChildren && (
+                  <div className="flex justify-end mb-4">
+                    <button
+                      onClick={() => setIsAddSchoolModalOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition"
+                    >
+                      <Plus size={18} /> Thêm trường
+                    </button>
+                  </div>
+                )}
 
                 {childSchools.length === 0 ? (
                   <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-2xl border border-gray-100 border-dashed">
@@ -1226,6 +1453,126 @@ export function OrganizationDetail() {
               disabled={createMutation.isPending}
             >
               {createMutation.isPending ? "Đang lưu..." : "Lưu trường"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal thêm Sở Giáo Dục */}
+      <Modal
+        isOpen={isAddDepartmentModalOpen}
+        onClose={() => {
+          setIsAddDepartmentModalOpen(false);
+          setAddDepartmentWards([]);
+        }}
+        title="Thêm Sở Giáo dục mới"
+      >
+        <form className="space-y-4" onSubmit={handleCreateDepartment}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-sm font-semibold text-gray-700">
+                Tên Sở GD <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="name"
+                placeholder="Ví dụ: Sở Giáo dục và Đào tạo ..."
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-sm font-semibold text-gray-700">
+                Địa chỉ <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="address"
+                placeholder="Số nhà, tên đường..."
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                required
+              />
+            </div>
+
+            {/* Province automatically selected */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">
+                Tỉnh / Thành phố
+              </label>
+              <input
+                type="text"
+                value={provinceName || "Đang tải..."}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-600"
+                disabled
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">
+                Phường / Xã <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="ward"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white"
+                required
+                disabled={loadingAddDepartmentWards}
+              >
+                <option value="">
+                  {loadingAddDepartmentWards ? "Đang tải..." : "Chọn Phường/Xã"}
+                </option>
+                {addDepartmentWards.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">
+                Số điện thoại <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                placeholder="024..."
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                name="email"
+                placeholder="department@vietsign.edu.vn"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddDepartmentModalOpen(false);
+                setAddDepartmentWards([]);
+              }}
+              className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-sm"
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? "Đang lưu..." : "Lưu Sở GD"}
             </button>
           </div>
         </form>

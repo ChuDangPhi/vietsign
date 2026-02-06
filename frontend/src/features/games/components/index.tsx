@@ -4,6 +4,10 @@ import { Gamepad2, Play } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { gamesList, GameItem, getActiveGames } from "@/data/gamesData";
+export { GuessVideoGame } from "./guess-video";
+export { GuessImageGame } from "./guess-image";
+export { MemoryMatchGame } from "./memory-match";
+export { SpellingBeeGame } from "./spelling-bee";
 
 export function Games() {
   const router = useRouter();
@@ -92,28 +96,6 @@ export function Games() {
               <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                 {game.description}
               </p>
-
-              {/* Levels */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  {game.levels.length} Cấp độ
-                </p>
-                <div className="flex gap-2">
-                  {game.levels.map((level) => (
-                    <div
-                      key={level.level}
-                      className="flex-1 bg-gray-100 rounded-lg p-2 text-center"
-                    >
-                      <div className="text-xs font-bold text-gray-700">
-                        {level.difficulty}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        Màn {level.level}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         ))}

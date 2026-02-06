@@ -139,7 +139,14 @@ async function createClassroom(data, userId) {
 
 async function getClassrooms(query) {
   try {
-    const { organizationId, page = 1, limit = 1000 } = query;
+    const {
+      organizationId,
+      organizationIds,
+      teacherId,
+      studentId,
+      page = 1,
+      limit = 1000,
+    } = query;
     const offset = (page - 1) * limit;
 
     // Query with join to get organization info
@@ -165,20 +172,48 @@ async function getClassrooms(query) {
       WHERE 1=1
     `;
     const params = [];
+    let countQuery = `SELECT COUNT(*) as total FROM class_room c LEFT JOIN class_teacher ct ON c.class_room_id = ct.class_room_id WHERE 1=1`;
+    const countParams = [];
 
-    // Filter by organizationId if provided
+    // Filter by organizationId if provided (single)
     if (organizationId) {
       sqlQuery += " AND c.organization_id = ?";
       params.push(organizationId);
+      countQuery += " AND c.organization_id = ?";
+      countParams.push(organizationId);
     }
 
-    // Get total count first
-    let countQuery = `SELECT COUNT(*) as total FROM class_room WHERE 1=1`;
-    const countParams = [];
+    // Filter by organizationIds if provided (multiple - comma separated or array)
+    if (organizationIds) {
+      let orgIdsArray = Array.isArray(organizationIds)
+        ? organizationIds.map((id) => parseInt(id))
+        : organizationIds.split(",").map((id) => parseInt(id.trim()));
 
-    if (organizationId) {
-      countQuery += " AND organization_id = ?";
-      countParams.push(organizationId);
+      if (orgIdsArray.length > 0) {
+        const placeholders = orgIdsArray.map(() => "?").join(",");
+        sqlQuery += ` AND c.organization_id IN (${placeholders})`;
+        params.push(...orgIdsArray);
+        countQuery += ` AND c.organization_id IN (${placeholders})`;
+        countParams.push(...orgIdsArray);
+      }
+    }
+
+    // Filter by teacherId if provided
+    if (teacherId) {
+      sqlQuery += " AND ct.user_id = ?";
+      params.push(parseInt(teacherId));
+      countQuery += " AND ct.user_id = ?";
+      countParams.push(parseInt(teacherId));
+    }
+
+    // Filter by studentId if provided
+    if (studentId) {
+      sqlQuery +=
+        " AND c.class_room_id IN (SELECT class_room_id FROM class_student WHERE user_id = ?)";
+      params.push(parseInt(studentId));
+      countQuery +=
+        " AND c.class_room_id IN (SELECT class_room_id FROM class_student WHERE user_id = ?)";
+      countParams.push(parseInt(studentId));
     }
 
     const [countRows] = await db.query(countQuery, countParams);
@@ -224,8 +259,11 @@ async function getClassroomById(classroomId) {
         ct.user_id as teacherId,
         c.created_by as createdBy,
         c.created_date as createdAt,
-        c.is_active as isActive
+        c.is_active as isActive,
+        o.name as organizationName,
+        o.type as organizationType
       FROM class_room c
+      LEFT JOIN organization o ON c.organization_id = o.organization_id
       LEFT JOIN class_teacher ct ON c.class_room_id = ct.class_room_id
       WHERE c.class_room_id = ?
     `;

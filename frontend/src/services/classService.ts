@@ -24,6 +24,7 @@ export async function fetchAllClasses(query?: any): Promise<ClassItem[]> {
       description: item.description,
       teacherId: item.teacherId,
       organizationId: item.organizationId,
+      organizationName: item.organizationName,
       schedule: item.schedule,
       status: item.status, // Return raw status (APPROVED, PENDING, etc.)
       students: item.students || 0,
@@ -56,6 +57,7 @@ export async function fetchClassById(
       description: item.description,
       teacherId: item.teacherId,
       organizationId: item.organizationId,
+      organizationName: item.organizationName,
       schedule: item.schedule,
       status: item.status, // Return raw status
       students: item.students || 0,

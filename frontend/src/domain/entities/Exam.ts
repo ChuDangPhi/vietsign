@@ -39,6 +39,32 @@ export class ExamModel extends Base {
     const res = await this.apiGet(`/classroom/${classroomId}`);
     return res.data;
   };
+
+  getDetailPracticeExam = async (examId: number) => {
+    // Assuming backend route /practice/:id exists or will exist
+    const res = await this.apiGet(`/practice/${examId}`);
+    return res.data;
+  };
+
+  submitPracticeVideos = async (body: FormData) => {
+    // Assuming backend route /practice/submit exists or will exist
+    const res = await this.apiUploadFile(`/practice/submit`, body);
+    return res.data;
+  };
+
+  getPracticeExamSubmission = async (examId: number, studentId: number) => {
+    // Backend route placeholder
+    const res = await this.apiGet(
+      `/practice-submission/${examId}/${studentId}`,
+    );
+    return res.data;
+  };
+
+  markPracticeExam = async (data: any) => {
+    // Backend route placeholder
+    const res = await this.apiPost(`/mark-practice`, data);
+    return res.data;
+  };
 }
 
 const Exams = new ExamModel();

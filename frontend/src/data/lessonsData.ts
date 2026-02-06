@@ -1,4 +1,6 @@
 // Lessons and Steps data for classes
+import { getExamsByClass, ExamItem } from "./examsData";
+export type { ExamItem };
 
 // Step types
 export type StepType =
@@ -74,38 +76,6 @@ export interface StepItem {
   }[];
   availableWords?: string[]; // List of words to drag
 }
-
-// Lesson item - contains multiple steps
-export interface LessonItem {
-  id: number;
-  classId: number;
-  title: string;
-  description: string;
-  duration: string;
-  order: number;
-  completed?: boolean;
-  stepsCount: number;
-}
-
-import { getExamsByClass, ExamItem } from "./examsData";
-export type { ExamItem };
-
-// ... (keep DocumentItem)
-
-// ...
-
-// Get exams by class ID
-export const getExamsByClassId = (
-  classId: number,
-): (ExamItem & { studentStatus: string; score?: number })[] => {
-  const exams = getExamsByClass(classId);
-  return exams.map((exam) => ({
-    ...exam,
-    studentStatus: Math.random() > 0.5 ? "completed" : "pending",
-    score:
-      Math.random() > 0.5 ? 70 + Math.floor(Math.random() * 30) : undefined,
-  }));
-};
 
 export interface DocumentItem {
   id: number;
@@ -400,60 +370,6 @@ const generateStepsForLesson = (
   return steps;
 };
 
-// Generate mock lessons for a class
-export const generateLessonsForClass = (classId: number): LessonItem[] => {
-  const lessonTopics = [
-    {
-      title: "Chào hỏi cơ bản",
-      desc: "Học cách nói Xin chào, Cảm ơn, Tạm biệt.",
-    },
-    {
-      title: "Xin lỗi & Làm quen",
-      desc: "Các cách xin lỗi và làm quen với người mới.",
-    },
-    {
-      title: "Gia đình & Người thân",
-      desc: "Từ vựng về các thành viên trong gia đình.",
-    },
-    { title: "Số đếm từ 1-20", desc: "Học cách đếm số bằng ngôn ngữ ký hiệu." },
-    {
-      title: "Màu sắc cơ bản",
-      desc: "Các màu sắc thông dụng trong cuộc sống.",
-    },
-    {
-      title: "Ngày tháng & Thời gian",
-      desc: "Cách diễn đạt ngày tháng và giờ giấc.",
-    },
-    { title: "Đồ vật trong nhà", desc: "Từ vựng về các đồ dùng gia đình." },
-    { title: "Động vật thường gặp", desc: "Tên các loài động vật phổ biến." },
-    { title: "Thức ăn & Đồ uống", desc: "Từ vựng về ẩm thực và nước uống." },
-    { title: "Cảm xúc & Trạng thái", desc: "Diễn đạt vui, buồn, giận, sợ..." },
-    {
-      title: "Phương tiện giao thông",
-      desc: "Xe máy, ô tô, xe buýt, máy bay...",
-    },
-    { title: "Tổng kết & Ôn tập", desc: "Ôn lại tất cả nội dung đã học." },
-  ];
-
-  return lessonTopics.map((topic, index) => {
-    const lessonId = classId * 100 + index + 1;
-    const steps = generateStepsForLesson(lessonId, index);
-
-    return {
-      id: lessonId,
-      classId,
-      title: `Bài ${index + 1}: ${topic.title}`,
-      description: topic.desc,
-      duration: `${steps.length * 3}:00`,
-      order: index + 1,
-      completed: index < 2,
-      stepsCount: steps.length,
-    };
-  });
-};
-
-// Legacy exam generation removed - using examsData instead
-
 // Generate mock documents for a class
 export const generateDocumentsForClass = (classId: number): DocumentItem[] => {
   const docs = [
@@ -485,24 +401,7 @@ export const generateDocumentsForClass = (classId: number): DocumentItem[] => {
   }));
 };
 
-// Cache for generated data
-const lessonsCache: Record<number, LessonItem[]> = {};
 const stepsCache: Record<number, StepItem[]> = {};
-
-// Get lessons by class ID
-export const getLessonsByClassId = (classId: number): LessonItem[] => {
-  if (!lessonsCache[classId]) {
-    lessonsCache[classId] = generateLessonsForClass(classId);
-  }
-  return lessonsCache[classId];
-};
-
-// Get lesson by ID
-export const getLessonById = (lessonId: number): LessonItem | undefined => {
-  const classId = Math.floor(lessonId / 100);
-  const lessons = getLessonsByClassId(classId);
-  return lessons.find((l) => l.id === lessonId);
-};
 
 // Get steps by lesson ID
 export const getStepsByLessonId = (lessonId: number): StepItem[] => {
@@ -521,10 +420,17 @@ export const getStepById = (stepId: number): StepItem | undefined => {
 };
 
 // Get exams by class ID
-// Removed duplicate implementation
-// export const getExamsByClassId = (classId: number): ExamItem[] => {
-//   return generateExamsForClass(classId);
-// };
+export const getExamsByClassId = (
+  classId: number,
+): (ExamItem & { studentStatus: string; score?: number })[] => {
+  const exams = getExamsByClass(classId);
+  return exams.map((exam) => ({
+    ...exam,
+    studentStatus: Math.random() > 0.5 ? "completed" : "pending",
+    score:
+      Math.random() > 0.5 ? 70 + Math.floor(Math.random() * 30) : undefined,
+  }));
+};
 
 // Get documents by class ID
 export const getDocumentsByClassId = (classId: number): DocumentItem[] => {

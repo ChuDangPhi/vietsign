@@ -1,98 +1,107 @@
 import LessonModel from "@/domain/entities/Lesson";
-import { learnCategories, LearnItem, LearnCategory } from "@/data/learnData";
 
-const USE_API = true;
+// Lesson interface matches Backend API structure exactly
+export interface Lesson {
+  id: number;
+  name: string;
+  description: string | null;
+  topic_id: number | null;
+  classroom_id: number | null;
+  content: string | null;
+  difficulty_level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+  order_number: number;
+  is_active: number;
+  created_by?: number;
+  created_at?: string;
+  updated_at?: string;
 
-export interface Lesson extends LearnItem {
-  category?: string; // Add category field for flat list handling
+  // Optional frontend helper fields
+  completed?: boolean;
+  duration?: string;
+  stepsCount?: number;
 }
 
 export async function fetchAllLessons(query?: any): Promise<Lesson[]> {
-  if (!USE_API) {
-    // Flatten mock data for fallback
-    const flatLessons: Lesson[] = [];
-    learnCategories.forEach((cat) => {
-      cat.items.forEach((item) => {
-        flatLessons.push({ ...item, category: cat.id });
-      });
-    });
-    return flatLessons;
-  }
-
   try {
     const response = await LessonModel.getAllLessons(query);
     const data = response.data || response;
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Error fetching lessons:", error);
-    // Flatten mock data for fallback
-    const flatLessons: Lesson[] = [];
-    learnCategories.forEach((cat) => {
-      cat.items.forEach((item) => {
-        flatLessons.push({ ...item, category: cat.id });
-      });
-    });
-    return flatLessons;
+    return [];
   }
 }
 
 export async function fetchLessonById(id: number): Promise<Lesson | undefined> {
-  const flatLessons: Lesson[] = [];
-  learnCategories.forEach((cat) => {
-    cat.items.forEach((item) => {
-      flatLessons.push({ ...item, category: cat.id });
-    });
-  });
-
-  if (!USE_API) return flatLessons.find((l) => l.id === id);
-
   try {
     const response = await LessonModel.getLessonById(id);
-    return (response.data || response) as Lesson;
+    return response.data || response;
   } catch (error) {
     console.error("Error fetching lesson:", error);
-    return flatLessons.find((l) => l.id === id);
+    return undefined;
   }
 }
 
-/**
- * Helper to convert Lesson (LearnItem) to API payload
- */
-function convertItemToApiPayload(data: any): any {
-  // Parse duration string "15 phút" to number 15
-  let durationMinutes = 0;
-  if (typeof data.duration === "string") {
-    const match = data.duration.match(/(\d+)/);
-    if (match) durationMinutes = parseInt(match[1], 10);
-  } else if (typeof data.duration === "number") {
-    durationMinutes = data.duration;
+export async function fetchLessonsByClassroom(
+  classroomId: number,
+): Promise<Lesson[]> {
+  try {
+    const response = await LessonModel.getLessonsByClassroom(classroomId);
+    const data = response.data || response;
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Error fetching lessons by classroom:", error);
+    return [];
   }
-
-  return {
-    lesson_name: data.name || data.title, // Map name/title -> lesson_name
-    description: data.description,
-    topic_id: data.topicId,
-    classroom_id: data.classId,
-    order_number: data.order,
-    image_url: data.thumbnail || data.thumbnailUrl, // Map thumbnail -> image_url
-    video_url: data.video || data.videoUrl, // Map video -> video_url
-    duration_minutes: durationMinutes,
-    difficulty_level: data.level === "Cơ bản" ? "BEGINNER" : "INTERMEDIATE", // Simple mapping
-    vocabulary_count: data.vocabularyCount || 0,
-    is_active: 1,
-  };
 }
+
+export async function fetchLessonsByTopic(topicId: number): Promise<Lesson[]> {
+  try {
+    const response = await LessonModel.getLessonsByTopic(topicId);
+    const data = response.data || response;
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Error fetching lessons by topic:", error);
+    return [];
+  }
+}
+
+/*
+export async function fetchLessonStatistics(
+  classroomId: number,
+  topicId?: number,
+) {
+  try {
+    const response = await LessonModel.getLessonStatistics({
+      classroom_id: classroomId,
+      topic_id: topicId,
+    });
+    return response.data || response;
+  } catch (error) {
+    console.error("Error fetching lesson statistics:", error);
+    return { total: 0, active: 0 };
+  }
+}
+*/
 
 export async function createLesson(data: any) {
-  const payload = convertItemToApiPayload(data);
-  return await LessonModel.createLesson(payload);
+  // Pass data directly, assuming input follows BE structure
+  return await LessonModel.createLesson(data);
 }
 
 export async function updateLesson(id: number, data: any) {
-  const payload = convertItemToApiPayload(data);
-  return await LessonModel.updateLesson(id, payload);
+  return await LessonModel.updateLesson(id, data);
 }
 
 export async function deleteLesson(id: number) {
   return await LessonModel.deleteLesson(id);
 }
+
+/*
+export async function reorderLessons(
+  topicId: number,
+  lessons: { lesson_id: number; order_number: number }[],
+) {
+  return await LessonModel.reorderLessons(topicId, lessons);
+}
+*/

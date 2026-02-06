@@ -144,13 +144,71 @@ export function ClassesManagement() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // Load independent data in parallel, allow partial failures
-        const [classesRes, teachersRes, facilitiesRes] =
-          await Promise.allSettled([
-            fetchAllClasses(),
-            fetchUsersByRole("TEACHER"),
-            fetchAllOrganizations(),
-          ]);
+        // First load facilities to determine allowed organizationIds for filtering
+        const facilitiesRes = await fetchAllOrganizations().catch(() => []);
+        setFacilities(facilitiesRes);
+
+        // Build class query params based on role
+        const userRole = user?.role?.role || user?.code;
+        const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(
+          userRole,
+        );
+        const isFacilityManager =
+          userRole === "FacilityManager" || userRole === "FACILITY_MANAGER";
+        const isTeacher = userRole === "Teacher" || userRole === "TEACHER";
+        const userOrgId =
+          user?.organizationId || (user as any)?.organization_id;
+        const userId = user?.id || (user as any)?.user_id;
+
+        let classesQuery: any = {};
+
+        // TEACHER: filter by teacherId (server-side)
+        if (isTeacher && userId) {
+          classesQuery.teacherId = userId;
+        }
+        // FACILITY_MANAGER: filter by organizationIds (server-side)
+        else if (isFacilityManager && userOrgId) {
+          const userOrg = facilitiesRes.find((f: any) => f.id === userOrgId);
+          if (userOrg) {
+            let allowedSchoolIds: number[] = [];
+
+            if (userOrg.type === "PROVINCE") {
+              const childDeptIds = facilitiesRes
+                .filter(
+                  (f: any) =>
+                    f.type === "DEPARTMENT" && f.parentId === userOrgId,
+                )
+                .map((f: any) => f.id);
+              allowedSchoolIds = facilitiesRes
+                .filter(
+                  (f: any) =>
+                    f.type === "SCHOOL" &&
+                    f.parentId !== null &&
+                    childDeptIds.includes(f.parentId),
+                )
+                .map((f: any) => f.id);
+            } else if (userOrg.type === "DEPARTMENT") {
+              allowedSchoolIds = facilitiesRes
+                .filter(
+                  (f: any) => f.type === "SCHOOL" && f.parentId === userOrgId,
+                )
+                .map((f: any) => f.id);
+            } else if (userOrg.type === "SCHOOL") {
+              allowedSchoolIds = [userOrgId];
+            }
+
+            if (allowedSchoolIds.length > 0) {
+              classesQuery.organizationIds = allowedSchoolIds.join(",");
+            }
+          }
+        }
+        // ADMIN: no filter needed, fetch all
+
+        // Load classes with query params and teachers in parallel
+        const [classesRes, teachersRes] = await Promise.allSettled([
+          fetchAllClasses(classesQuery),
+          fetchUsersByRole("TEACHER"),
+        ]);
 
         if (classesRes.status === "fulfilled") {
           setClasses(classesRes.value);
@@ -164,12 +222,6 @@ export function ClassesManagement() {
           console.error("Failed to fetch teachers:", teachersRes.reason);
         }
 
-        if (facilitiesRes.status === "fulfilled") {
-          setFacilities(facilitiesRes.value);
-        } else {
-          console.error("Failed to fetch facilities:", facilitiesRes.reason);
-        }
-
         // Create map for quick lookup
         const tMap: Record<number, string> = {};
         const safeTeachers =
@@ -180,9 +232,7 @@ export function ClassesManagement() {
         setTeachersMap(tMap);
 
         const fMap: Record<number, string> = {};
-        const safeFacilities =
-          facilitiesRes.status === "fulfilled" ? facilitiesRes.value : [];
-        safeFacilities.forEach((f: any) => {
+        facilitiesRes.forEach((f: any) => {
           fMap[f.id] = f.name;
         });
         setFacilitiesMap(fMap);
@@ -194,7 +244,7 @@ export function ClassesManagement() {
       }
     };
     loadData();
-  }, []);
+  }, [user]);
 
   // State cho modal xác nhận xóa
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -212,53 +262,11 @@ export function ClassesManagement() {
   };
 
   // Lọc classes theo role của user
+  // NOTE: Dữ liệu đã được lọc server-side dựa trên query params (teacherId, organizationIds)
+  // Hàm này giữ lại để backward compatibility và fallback nếu server chưa hỗ trợ
   const getClassesByRole = (): ClassItem[] => {
-    const userRole = user?.role?.role || user?.code;
-    const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(
-      userRole,
-    );
-
-    // Admin: hiển thị tất cả các lớp
-    if (isAdmin) {
-      return classes;
-    }
-
-    // FacilityManager: lọc theo tổ chức được quản lý
-    if (userRole === "FacilityManager" || userRole === "FACILITY_MANAGER") {
-      const userOrgId = user?.organizationId || user?.organization_id;
-
-      if (!userOrgId) {
-        return []; // Không có organization được gán
-      }
-
-      // Tìm tổ chức của user
-      const userOrg = facilities.find((f) => f.id === userOrgId);
-
-      if (!userOrg) {
-        return []; // Không tìm thấy tổ chức
-      }
-
-      // Nếu là Sở giáo dục (DEPARTMENT), lấy tất cả trường con
-      if (userOrg.type === "DEPARTMENT") {
-        // Lấy danh sách ID các trường thuộc sở giáo dục này
-        const childSchoolIds = facilities
-          .filter((f) => f.parentId === userOrgId)
-          .map((f) => f.id);
-
-        // Lọc các lớp thuộc các trường này
-        return classes.filter(
-          (cls) =>
-            cls.organizationId !== null &&
-            childSchoolIds.includes(cls.organizationId),
-        );
-      }
-
-      // Nếu là Trường (SCHOOL), chỉ lấy các lớp của trường đó
-      return classes.filter((cls) => cls.organizationId === userOrgId);
-    }
-
-    // Các role khác: không thấy lớp nào (hoặc có thể customize)
-    return [];
+    // Dữ liệu đã được lọc từ server, trả về trực tiếp
+    return classes;
   };
 
   // Áp dụng lọc theo role trước, sau đó lọc theo search và status
@@ -339,13 +347,25 @@ export function ClassesManagement() {
       const userOrgId = user?.organizationId || user?.organization_id;
       const userOrg = facilities.find((f) => f.id === userOrgId);
 
+      if (userOrg?.type === "PROVINCE") {
+        return `Quản lý các lớp học trong tất cả trường thuộc ${userOrg.name} (${roleFilteredClasses.length} lớp)`;
+      }
+
       if (userOrg?.type === "DEPARTMENT") {
         return `Quản lý các lớp học trong các trường thuộc ${userOrg.name} (${roleFilteredClasses.length} lớp)`;
+      }
+
+      if (userOrg?.type === "SCHOOL") {
+        return `Quản lý các lớp học tại ${userOrg.name} (${roleFilteredClasses.length} lớp)`;
       }
 
       if (userOrg) {
         return `Quản lý các lớp học tại ${userOrg.name} (${roleFilteredClasses.length} lớp)`;
       }
+    }
+
+    if (userRole === "Teacher" || userRole === "TEACHER") {
+      return `Các lớp học bạn phụ trách (${roleFilteredClasses.length} lớp)`;
     }
 
     return `Quản lý các lớp học (${roleFilteredClasses.length} lớp)`;

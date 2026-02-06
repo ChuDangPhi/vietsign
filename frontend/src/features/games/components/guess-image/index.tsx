@@ -12,6 +12,7 @@ import {
   Trophy,
   ArrowLeft,
   Loader2,
+  Image as ImageIcon,
   Settings,
   Zap,
 } from "lucide-react";
@@ -26,15 +27,14 @@ interface Question {
   selectedOptionId: number | null;
 }
 
-interface GuessVideoGameProps {
+interface GuessImageGameProps {
   difficulty: "Dễ" | "Trung bình" | "Khó";
   onRestart?: () => void;
   onChangeDifficulty?: () => void;
 }
 
-export const GuessVideoGame: React.FC<GuessVideoGameProps> = ({
+export const GuessImageGame: React.FC<GuessImageGameProps> = ({
   difficulty,
-  onRestart,
   onChangeDifficulty,
 }) => {
   const router = useRouter();
@@ -48,7 +48,7 @@ export const GuessVideoGame: React.FC<GuessVideoGameProps> = ({
 
   useEffect(() => {
     const savedHighScore = localStorage.getItem(
-      `highScore_game1_${difficulty}`,
+      `highScore_game2_${difficulty}`,
     );
     if (savedHighScore) setHighScore(parseInt(savedHighScore));
   }, [difficulty]);
@@ -62,7 +62,7 @@ export const GuessVideoGame: React.FC<GuessVideoGameProps> = ({
     try {
       const allWords = await fetchAllWords({ limit: 100 });
       const validItems = allWords.filter(
-        (item) => item.videoUrl && item.videoUrl.trim().length > 0,
+        (item) => item.imageUrl && item.imageUrl.trim().length > 0,
       );
 
       if (validItems.length < 4) {
@@ -71,7 +71,6 @@ export const GuessVideoGame: React.FC<GuessVideoGameProps> = ({
         return;
       }
 
-      // Question count based on difficulty
       const questionCounts = { Dễ: 5, "Trung bình": 10, Khó: 15 };
       const totalQuestions = Math.min(
         questionCounts[difficulty],
@@ -87,7 +86,7 @@ export const GuessVideoGame: React.FC<GuessVideoGameProps> = ({
         let attempts = 0;
         while (distractors.length < 3 && attempts < 20) {
           const randomDist =
-            validItems[Math.floor(Math.random() * validItems.length)];
+            allWords[Math.floor(Math.random() * allWords.length)];
           if (
             randomDist.id !== randomTarget.id &&
             !distractors.find((d) => d.id === randomDist.id)
@@ -98,7 +97,7 @@ export const GuessVideoGame: React.FC<GuessVideoGameProps> = ({
         }
 
         if (distractors.length < 3) {
-          const others = validItems.filter((v) => v.id !== randomTarget.id);
+          const others = allWords.filter((v) => v.id !== randomTarget.id);
           others
             .slice(0, 3 - distractors.length)
             .forEach((o) => distractors.push(o));
@@ -154,7 +153,7 @@ export const GuessVideoGame: React.FC<GuessVideoGameProps> = ({
       if (newScore > highScore) {
         setHighScore(newScore);
         localStorage.setItem(
-          `highScore_game1_${difficulty}`,
+          `highScore_game2_${difficulty}`,
           newScore.toString(),
         );
       }
@@ -170,34 +169,6 @@ export const GuessVideoGame: React.FC<GuessVideoGameProps> = ({
     } else {
       setShowResult(true);
     }
-  };
-
-  const renderVideo = (url: string) => {
-    if (url.includes("vimeo")) {
-      const idMatch = url.match(/(?:vimeo.com\/|video\/)(\d+)/);
-      const videoId = idMatch ? idMatch[1] : "";
-      return (
-        <iframe
-          src={`https://player.vimeo.com/video/${videoId}?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&background=1`}
-          width="100%"
-          height="100%"
-          frameBorder="0"
-          allow="autoplay; fullscreen"
-          className="w-full h-full object-cover"
-          title="Video Quiz"
-        />
-      );
-    }
-    return (
-      <video
-        src={url}
-        className="w-full h-full object-cover"
-        autoPlay
-        loop
-        muted
-        playsInline
-      />
-    );
   };
 
   if (loading)
@@ -259,6 +230,24 @@ export const GuessVideoGame: React.FC<GuessVideoGameProps> = ({
     );
   }
 
+  if (questions.length === 0) {
+    return (
+      <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 p-12">
+        <ImageIcon size={64} className="mx-auto text-gray-300 mb-4" />
+        <h2 className="text-2xl font-bold text-gray-800">Không đủ dữ liệu</h2>
+        <p className="text-gray-500 mt-2">
+          Cần ít nhất 4 từ có hình ảnh để bắt đầu trò chơi này.
+        </p>
+        <button
+          onClick={() => router.back()}
+          className="mt-6 px-6 py-2 bg-primary-600 text-white rounded-lg"
+        >
+          Quay lại
+        </button>
+      </div>
+    );
+  }
+
   const currentQ = questions[currentQIndex];
 
   return (
@@ -313,14 +302,18 @@ export const GuessVideoGame: React.FC<GuessVideoGameProps> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 min-h-[500px]">
-        <div className="bg-black rounded-3xl overflow-hidden shadow-2xl relative order-first ring-4 ring-gray-900/5 aspect-video lg:aspect-auto">
-          {renderVideo(currentQ.targetItem.videoUrl || "")}
+        <div className="bg-white rounded-3xl overflow-hidden shadow-2xl relative order-first ring-4 ring-gray-900/5 aspect-video lg:aspect-auto flex items-center justify-center p-4">
+          <img
+            src={currentQ.targetItem.imageUrl}
+            alt="Question"
+            className="max-w-full max-h-full object-contain rounded-2xl"
+          />
         </div>
 
         <div className="flex flex-col justify-center space-y-6">
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-gray-800">
-              Video trên có nghĩa là gì?
+              Hình ảnh trên có nghĩa là gì?
             </h2>
             <p className="text-gray-500">Mức độ: {difficulty}</p>
           </div>

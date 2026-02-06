@@ -73,20 +73,30 @@ async function createQuestion(data, userId) {
 
 async function getQuestions(filters) {
   try {
-    const { page = 1, limit = 1000, class_room_id } = filters;
+    const { page = 1, limit = 1000, class_room_id, class_room_ids } = filters;
     const offset = (page - 1) * limit;
 
     let whereClause = " WHERE 1=1";
     const params = [];
 
+    // Filter by single class_room_id
     if (class_room_id && class_room_id !== 0) {
       whereClause +=
         " AND (class_room_id = ? OR class_room_id = 20 OR class_room_id IS NULL)";
       params.push(class_room_id);
-    } else {
-      // If no class, show everything or at least common ones
-      // whereClause += " AND (class_room_id = 20 OR class_room_id IS NULL)";
-      // Actually, for a bank view, maybe just show everything.
+    }
+
+    // Filter by multiple class_room_ids (comma-separated or array)
+    if (class_room_ids) {
+      let classIdsArray = Array.isArray(class_room_ids)
+        ? class_room_ids.map((id) => parseInt(id))
+        : class_room_ids.split(",").map((id) => parseInt(id.trim()));
+
+      if (classIdsArray.length > 0) {
+        const placeholders = classIdsArray.map(() => "?").join(",");
+        whereClause += ` AND (class_room_id IN (${placeholders}) OR class_room_id IS NULL)`;
+        params.push(...classIdsArray);
+      }
     }
 
     // Get total count

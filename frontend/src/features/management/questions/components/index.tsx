@@ -15,12 +15,16 @@ import {
   Edit,
   BookOpen,
 } from "lucide-react";
+import { useSelector } from "react-redux";
+import { RootState } from "@/core/store";
 import {
   fetchAllQuestions,
   createQuestion,
   deleteQuestion,
 } from "@/services/questionService";
 import { fetchAllClasses } from "@/services/classService";
+import { fetchAllOrganizations } from "@/services/organizationService";
+import { OrganizationItem } from "@/data";
 import { uploadFile } from "@/services/uploadService";
 import {
   Pagination,
@@ -35,7 +39,18 @@ const QUESTIONS_PER_PAGE = 10;
 export function QuestionsManagement() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
+  const [facilities, setFacilities] = useState<OrganizationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // User role from Redux
+  const { user } = useSelector((state: RootState) => state.admin);
+  const userRole = user?.role?.role || user?.code;
+  const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(userRole);
+  const isFacilityManager =
+    userRole === "FacilityManager" || userRole === "FACILITY_MANAGER";
+  const isTeacher = userRole === "Teacher" || userRole === "TEACHER";
+  const userOrgId = user?.organizationId || (user as any)?.organization_id;
+  const userId = user?.id || (user as any)?.user_id;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterClass, setFilterClass] = useState<string>("all");
@@ -47,14 +62,20 @@ export function QuestionsManagement() {
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
   const [classesMap, setClassesMap] = useState<Record<number, string>>({});
+  const [classOrgMap, setClassOrgMap] = useState<Record<number, number | null>>(
+    {},
+  );
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [questionsData, classesData] = await Promise.all([
-        fetchAllQuestions(),
-        fetchAllClasses(),
+      // First load facilities and classes to build query params
+      const [facilitiesData, classesData] = await Promise.all([
+        fetchAllOrganizations().catch(() => []),
+        fetchAllClasses().catch(() => []),
       ]);
+
+      setFacilities(facilitiesData || []);
 
       // Ensure unique classes by id
       const uniqueClasses = Array.isArray(classesData)
@@ -63,29 +84,127 @@ export function QuestionsManagement() {
               index === self.findIndex((t) => t.id === c.id),
           )
         : [];
-
-      setQuestions(questionsData);
       setClasses(uniqueClasses);
 
+      // Build class maps
       const map: Record<number, string> = {};
+      const orgMap: Record<number, number | null> = {};
       uniqueClasses.forEach((c: any) => {
         map[c.id] = c.name;
+        orgMap[c.id] = c.organizationId || c.organization_id || null;
       });
       setClassesMap(map);
+      setClassOrgMap(orgMap);
+
+      // Build questions query params based on role
+      let questionsQuery: any = {};
+
+      if (!isAdmin) {
+        let allowedClassIds: number[] = [];
+
+        if (isTeacher && userId) {
+          // TEACHER: get classes they teach
+          allowedClassIds = classesData
+            .filter((c: any) => c.teacherId === Number(userId))
+            .map((c: any) => c.id);
+        } else if (isFacilityManager && userOrgId) {
+          // FACILITY_MANAGER: get classes in their org hierarchy
+          const userOrg = facilitiesData.find((f: any) => f.id === userOrgId);
+          if (userOrg) {
+            let allowedSchoolIds: number[] = [];
+
+            if (userOrg.type === "PROVINCE") {
+              const childDeptIds = facilitiesData
+                .filter(
+                  (f: any) =>
+                    f.type === "DEPARTMENT" && f.parentId === userOrgId,
+                )
+                .map((f: any) => f.id);
+              allowedSchoolIds = facilitiesData
+                .filter(
+                  (f: any) =>
+                    f.type === "SCHOOL" &&
+                    f.parentId !== null &&
+                    childDeptIds.includes(f.parentId),
+                )
+                .map((f: any) => f.id);
+            } else if (userOrg.type === "DEPARTMENT") {
+              allowedSchoolIds = facilitiesData
+                .filter(
+                  (f: any) => f.type === "SCHOOL" && f.parentId === userOrgId,
+                )
+                .map((f: any) => f.id);
+            } else if (userOrg.type === "SCHOOL") {
+              allowedSchoolIds = [userOrgId];
+            }
+
+            allowedClassIds = classesData
+              .filter((c: any) =>
+                allowedSchoolIds.includes(
+                  c.organizationId || c.organization_id,
+                ),
+              )
+              .map((c: any) => c.id);
+          }
+        }
+
+        if (allowedClassIds.length > 0) {
+          questionsQuery.class_room_ids = allowedClassIds.join(",");
+        } else {
+          // No allowed classes, set empty result
+          setQuestions([]);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Fetch questions with query params
+      const questionsData = await fetchAllQuestions(questionsQuery);
+      setQuestions(questionsData);
     } catch (error) {
       console.error("Failed to load data", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAdmin, isFacilityManager, isTeacher, userId, userOrgId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Filtering
+  // Role-based filtering logic
+  // NOTE: Dữ liệu đã được lọc server-side dựa trên query params (class_room_ids)
+  // Hàm này giữ lại để backward compatibility
+  const getQuestionsByRole = useCallback((): any[] => {
+    // Dữ liệu đã được lọc từ server, trả về trực tiếp
+    return questions;
+  }, [questions]);
+
+  const roleFilteredQuestions = useMemo(
+    () => getQuestionsByRole(),
+    [getQuestionsByRole],
+  );
+
+  // Helper để tạo mô tả theo role
+  const getRoleDescription = (): string => {
+    if (isAdmin) {
+      return `Quản lý tất cả câu hỏi trong hệ thống (${roleFilteredQuestions.length} câu)`;
+    }
+    if (isFacilityManager) {
+      const userOrg = facilities.find((f) => f.id === userOrgId);
+      if (userOrg) {
+        return `Quản lý câu hỏi trong phạm vi ${userOrg.name} (${roleFilteredQuestions.length} câu)`;
+      }
+    }
+    if (isTeacher) {
+      return `Các câu hỏi trong lớp bạn phụ trách (${roleFilteredQuestions.length} câu)`;
+    }
+    return `Quản lý câu hỏi (${roleFilteredQuestions.length} câu)`;
+  };
+
+  // Filtering with search and class filter
   const filteredQuestions = useMemo(() => {
-    return questions.filter((q) => {
+    return roleFilteredQuestions.filter((q) => {
       const normalizedQuery = removeVietnameseTones(searchQuery);
       const matchesSearch = removeVietnameseTones(q.content || "").includes(
         normalizedQuery,
@@ -94,7 +213,7 @@ export function QuestionsManagement() {
         filterClass === "all" || String(q.classId) === filterClass;
       return matchesSearch && matchesClass;
     });
-  }, [questions, searchQuery, filterClass]);
+  }, [roleFilteredQuestions, searchQuery, filterClass]);
 
   const {
     currentPage,
@@ -145,9 +264,7 @@ export function QuestionsManagement() {
             <HelpCircle className="w-8 h-8 text-primary-600" />
             Quản lý câu hỏi
           </h1>
-          <p className="text-gray-600 mt-1">
-            Quản lý danh sách câu hỏi ({questions.length} câu)
-          </p>
+          <p className="text-gray-600 mt-1">{getRoleDescription()}</p>
         </div>
         <button
           onClick={() => setIsCreateModalOpen(true)}
