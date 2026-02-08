@@ -120,6 +120,9 @@ export interface ClassMember {
   email?: string;
   role: "STUDENT" | "TEACHER";
   enrolledAt?: string;
+  avatar?: string;
+  status?: string;
+  joinDate?: string;
 }
 
 export async function fetchClassroomStudents(
@@ -138,6 +141,9 @@ export async function fetchClassroomStudents(
       email: item.email,
       role: "STUDENT" as const,
       enrolledAt: item.enrolled_at || item.enrolledAt,
+      avatar: item.avatar_location || item.avatar,
+      status: item.status || "offline",
+      joinDate: (item.enrolled_at || item.enrolledAt)?.split("T")[0],
     }));
   } catch (error) {
     console.error("Error fetching classroom students:", error);
