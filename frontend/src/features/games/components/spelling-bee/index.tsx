@@ -40,10 +40,17 @@ export const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({
   const [score, setScore] = useState(0);
   const [lastPoints, setLastPoints] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "incorrect" | null>(
     null,
   );
+
+  // Slideshow states
+  const [charIndex, setCharIndex] = useState(0);
+  const [isAutoMode, setIsAutoMode] = useState(true);
+  const [speed, setSpeed] = useState(1000); // 1000ms = 1s
+
+  // Cache words
+  const allValidWordsRef = useRef<any[]>([]);
 
   useEffect(() => {
     const savedHighScore = localStorage.getItem(
@@ -51,6 +58,27 @@ export const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({
     );
     if (savedHighScore) setHighScore(parseInt(savedHighScore));
   }, [difficulty]);
+
+  useEffect(() => {
+    initGame();
+  }, [difficulty]);
+
+  // Slideshow Effect
+  useEffect(() => {
+    if (!questions[currentIndex] || !isAutoMode || feedback) return;
+
+    const chars = questions[currentIndex].normalizedChars;
+    const interval = setInterval(() => {
+      setCharIndex((prev) => (prev + 1) % chars.length);
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [currentIndex, questions, isAutoMode, speed, feedback]);
+
+  // Reset char index when question changes
+  useEffect(() => {
+    setCharIndex(0);
+  }, [currentIndex]);
 
   const normalizeForSpelling = (str: string): string[] => {
     return str
@@ -66,40 +94,47 @@ export const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({
       .filter((c) => /[A-Z]/.test(c));
   };
 
+  const generateQuestions = (count: number, sourceWords: any[]) => {
+    const config = {
+      Dễ: { min: 2, max: 4 },
+      "Trung bình": { min: 4, max: 6 },
+      Khó: { min: 6, max: 15 },
+    };
+    const { min, max } = config[difficulty];
+
+    const validWords = sourceWords.filter(
+      (w) =>
+        !w.word.includes(" ") && w.word.length >= min && w.word.length <= max,
+    );
+
+    if (validWords.length === 0) return [];
+
+    const newQuestions: SpellingQuestion[] = [];
+    for (let i = 0; i < count; i++) {
+      const randomWord =
+        validWords[Math.floor(Math.random() * validWords.length)];
+      newQuestions.push({
+        originalWord: randomWord.word,
+        normalizedChars: normalizeForSpelling(randomWord.word),
+      });
+    }
+    return newQuestions;
+  };
+
   const initGame = useCallback(async () => {
     setLoading(true);
     try {
       const allWords = await fetchAllWords({ limit: 200 });
+      allValidWordsRef.current = allWords;
 
-      const config = {
-        Dễ: { count: 5, min: 2, max: 4 },
-        "Trung bình": { count: 10, min: 5, max: 7 },
-        Khó: { count: 15, min: 8, max: 15 },
-      };
-      const { count, min, max } = config[difficulty];
+      const initialQuestions = generateQuestions(10, allWords); // Init 10 items
 
-      const validWords = allWords
-        .filter(
-          (w) =>
-            !w.word.includes(" ") &&
-            w.word.length >= min &&
-            w.word.length <= max,
-        )
-        .sort(() => Math.random() - 0.5)
-        .slice(0, count);
-
-      const qs = validWords.map((w) => ({
-        originalWord: w.word,
-        normalizedChars: normalizeForSpelling(w.word),
-      }));
-
-      setQuestions(qs);
+      setQuestions(initialQuestions);
       setCurrentIndex(0);
       setScore(0);
       setLastPoints(0);
       setUserInput("");
       setFeedback(null);
-      setShowResult(false);
     } catch (error) {
       console.error(error);
     } finally {
@@ -107,9 +142,32 @@ export const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({
     }
   }, [difficulty]);
 
-  useEffect(() => {
-    initGame();
-  }, [initGame]);
+  const handleSkip = () => {
+    setFeedback("incorrect");
+    setScore(0);
+    setLastPoints(0);
+
+    // Show "incorrect" state briefly then moving next
+    setTimeout(() => {
+      nextQuestion();
+      setFeedback(null);
+    }, 1000);
+  };
+
+  const nextQuestion = () => {
+    if (currentIndex >= questions.length - 1) {
+      const more = generateQuestions(5, allValidWordsRef.current);
+      setQuestions((prev) => [...prev, ...more]);
+    }
+    setCurrentIndex((prev) => prev + 1);
+    setUserInput("");
+    setCharIndex(0);
+
+    // Auto-focus input for continuous play
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,15 +192,11 @@ export const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({
         );
       }
 
+      // Move to next question faster
       setTimeout(() => {
-        if (currentIndex < questions.length - 1) {
-          setCurrentIndex((i) => i + 1);
-          setUserInput("");
-          setFeedback(null);
-        } else {
-          setShowResult(true);
-        }
-      }, 1500);
+        nextQuestion();
+        setFeedback(null);
+      }, 1000);
     } else {
       setFeedback("incorrect");
       setScore(0);
@@ -158,165 +212,204 @@ export const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({
       </div>
     );
 
-  if (showResult) {
-    return (
-      <div className="max-w-2xl mx-auto p-6 text-center space-y-8 animate-in fade-in zoom-in duration-500">
-        <div className="bg-white rounded-3xl p-10 shadow-xl border border-gray-100">
-          <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Trophy size={48} className="text-orange-600" />
-          </div>
-          <h1 className="text-3xl font-black text-gray-900 mb-2">
-            Hoàn thành!
-          </h1>
-          <p className="text-gray-500">
-            Mức độ: <strong>{difficulty}</strong>
-          </p>
-
-          <div className="flex justify-center gap-12 my-8">
-            <div className="text-center">
-              <div className="text-5xl font-black text-primary-600">
-                {score}
-              </div>
-              <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-                Điểm đạt được
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-5xl font-black text-orange-500">
-                {highScore}
-              </div>
-              <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-                Kỷ lục của bạn
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-            <button
-              onClick={initGame}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-colors"
-            >
-              <RefreshCw size={20} /> Chơi lại
-            </button>
-            <button
-              onClick={onChangeDifficulty}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors"
-            >
-              <Settings size={20} /> Đổi độ khó
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  if (!questions[currentIndex]) return null;
   const currentQ = questions[currentIndex];
+  const safeCharIndex = charIndex % currentQ.normalizedChars.length;
+  const currentChar = currentQ.normalizedChars[safeCharIndex];
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="h-[calc(100vh-100px)] flex flex-col max-w-6xl mx-auto p-4 gap-4">
+      {/* Header Compact */}
+      <div className="flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 bg-white shadow-sm"
           >
-            <ArrowLeft className="text-gray-600" size={24} />
+            <ArrowLeft className="text-gray-600" size={20} />
           </button>
-          <div className="flex gap-2">
+
+          <div className="flex flex-col">
+            <h2 className="text-lg font-black text-gray-900 leading-tight">
+              Thử thách Đánh vần
+            </h2>
+            <p className="text-xs text-gray-500 font-medium">
+              Mức độ: {difficulty}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1">
             <Tooltip title="Chơi lại">
               <Button
-                icon={<RefreshCw size={18} />}
+                icon={<RefreshCw size={16} />}
                 onClick={initGame}
                 shape="circle"
+                size="small"
               />
             </Tooltip>
             <Tooltip title="Đổi độ khó">
               <Button
-                icon={<Settings size={18} />}
+                icon={<Settings size={16} />}
                 onClick={onChangeDifficulty}
                 shape="circle"
+                size="small"
               />
             </Tooltip>
           </div>
-        </div>
-        <div className="flex items-center gap-4">
+
           <div className="hidden md:block text-right">
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+            <div className="text-[10px] font-bold text-gray-400 uppercase">
               Kỷ lục
             </div>
             <div className="text-sm font-black text-orange-500">
               {highScore}
             </div>
           </div>
+
           {lastPoints > 0 && (
-            <div className="hidden md:flex items-center gap-1 bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-black animate-bounce shadow-sm border border-yellow-200">
-              <Zap size={14} fill="currentColor" /> +{lastPoints + 100} kế tiếp!
+            <div className="hidden md:flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-black animate-bounce shadow-sm border border-yellow-200">
+              <Zap size={12} fill="currentColor" /> +{lastPoints + 100}
             </div>
           )}
-          <div className="bg-white px-6 py-2.5 rounded-2xl shadow-sm border border-gray-100 font-bold text-gray-700">
-            Câu {currentIndex + 1}/{questions.length}
-          </div>
-          <div className="bg-primary-600 px-6 py-2.5 rounded-2xl shadow-lg shadow-primary-100 font-bold text-white flex items-center gap-2 min-w-[100px] justify-center">
-            <Trophy size={18} /> {score}
+
+          <div className="bg-primary-600 px-4 py-1.5 rounded-xl shadow-md font-bold text-white flex items-center gap-2">
+            <Trophy size={16} /> {score}
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto text-center space-y-12">
-        <div className="space-y-2">
-          <h2 className="text-3xl font-black text-gray-900">
-            Thử thách Đánh vần
-          </h2>
-          <p className="text-gray-500">
-            Quan sát và nhập từ tương ứng (Mức độ: {difficulty})
-          </p>
+      {/* Controls Bar */}
+      <div className="flex flex-shrink-0 flex-wrap items-center justify-center gap-4 bg-white p-2 rounded-xl shadow-sm border border-gray-100">
+        <div className="flex bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setIsAutoMode(true)}
+            className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${isAutoMode ? "bg-white shadow-sm text-primary-600" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            Tự động
+          </button>
+          <button
+            onClick={() => setIsAutoMode(false)}
+            className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${!isAutoMode ? "bg-white shadow-sm text-primary-600" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            Thủ công
+          </button>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-4 py-8 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 min-h-[220px] items-center px-6">
-          {currentQ?.normalizedChars.map((char, i) => (
-            <div
-              key={i}
-              className="bg-white p-3 rounded-2xl shadow-md border border-gray-100 animate-in slide-in-from-bottom"
-              style={{ animationDelay: `${i * 100}ms` }}
+        {isAutoMode && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-600">Tốc độ:</span>
+            <select
+              value={speed}
+              onChange={(e) => setSpeed(Number(e.target.value))}
+              className="bg-gray-100 border-none rounded-lg text-xs font-bold text-gray-700 py-1 pl-2 pr-6 focus:ring-1 focus:ring-primary-500"
             >
-              <img
-                src={`/A-Z/${char}.webp`}
-                alt={char}
-                className="w-16 h-16 md:w-24 md:h-24 object-contain"
-                onError={(e) => {
-                  (e.target as any).src =
-                    `https://via.placeholder.com/100?text=${char}`;
-                }}
-              />
-            </div>
-          ))}
+              <option value={1000}>1s</option>
+              <option value={2000}>2s</option>
+              <option value={3000}>3s</option>
+            </select>
+          </div>
+        )}
+
+        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-4 border-l border-gray-200">
+          Ký tự {safeCharIndex + 1} / {currentQ.normalizedChars.length}
+        </div>
+      </div>
+
+      {/* Image Container - Flex Grow */}
+      <div className="flex-1 min-h-0 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 relative overflow-hidden flex flex-col items-center justify-center">
+        {/* Main Image */}
+        <div className="absolute inset-0 p-4 flex items-center justify-center">
+          {currentChar && (
+            <img
+              key={currentChar}
+              src={`/A-Z/${currentChar}.webp`}
+              alt={currentChar}
+              className="w-full h-full object-contain drop-shadow-lg animate-in zoom-in duration-300"
+              onError={(e) => {
+                (e.target as any).src =
+                  `https://via.placeholder.com/400?text=${currentChar}`;
+              }}
+            />
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="max-w-md mx-auto relative">
-          <input
-            ref={inputRef}
-            type="text"
-            autoFocus
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            disabled={feedback !== null}
-            placeholder="Nhập từ..."
-            className={`w-full p-5 rounded-2xl text-2xl font-black text-center border-4 transition-all outline-none ${feedback === "correct" ? "border-green-500 bg-green-50 text-green-700" : feedback === "incorrect" ? "border-red-500 bg-red-50 text-red-700 animate-shake" : "border-gray-200 bg-white focus:border-primary-500 focus:shadow-xl"}`}
-          />
-          <div className="absolute right-4 top-1/2 -translate-y-1/2">
-            {feedback === "correct" && (
-              <CheckCircle2 className="text-green-600" size={32} />
-            )}
-            {feedback === "incorrect" && (
-              <XCircle className="text-red-600" size={32} />
-            )}
+        {/* Nav Controls Overlay */}
+        {!isAutoMode && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-8 z-10">
+            <button
+              onClick={() =>
+                setCharIndex(
+                  (prev) =>
+                    (prev - 1 + currentQ.normalizedChars.length) %
+                    currentQ.normalizedChars.length,
+                )
+              }
+              className="p-3 bg-white/90 backdrop-blur rounded-full shadow-lg border border-gray-200 hover:bg-white hover:scale-110 transition-all text-gray-700"
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <button
+              onClick={() =>
+                setCharIndex(
+                  (prev) => (prev + 1) % currentQ.normalizedChars.length,
+                )
+              }
+              className="p-3 bg-white/90 backdrop-blur rounded-full shadow-lg border border-gray-200 hover:bg-white hover:scale-110 transition-all text-gray-700 transform rotate-180"
+            >
+              <ArrowLeft size={24} />
+            </button>
           </div>
+        )}
+      </div>
+
+      {/* Input Area - Fixed Bottom */}
+      <div className="flex-shrink-0 w-full max-w-2xl mx-auto">
+        <form onSubmit={handleSubmit} className="relative flex gap-3">
+          <div className="relative flex-1">
+            <input
+              ref={inputRef}
+              type="text"
+              autoFocus
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              disabled={feedback !== null}
+              placeholder="Nhập từ..."
+              className={`w-full h-14 pl-6 pr-12 rounded-xl text-xl font-black border-2 transition-all outline-none 
+                  ${
+                    feedback === "correct"
+                      ? "border-green-500 bg-green-50 text-green-700"
+                      : feedback === "incorrect"
+                        ? "border-red-500 bg-red-50 text-red-700 animate-shake"
+                        : "border-gray-300 bg-white focus:border-primary-500 focus:shadow-lg"
+                  }`}
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              {feedback === "correct" && (
+                <CheckCircle2 className="text-green-600" size={24} />
+              )}
+              {feedback === "incorrect" && (
+                <XCircle className="text-red-600" size={24} />
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSkip}
+            disabled={feedback !== null}
+            className="h-14 px-5 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 whitespace-nowrap"
+          >
+            Bỏ qua
+          </button>
+
           <button
             type="submit"
             disabled={feedback !== null || !userInput}
-            className="mt-6 w-full py-4 bg-gray-900 text-white rounded-xl font-bold text-lg hover:bg-gray-800 flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
+            className="h-14 px-8 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 shadow-lg disabled:opacity-50 whitespace-nowrap flex items-center gap-2"
           >
-            <Keyboard size={20} /> Kiểm tra
+            <Keyboard size={18} /> Kiểm tra
           </button>
         </form>
       </div>
@@ -328,10 +421,10 @@ export const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({
             transform: translateX(0);
           }
           25% {
-            transform: translateX(-10px);
+            transform: translateX(-5px);
           }
           75% {
-            transform: translateX(10px);
+            transform: translateX(5px);
           }
         }
         .animate-shake {

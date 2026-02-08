@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Video, ArrowLeft, Search, Type } from "lucide-react";
-import { mockQuestions } from "@/data/questionsData";
-import { dictionaryItems } from "@/data/dictionaryData";
+import { Play, Video, ArrowLeft, Search, Type, Loader2 } from "lucide-react";
+import { fetchAllWords } from "@/services/dictionaryService";
+import { fetchAllQuestions } from "@/services/questionService";
 import { removeVietnameseTones } from "@/shared/utils/text";
 import { useCamera, useAiCheck, CameraView } from "./shared";
 import { VideoPlayer } from "@/shared/components/common";
@@ -25,6 +25,8 @@ export function WordPractice() {
   const [selectedItem, setSelectedItem] = useState<PracticeItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const { isCameraOn, cameraRef, startCamera, stopCamera } = useCamera();
   const {
@@ -35,35 +37,50 @@ export function WordPractice() {
     setAiResult,
   } = useAiCheck();
 
-  // Combine dictionary items for word practice
-  const practiceItems = useMemo<PracticeItem[]>(() => {
-    const fromDictionary: PracticeItem[] = dictionaryItems
-      .filter((d) => d.videoUrl && d.status === "published")
-      .map((d) => ({
-        id: `dict-${d.id}`,
-        word: d.word,
-        description: `Ký hiệu "${d.word}" - thuộc danh mục ${d.category}.`,
-        category: d.category,
-        videoUrl: d.videoUrl!, // Non-null assertion since we filter above
-        instructions: `Thực hiện ký hiệu cho từ "${d.word}"`,
-        source: "dictionary" as const,
-        views: d.views,
-      }));
+  // Fetch data from API
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [wordsData, questionsData] = await Promise.all([
+          fetchAllWords(),
+          fetchAllQuestions({ question_type: "PRACTICE" }),
+        ]);
 
-    const fromQuestions: PracticeItem[] = mockQuestions
-      .filter((q) => q.type === "practice" && q.videoUrl)
-      .map((q) => ({
-        id: `q-${q.id}`,
-        word: q.practiceWord || q.content,
-        description:
-          q.description || `Bài thực hành: ${q.practiceWord || q.content}`,
-        category: q.category || "Khác",
-        videoUrl: q.videoUrl!,
-        instructions: q.practiceInstructions,
-        source: "question" as const,
-      }));
+        const fromDictionary: PracticeItem[] = wordsData
+          .filter((d) => d.videoUrl && d.status === "published")
+          .map((d) => ({
+            id: `dict-${d.id}`,
+            word: d.word,
+            description: `Ký hiệu "${d.word}" - thuộc danh mục ${d.category}.`,
+            category: d.category,
+            videoUrl: d.videoUrl!,
+            instructions: `Thực hiện ký hiệu cho từ "${d.word}"`,
+            source: "dictionary" as const,
+            views: d.views,
+          }));
 
-    return [...fromDictionary, ...fromQuestions];
+        const fromQuestions: PracticeItem[] = questionsData
+          .filter((q) => q.video || q.videoUrl)
+          .map((q) => ({
+            id: `q-${q.id}`,
+            word: q.content || "Bài thực hành",
+            description:
+              q.description || q.explanation || `Bài thực hành: ${q.content}`,
+            category: q.category || "Khác",
+            videoUrl: q.video || q.videoUrl || "",
+            instructions: q.practiceInstructions,
+            source: "question" as const,
+          }));
+
+        setPracticeItems([...fromDictionary, ...fromQuestions]);
+      } catch (error) {
+        console.error("Failed to load practice items", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
   // Get unique categories
@@ -235,26 +252,36 @@ export function WordPractice() {
         </div>
       </div>
 
-      {/* Word grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {filteredItems.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => setSelectedItem(item)}
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer text-center group"
-          >
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-              <Play className="w-6 h-6 text-blue-600" />
-            </div>
-            <h4 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-blue-600">
-              {item.word}
-            </h4>
-            <p className="text-xs text-gray-500 mt-1">{item.category}</p>
-          </div>
-        ))}
-      </div>
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+          <span className="ml-3 text-gray-500">Đang tải dữ liệu...</span>
+        </div>
+      )}
 
-      {filteredItems.length === 0 && (
+      {/* Word grid */}
+      {!isLoading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {filteredItems.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => setSelectedItem(item)}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer text-center group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                <Play className="w-6 h-6 text-blue-600" />
+              </div>
+              <h4 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-blue-600">
+                {item.word}
+              </h4>
+              <p className="text-xs text-gray-500 mt-1">{item.category}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && filteredItems.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">Không tìm thấy từ phù hợp</p>
         </div>

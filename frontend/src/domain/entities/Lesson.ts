@@ -2,7 +2,7 @@ import { Base } from "./base";
 
 export class LessonModel extends Base {
   constructor() {
-    super("lessons");
+    super("teaching-management/lessons");
   }
 
   getAllLessons = async (query?: any) => {
@@ -16,17 +16,15 @@ export class LessonModel extends Base {
   };
 
   getLessonsByClassroom = async (classroomId: number) => {
-    const res = await this.apiGet("", { classroom_id: classroomId });
+    const res = await this.apiGet(`/classroom/${classroomId}`);
     return res.data;
   };
 
   getLessonsByTopic = async (topicId: number) => {
-    const res = await this.apiGet("", { topic_id: topicId });
+    const res = await this.apiGet(`/topic/${topicId}`);
     return res.data;
   };
 
-  /* 
-  // Backend endpoints not yet implemented
   getLessonStatistics = async (query: {
     classroom_id: number;
     topic_id?: number;
@@ -42,7 +40,6 @@ export class LessonModel extends Base {
     const res = await this.apiPut(`/topic/${topicId}/reorder`, { lessons });
     return res.data;
   };
-  */
 
   createLesson = async (data: any) => {
     const res = await this.apiPost("", data);

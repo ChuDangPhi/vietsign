@@ -21,30 +21,39 @@ const Login: React.FC = () => {
   const router = useRouter();
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
   const loginMutation = useMutation({
     mutationFn: Auth.login,
     onSuccess: async (res: any) => {
+      setIsRedirecting(true);
       console.log("Login response:", res); // Debug
 
-      // Backend chỉ trả về accessToken
-      const accessToken = res.accessToken || res.access_token;
+      try {
+        // Backend chỉ trả về accessToken
+        const accessToken = res.accessToken || res.access_token;
 
-      localStorage.setItem("access_token", accessToken);
+        localStorage.setItem("access_token", accessToken);
 
-      // Lấy thông tin profile từ backend
-      const userProfile = await UserModel.getProfile();
-      console.log("User profile:", userProfile); // Debug
+        // Lấy thông tin profile từ backend
+        const userProfile = await UserModel.getProfile();
+        console.log("User profile:", userProfile); // Debug
 
-      // Map role code từ backend sang frontend role format
-      const userData = {
-        ...userProfile.user,
-        role: mapRoleCode(userProfile.user.code || "USER"),
-      };
+        // Map role code từ backend sang frontend role format
+        const userData = {
+          ...userProfile.user,
+          role: mapRoleCode(userProfile.user.code || "USER"),
+        };
 
-      dispatch(login(userData));
-      localStorage.setItem("user", JSON.stringify(userData));
-      message.success("Đăng nhập thành công");
-      router.push("/home");
+        dispatch(login(userData));
+        localStorage.setItem("user", JSON.stringify(userData));
+        message.success("Đăng nhập thành công");
+        router.push("/home");
+      } catch (error) {
+        console.error("Profile fetch error:", error);
+        setIsRedirecting(false); // Reset if profile fetch fails
+        setLoginError("Không thể lấy thông tin người dùng.");
+      }
     },
     onError: (error: any) => {
       const errorMessage =
@@ -69,6 +78,7 @@ const Login: React.FC = () => {
   };
 
   const handleBypassLogin = () => {
+    setIsRedirecting(true);
     // Mock user data for bypass
     const mockUser = {
       id: "9999",
@@ -91,7 +101,7 @@ const Login: React.FC = () => {
     router.push("/home");
   };
 
-  if (loginMutation.isPending) {
+  if (loginMutation.isPending || isRedirecting) {
     return <Loading />;
   }
 

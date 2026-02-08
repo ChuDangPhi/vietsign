@@ -35,6 +35,27 @@ export class ClassModel extends Base {
     const res = await this.apiGet("/my-classes");
     return res.data;
   };
+
+  // Student management
+  getClassroomStudents = async (classroomId: number) => {
+    const res = await this.apiGet(`/${classroomId}/students`);
+    return res.data;
+  };
+
+  addStudentToClassroom = async (classroomId: number, studentId: number) => {
+    const res = await this.apiPost(`/${classroomId}/students`, { studentId });
+    return res.data;
+  };
+
+  removeStudentFromClassroom = async (
+    classroomId: number,
+    studentId: number,
+  ) => {
+    const res = await this.apiDelete(`/${classroomId}/students`, undefined, {
+      studentId,
+    });
+    return res.data;
+  };
 }
 
 const Classes = new ClassModel();

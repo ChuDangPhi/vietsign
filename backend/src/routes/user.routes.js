@@ -39,6 +39,57 @@ router.post(
 router.get("/profile", authRequired, getProfile);
 router.put("/profile", authRequired, updateProfile);
 
+// Avatar upload (MinIO)
+const multer = require("multer");
+const path = require("path");
+const { minioClient, bucketName } = require("../utils/minio");
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+router.post(
+  "/avatar/upload",
+  authRequired,
+  upload.single("file"),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    try {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const filename =
+        "avatars/" + uniqueSuffix + path.extname(req.file.originalname);
+
+      // Upload to MinIO
+      await minioClient.putObject(
+        bucketName,
+        filename,
+        req.file.buffer,
+        req.file.size,
+        { "Content-Type": req.file.mimetype },
+      );
+
+      const relativePath = `/uploads/${filename}`;
+      const publicUrl = process.env.MINIO_PUBLIC_URL
+        ? `${process.env.MINIO_PUBLIC_URL}/${bucketName}/${filename}`
+        : `http://localhost:9000/${bucketName}/${filename}`;
+
+      res.json({
+        message: "Avatar uploaded successfully",
+        path: relativePath,
+        filename: filename,
+        url: publicUrl,
+        data: { url: publicUrl }, // Structure compatible with some FE expectations
+      });
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+      res
+        .status(500)
+        .json({ message: "Error uploading avatar", error: error.message });
+    }
+  },
+);
+
 // Teacher CRUD routes
 router.get("/teachers", authRequired, getTeachers);
 

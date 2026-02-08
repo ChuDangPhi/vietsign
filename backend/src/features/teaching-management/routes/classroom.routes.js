@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
 const {
@@ -9,64 +9,69 @@ const {
   deleteClassroom,
   addStudentToClassroom,
   removeStudentFromClassroom,
-  getClassroomStudents
-} = require('../controllers/classroom.controller');
+  getClassroomStudents,
+  getMyClasses,
+} = require("../controllers/classroom.controller");
 
-const { authRequired } = require('../../../middleware/auth.middleware');
-const checkOrgRole = require('../../../middleware/orgRole.middleware');
+const { authRequired } = require("../../../middleware/auth.middleware");
+const checkOrgRole = require("../../../middleware/orgRole.middleware");
 
 // Create classroom (teacher/admin)
 router.post(
-  '/',
+  "/",
   authRequired,
-  checkOrgRole(['SUPER_ADMIN', 'CENTER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER']),
-  createClassroom
+  checkOrgRole(["SUPER_ADMIN", "CENTER_ADMIN", "SCHOOL_ADMIN", "TEACHER"]),
+  createClassroom,
 );
 
 // Get all classrooms (all authenticated users)
-router.get('/', authRequired, getClassrooms);
+router.get("/", authRequired, getClassrooms);
+
+// Get current user's classes (students get enrolled classes, teachers get their classes)
+// IMPORTANT: This route must be defined BEFORE /:classroomId to avoid conflict
+router.get("/my-classes", authRequired, getMyClasses);
 
 // Get classroom details (all authenticated users)
-router.get('/:classroomId', authRequired, getClassroomById);
+router.get("/:classroomId", authRequired, getClassroomById);
 
 // Update classroom (teacher/admin)
 router.put(
-  '/:classroomId',
+  "/:classroomId",
   authRequired,
-  checkOrgRole(['SUPER_ADMIN', 'CENTER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER']),
-  updateClassroom
+  checkOrgRole(["SUPER_ADMIN", "CENTER_ADMIN", "SCHOOL_ADMIN", "TEACHER"]),
+  updateClassroom,
 );
 
 // Delete classroom (admin)
 router.delete(
-  '/:classroomId',
+  "/:classroomId",
   authRequired,
-  checkOrgRole(['SUPER_ADMIN', 'CENTER_ADMIN', 'SCHOOL_ADMIN']),
-  deleteClassroom
+  checkOrgRole(["SUPER_ADMIN", "CENTER_ADMIN", "SCHOOL_ADMIN"]),
+  deleteClassroom,
 );
 
 // Add student to classroom (teacher/admin)
 router.post(
-  '/:classroomId/students',
+  "/:classroomId/students",
   authRequired,
-  checkOrgRole(['SUPER_ADMIN', 'CENTER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER']),
-  addStudentToClassroom
+  checkOrgRole(["SUPER_ADMIN", "CENTER_ADMIN", "SCHOOL_ADMIN", "TEACHER"]),
+  addStudentToClassroom,
 );
 
 // Get classroom students (teacher/admin)
 router.get(
-  '/:classroomId/students',
+  "/:classroomId/students",
   authRequired,
-  checkOrgRole(['SUPER_ADMIN', 'CENTER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER']),
-  getClassroomStudents
+  checkOrgRole(["SUPER_ADMIN", "CENTER_ADMIN", "SCHOOL_ADMIN", "TEACHER"]),
+  getClassroomStudents,
 );
 
 // Remove student from classroom (admin)
 router.delete(
-  '/:classroomId/students',
+  "/:classroomId/students",
   authRequired,
-  checkOrgRole(['SUPER_ADMIN', 'CENTER_ADMIN', 'SCHOOL_ADMIN']),
-  removeStudentFromClassroom
+  checkOrgRole(["SUPER_ADMIN", "CENTER_ADMIN", "SCHOOL_ADMIN"]),
+  removeStudentFromClassroom,
 );
 
 module.exports = router;

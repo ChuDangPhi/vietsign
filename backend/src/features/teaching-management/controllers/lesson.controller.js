@@ -1,4 +1,4 @@
-const lessonService = require('../services/lesson.services');
+const lessonService = require("../services/lesson.services");
 
 /**
  * Controller for lesson management endpoints
@@ -7,12 +7,12 @@ const lessonService = require('../services/lesson.services');
 // POST - Tạo bài học mới
 const createLesson = async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.user_id;
     const result = await lessonService.createLesson(req.body, userId);
     return res.status(201).json({
       success: true,
       data: result,
-      message: 'Lesson created successfully',
+      message: "Lesson created successfully",
     });
   } catch (error) {
     const status = error.status || 500;
@@ -29,7 +29,7 @@ const getLessons = async (req, res) => {
     const {
       page = 1,
       limit = 20,
-      q = '',
+      q = "",
       topic_id,
       classroom_id,
       difficulty_level,
@@ -43,7 +43,7 @@ const getLessons = async (req, res) => {
       topic_id: topic_id ? parseInt(topic_id) : null,
       classroom_id: classroom_id ? parseInt(classroom_id) : null,
       difficulty_level,
-      is_active: is_active === 'false' ? 0 : 1,
+      is_active: is_active === "false" ? 0 : 1,
     });
 
     return res.status(200).json({
@@ -85,7 +85,7 @@ const getLessonsByClassroom = async (req, res) => {
     const { classroom_id } = req.params;
 
     const result = await lessonService.getLessonsByClassroomId(
-      parseInt(classroom_id)
+      parseInt(classroom_id),
     );
 
     return res.status(200).json({
@@ -125,18 +125,18 @@ const getLessonById = async (req, res) => {
 const updateLesson = async (req, res) => {
   try {
     const { lesson_id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.user_id;
 
     const result = await lessonService.updateLesson(
       parseInt(lesson_id),
       req.body,
-      userId
+      userId,
     );
 
     return res.status(200).json({
       success: true,
       data: result,
-      message: 'Lesson updated successfully',
+      message: "Lesson updated successfully",
     });
   } catch (error) {
     const status = error.status || 500;
@@ -152,25 +152,26 @@ const reorderLessons = async (req, res) => {
   try {
     const { topic_id } = req.params;
     const { lessons } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?.user_id;
 
     if (!Array.isArray(lessons) || lessons.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'lessons must be a non-empty array with lesson_id and order_number',
+        error:
+          "lessons must be a non-empty array with lesson_id and order_number",
       });
     }
 
     const result = await lessonService.reorderLessons(
       parseInt(topic_id),
       lessons,
-      userId
+      userId,
     );
 
     return res.status(200).json({
       success: true,
       data: result,
-      message: 'Lessons reordered successfully',
+      message: "Lessons reordered successfully",
     });
   } catch (error) {
     const status = error.status || 500;
@@ -185,14 +186,17 @@ const reorderLessons = async (req, res) => {
 const deleteLesson = async (req, res) => {
   try {
     const { lesson_id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.user_id;
 
-    const result = await lessonService.deleteLesson(parseInt(lesson_id), userId);
+    const result = await lessonService.deleteLesson(
+      parseInt(lesson_id),
+      userId,
+    );
 
     return res.status(200).json({
       success: true,
       data: result,
-      message: 'Lesson deleted successfully',
+      message: "Lesson deleted successfully",
     });
   } catch (error) {
     const status = error.status || 500;
@@ -207,17 +211,17 @@ const deleteLesson = async (req, res) => {
 const deleteLessonsByTopic = async (req, res) => {
   try {
     const { topic_id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.user_id;
 
     const result = await lessonService.deleteLessonsByTopicId(
       parseInt(topic_id),
-      userId
+      userId,
     );
 
     return res.status(200).json({
       success: true,
       data: result,
-      message: 'Lessons deleted successfully',
+      message: "Lessons deleted successfully",
     });
   } catch (error) {
     const status = error.status || 500;
@@ -236,13 +240,13 @@ const getLessonStatistics = async (req, res) => {
     if (!classroom_id) {
       return res.status(400).json({
         success: false,
-        error: 'classroom_id is required',
+        error: "classroom_id is required",
       });
     }
 
     const result = await lessonService.getLessonStatistics(
       parseInt(classroom_id),
-      topic_id ? parseInt(topic_id) : null
+      topic_id ? parseInt(topic_id) : null,
     );
 
     return res.status(200).json({

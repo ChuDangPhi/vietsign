@@ -44,7 +44,9 @@ export const GuessImageGame: React.FC<GuessImageGameProps> = ({
   const [score, setScore] = useState(0);
   const [lastPoints, setLastPoints] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
+
+  // Store all valid items to generate more questions without refetching
+  const allValidItemsRef = React.useRef<DictionaryItem[]>([]);
 
   useEffect(() => {
     const savedHighScore = localStorage.getItem(
@@ -57,6 +59,50 @@ export const GuessImageGame: React.FC<GuessImageGameProps> = ({
     initGame();
   }, [difficulty]);
 
+  const generateQuestions = (count: number, sourceItems: DictionaryItem[]) => {
+    const newQuestions: Question[] = [];
+    if (sourceItems.length < 4) return [];
+
+    for (let i = 0; i < count; i++) {
+      const randomTarget =
+        sourceItems[Math.floor(Math.random() * sourceItems.length)];
+      const distractors: DictionaryItem[] = [];
+      let attempts = 0;
+
+      while (distractors.length < 3 && attempts < 20) {
+        const randomDist =
+          sourceItems[Math.floor(Math.random() * sourceItems.length)];
+        if (
+          randomDist.id !== randomTarget.id &&
+          !distractors.find((d) => d.id === randomDist.id)
+        ) {
+          distractors.push(randomDist);
+        }
+        attempts++;
+      }
+
+      if (distractors.length < 3) {
+        const others = sourceItems.filter((v) => v.id !== randomTarget.id);
+        others
+          .slice(0, 3 - distractors.length)
+          .forEach((o) => distractors.push(o));
+      }
+
+      const options = [...distractors, randomTarget].sort(
+        () => Math.random() - 0.5,
+      );
+
+      newQuestions.push({
+        targetItem: randomTarget,
+        options,
+        answered: false,
+        isCorrect: false,
+        selectedOptionId: null,
+      });
+    }
+    return newQuestions;
+  };
+
   const initGame = async () => {
     setLoading(true);
     try {
@@ -65,62 +111,21 @@ export const GuessImageGame: React.FC<GuessImageGameProps> = ({
         (item) => item.imageUrl && item.imageUrl.trim().length > 0,
       );
 
+      allValidItemsRef.current = validItems;
+
       if (validItems.length < 4) {
         setQuestions([]);
         setLoading(false);
         return;
       }
 
-      const questionCounts = { Dễ: 5, "Trung bình": 10, Khó: 15 };
-      const totalQuestions = Math.min(
-        questionCounts[difficulty],
-        validItems.length,
-      );
+      // Initial batch
+      const initialQuestions = generateQuestions(5, validItems);
 
-      const newQuestions: Question[] = [];
-      const shuffled = [...validItems].sort(() => Math.random() - 0.5);
-
-      for (let i = 0; i < totalQuestions; i++) {
-        const randomTarget = shuffled[i];
-        const distractors: DictionaryItem[] = [];
-        let attempts = 0;
-        while (distractors.length < 3 && attempts < 20) {
-          const randomDist =
-            allWords[Math.floor(Math.random() * allWords.length)];
-          if (
-            randomDist.id !== randomTarget.id &&
-            !distractors.find((d) => d.id === randomDist.id)
-          ) {
-            distractors.push(randomDist);
-          }
-          attempts++;
-        }
-
-        if (distractors.length < 3) {
-          const others = allWords.filter((v) => v.id !== randomTarget.id);
-          others
-            .slice(0, 3 - distractors.length)
-            .forEach((o) => distractors.push(o));
-        }
-
-        const options = [...distractors, randomTarget].sort(
-          () => Math.random() - 0.5,
-        );
-
-        newQuestions.push({
-          targetItem: randomTarget,
-          options,
-          answered: false,
-          isCorrect: false,
-          selectedOptionId: null,
-        });
-      }
-
-      setQuestions(newQuestions);
+      setQuestions(initialQuestions);
       setCurrentQIndex(0);
       setScore(0);
       setLastPoints(0);
-      setShowResult(false);
     } catch (error) {
       console.error("Error initializing game:", error);
     } finally {
@@ -132,6 +137,7 @@ export const GuessImageGame: React.FC<GuessImageGameProps> = ({
     if (questions[currentQIndex].answered) return;
 
     const currentQ = questions[currentQIndex];
+    // If optionId is -1, skip/wrong
     const isCorrect = optionId === currentQ.targetItem.id;
 
     const updatedQuestions = [...questions];
@@ -163,12 +169,16 @@ export const GuessImageGame: React.FC<GuessImageGameProps> = ({
     }
   };
 
+  const handleSkip = () => {
+    handleAnswer(-1);
+  };
+
   const nextQuestion = () => {
-    if (currentQIndex < questions.length - 1) {
-      setCurrentQIndex((prev) => prev + 1);
-    } else {
-      setShowResult(true);
+    if (currentQIndex >= questions.length - 1) {
+      const moreQuestions = generateQuestions(5, allValidItemsRef.current);
+      setQuestions((prev) => [...prev, ...moreQuestions]);
     }
+    setCurrentQIndex((prev) => prev + 1);
   };
 
   if (loading)
@@ -177,58 +187,6 @@ export const GuessImageGame: React.FC<GuessImageGameProps> = ({
         <Loader2 className="animate-spin text-primary-600" size={40} />
       </div>
     );
-
-  if (showResult) {
-    return (
-      <div className="max-w-2xl mx-auto p-6 text-center space-y-8 animate-in fade-in zoom-in duration-500">
-        <div className="bg-white rounded-3xl p-10 shadow-xl border border-gray-100">
-          <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Trophy size={48} className="text-yellow-600" />
-          </div>
-          <h1 className="text-3xl font-black text-gray-900 mb-2">
-            Hoàn thành xuất sắc!
-          </h1>
-          <p className="text-gray-500">
-            Chế độ: <strong>{difficulty}</strong>
-          </p>
-
-          <div className="flex justify-center gap-12 my-8">
-            <div className="text-center">
-              <div className="text-5xl font-black text-primary-600">
-                {score}
-              </div>
-              <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-                Điểm đạt được
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-5xl font-black text-orange-500">
-                {highScore}
-              </div>
-              <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-                Kỷ lục của bạn
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-            <button
-              onClick={initGame}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-colors"
-            >
-              <RefreshCw size={20} /> Chơi lại
-            </button>
-            <button
-              onClick={onChangeDifficulty}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors"
-            >
-              <Settings size={20} /> Đổi độ khó
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (questions.length === 0) {
     return (
@@ -248,6 +206,7 @@ export const GuessImageGame: React.FC<GuessImageGameProps> = ({
     );
   }
 
+  if (!questions[currentQIndex]) return null;
   const currentQ = questions[currentQIndex];
 
   return (
@@ -293,7 +252,7 @@ export const GuessImageGame: React.FC<GuessImageGameProps> = ({
             </div>
           )}
           <div className="bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 font-bold text-gray-700">
-            Câu {currentQIndex + 1}/{questions.length}
+            Câu {currentQIndex + 1}
           </div>
           <div className="bg-primary-600 px-4 py-2 rounded-full shadow-sm shadow-primary-200 font-bold text-white flex items-center gap-2 min-w-[100px] justify-center">
             <Trophy size={16} /> {score}
@@ -355,19 +314,24 @@ export const GuessImageGame: React.FC<GuessImageGameProps> = ({
             })}
           </div>
 
-          {currentQ.answered && (
-            <div className="pt-4 animate-in slide-in-from-bottom-5 fade-in">
+          <div className="pt-4 flex gap-3 animate-in slide-in-from-bottom-5 fade-in">
+            {!currentQ.answered && (
+              <button
+                onClick={handleSkip}
+                className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-xl font-bold text-lg hover:bg-gray-200 flex items-center justify-center gap-2"
+              >
+                Bỏ qua (Reset điểm)
+              </button>
+            )}
+            {currentQ.answered && (
               <button
                 onClick={nextQuestion}
-                className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold text-lg hover:bg-gray-800 flex items-center justify-center gap-2 shadow-xl shadow-gray-200"
+                className="flex-1 py-4 bg-gray-900 text-white rounded-xl font-bold text-lg hover:bg-gray-800 flex items-center justify-center gap-2 shadow-xl shadow-gray-200"
               >
-                {currentQIndex < questions.length - 1
-                  ? "Câu tiếp theo"
-                  : "Xem kết quả"}{" "}
-                <ArrowRight size={20} />
+                Câu tiếp theo <ArrowRight size={20} />
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

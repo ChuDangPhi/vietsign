@@ -33,6 +33,10 @@ async function createQuestion(data, userId) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `;
 
+    // Note: organization_id removed from query as it's not in the schema or causing issues
+    // If organization_id is needed, ensure it exists in DB first.
+    // Based on previous checks, organization_id does NOT exist in question table.
+
     const [result] = await connection.execute(query, [
       content,
       explanation || null,
@@ -41,7 +45,7 @@ async function createQuestion(data, userId) {
       video_location || null,
       question_type || "ONE_ANSWER",
       file_type || "TEXT",
-      userId,
+      userId || null,
     ]);
 
     const questionId = result.insertId;
@@ -55,7 +59,7 @@ async function createQuestion(data, userId) {
             ans.is_correct ? 1 : 0,
             ans.video_location || null,
             questionId,
-            userId,
+            userId || null,
           ],
         );
       }
@@ -81,8 +85,7 @@ async function getQuestions(filters) {
 
     // Filter by single class_room_id
     if (class_room_id && class_room_id !== 0) {
-      whereClause +=
-        " AND (class_room_id = ? OR class_room_id = 20 OR class_room_id IS NULL)";
+      whereClause += " AND (class_room_id = ? OR class_room_id IS NULL)";
       params.push(class_room_id);
     }
 
@@ -186,6 +189,19 @@ async function updateQuestion(questionId, data) {
       fields.push("question_type = ?");
       params.push(question_type);
     }
+    if (data.image_location !== undefined) {
+      fields.push("image_location = ?");
+      params.push(data.image_location);
+    }
+    if (data.video_location !== undefined) {
+      fields.push("video_location = ?");
+      params.push(data.video_location);
+    }
+    if (data.file_type !== undefined) {
+      fields.push("file_type = ?");
+      params.push(data.file_type);
+    }
+    // Note: organization_id removed as it's not in the 'question' table schema
 
     if (fields.length > 0) {
       fields.push("modified_date = NOW()");
@@ -221,6 +237,57 @@ async function updateQuestion(questionId, data) {
   }
 }
 
+async function deleteQuestionsByClassroom(classroomId) {
+  try {
+    const [result] = await db.execute(
+      "DELETE FROM question WHERE class_room_id = ?",
+      [classroomId],
+    );
+    return { success: true, affectedRows: result.affectedRows };
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+async function getQuestionsByCreator(creatorId, limit, offset) {
+  try {
+    const [questions] = await db.execute(
+      "SELECT * FROM question WHERE created_by = ? ORDER BY question_id DESC LIMIT ? OFFSET ?",
+      [creatorId, parseInt(limit), parseInt(offset)],
+    );
+    return { data: questions, total: questions.length };
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+async function searchQuestionsByContent(content, limit, offset) {
+  try {
+    const [questions] = await db.execute(
+      "SELECT * FROM question WHERE content LIKE ? ORDER BY question_id DESC LIMIT ? OFFSET ?",
+      [`%${content}%`, parseInt(limit), parseInt(offset)],
+    );
+    return { data: questions, total: questions.length };
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+async function getQuestionStatistics(classroomId) {
+  try {
+    let query = "SELECT COUNT(*) as total FROM question";
+    const params = [];
+    if (classroomId) {
+      query += " WHERE class_room_id = ?";
+      params.push(classroomId);
+    }
+    const [rows] = await db.execute(query, params);
+    return rows[0];
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
 async function deleteQuestion(questionId) {
   const connection = await db.getConnection();
   try {
@@ -246,6 +313,10 @@ module.exports = {
   createQuestion,
   getQuestions,
   getQuestionById,
+  getQuestionsByCreator,
+  searchQuestionsByContent,
   updateQuestion,
   deleteQuestion,
+  deleteQuestionsByClassroom,
+  getQuestionStatistics,
 };

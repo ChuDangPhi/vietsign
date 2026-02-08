@@ -45,10 +45,15 @@ import {
   usePagination,
 } from "@/shared/components/common/Pagination";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchUsersByFacility, fetchUsersByRole } from "@/services/userService";
+import {
+  fetchUsersByFacility,
+  fetchUsersByRole,
+  createUser,
+} from "@/services/userService";
 import {
   assignOrganizationManager,
   revokeOrganizationManager,
+  fetchUserManagedOrganizations,
 } from "@/services/organizationService";
 import { Modal } from "@/shared/components/common/Modal";
 import { useOrganizations } from "@/shared/hooks/useOrganizations";
@@ -224,17 +229,114 @@ export function OrganizationDetail() {
 
   // ===== USER & ROLE-BASED ACCESS CONTROL =====
   const { user } = useSelector((state: RootState) => state.admin);
-  const userRole = user?.role?.role || user?.code;
-  const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(userRole);
-  const isFacilityManager =
-    userRole === "FacilityManager" || userRole === "FACILITY_MANAGER";
-  const userOrgId = user?.organizationId || (user as any)?.organization_id;
 
-  // FACILITY_MANAGER can only edit/manage organizations they are assigned to (or children thereof)
-  // For simplicity: Admin can do everything, FM can edit info but not delete Province
-  const canEdit = isAdmin || isFacilityManager;
-  const canDelete = isAdmin; // Only Admin can delete organizations
-  const canAddChildren = isAdmin || isFacilityManager; // Both can add children under their jurisdiction
+  // Prioritize code for facility managers if role object is generic "User"
+  const rawUserCode = user?.code || "";
+  const facilityManagerRoles = [
+    "FacilityManager",
+    "FACILITY_MANAGER",
+    "CENTER_ADMIN",
+    "SCHOOL_ADMIN",
+  ];
+
+  const userRole = facilityManagerRoles.includes(rawUserCode)
+    ? rawUserCode
+    : user?.role?.role || user?.code;
+
+  const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(userRole);
+  const isFacilityManager = facilityManagerRoles.includes(userRole);
+
+  // Get user ID for fetching managed organizations
+  const userId = user?.id || (user as any)?.user_id;
+
+  // Fetch organizations that this user manages (from organization_managers table)
+  const { data: userManagedOrgIds = [] } = useQuery({
+    queryKey: ["user-managed-orgs", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      return await fetchUserManagedOrganizations(Number(userId));
+    },
+    enabled: !!userId && isFacilityManager,
+  });
+
+  // Debug logging (can be removed later)
+  React.useEffect(() => {
+    if (isFacilityManager) {
+      console.log("[RBAC Debug]", {
+        userId,
+        userRole,
+        userManagedOrgIds,
+        currentPageOrgId: id,
+        isOwnOrg: userManagedOrgIds.includes(id),
+      });
+    }
+  }, [userId, userRole, userManagedOrgIds, id, isFacilityManager]);
+
+  // Fetch all organizations early to determine access
+  const { data: allOrgsForAccess = [] } = useOrganizations();
+
+  // Check organization relationship
+  // isOwnOrg: the user directly manages this organization
+  const isOwnOrg = userManagedOrgIds.includes(id);
+
+  // Check if this org is a child of any organization the user manages
+  const isChildOrg = React.useMemo(() => {
+    if (!isFacilityManager || userManagedOrgIds.length === 0 || isOwnOrg)
+      return false;
+
+    const currentOrg = allOrgsForAccess.find((o) => o.id === id);
+    if (!currentOrg) return false;
+
+    // Check if parent is one of user's managed orgs
+    if (currentOrg.parentId && userManagedOrgIds.includes(currentOrg.parentId))
+      return true;
+
+    // Check grandchild (two levels down: Bộ -> Sở -> Trường)
+    const parentOrg = allOrgsForAccess.find(
+      (o) => o.id === currentOrg.parentId,
+    );
+    if (
+      parentOrg &&
+      parentOrg.parentId &&
+      userManagedOrgIds.includes(parentOrg.parentId)
+    )
+      return true;
+
+    return false;
+  }, [isFacilityManager, userManagedOrgIds, isOwnOrg, id, allOrgsForAccess]);
+
+  // Check if facility manager has access to this organization (view or manage)
+  const hasAccessToOrg = React.useMemo(() => {
+    if (isAdmin) return true;
+    if (!isFacilityManager) return false;
+    return isOwnOrg || isChildOrg;
+  }, [isAdmin, isFacilityManager, isOwnOrg, isChildOrg]);
+
+  // ===== GRANULAR PERMISSIONS =====
+  // CENTER_ADMIN:
+  // - At own org (Sở): Can VIEW managers only, can add schools (children)
+  // - At child org (Trường): Full management (add/edit/delete org, managers, teachers, students)
+
+  // Can edit the organization's info itself
+  // CENTER_ADMIN can edit their own org AND child orgs
+  const canEditOrg = isAdmin || (isFacilityManager && hasAccessToOrg);
+
+  // Can delete the organization
+  const canDeleteOrg = isAdmin || (isFacilityManager && isChildOrg);
+
+  // Can add child organizations (e.g., add Trường under Sở)
+  const canAddChildren = isAdmin || (isFacilityManager && hasAccessToOrg);
+
+  // Can manage managers (add/edit/revoke)
+  // At own org: VIEW ONLY, at child org: FULL
+  const canManageManagers = isAdmin || (isFacilityManager && isChildOrg);
+
+  // Can manage teachers and students
+  const canManageStaff = isAdmin || (isFacilityManager && isChildOrg);
+
+  // Legacy aliases for backward compatibility
+  const canEdit = canEditOrg;
+  const canDelete = canDeleteOrg;
 
   // Fetch users separately - with error handling
   const { data: facilityUsers = [], isError: usersError } = useQuery({
@@ -251,8 +353,8 @@ export function OrganizationDetail() {
     retry: false, // Don't retry on user API failures
   });
 
-  const managers = (facilityUsers || []).filter(
-    (u) => u.role === "FACILITY_MANAGER",
+  const managers = (facilityUsers || []).filter((u) =>
+    ["FACILITY_MANAGER", "CENTER_ADMIN", "SCHOOL_ADMIN"].includes(u.role),
   );
   const teachers = (facilityUsers || []).filter((u) => u.role === "TEACHER");
   const students = (facilityUsers || []).filter((u) => u.role === "STUDENT");
@@ -276,17 +378,39 @@ export function OrganizationDetail() {
 
   // Manager Assignment State
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [assignMode, setAssignMode] = useState<"select" | "create">("select");
   const [selectedAssignUser, setSelectedAssignUser] = useState<string>("");
+  const [newUserForm, setNewUserForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
+
+  // Role to assign/create: 'MANAGER' (dynamic based on org type), 'TEACHER', or 'STUDENT'
+  const [targetRole, setTargetRole] = useState<
+    "MANAGER" | "TEACHER" | "STUDENT"
+  >("MANAGER");
+
   const queryClient = useQueryClient();
 
   const { data: potentialManagers = [] } = useQuery({
-    queryKey: ["users", "potential-managers"],
+    queryKey: ["users", "potential-managers", organization?.type, targetRole],
     queryFn: async () => {
-      const teachers = await fetchUsersByRole("TEACHER");
-      // Filter out those who are already managers of THIS facility is handled in UI render
-      return teachers;
+      // Determine actual role string
+      let roleToFetch = "";
+      if (targetRole === "MANAGER") {
+        roleToFetch =
+          organization?.type === "SCHOOL" ? "SCHOOL_ADMIN" : "CENTER_ADMIN";
+      } else {
+        roleToFetch = targetRole;
+      }
+
+      const targetRoleUsers = await fetchUsersByRole(roleToFetch);
+
+      // Filter out users who already manage an organization or belong to one
+      return targetRoleUsers.filter((u) => !u.organizationId);
     },
-    enabled: isAssignModalOpen,
+    enabled: isAssignModalOpen && assignMode === "select" && !!organization,
   });
 
   const assignMutation = useMutation({
@@ -295,10 +419,61 @@ export function OrganizationDetail() {
       message.success("Gán quản lý thành công");
       setIsAssignModalOpen(false);
       setSelectedAssignUser("");
+      setNewUserForm({ name: "", email: "", password: "" }); // Reset new user form
       queryClient.invalidateQueries({ queryKey: ["users", "facility", id] });
     },
     onError: (error: any) => {
       message.error(error.message || "Gán quản lý thất bại");
+    },
+  });
+
+  const createAndAssignMutation = useMutation({
+    mutationFn: async (data: typeof newUserForm) => {
+      let role = "";
+      if (targetRole === "MANAGER") {
+        role =
+          organization?.type === "SCHOOL" ? "SCHOOL_ADMIN" : "CENTER_ADMIN";
+      } else {
+        role = targetRole;
+      }
+
+      // 1. Create User
+      let newUser;
+      try {
+        newUser = await createUser({
+          ...data,
+          role: role,
+          organizationId: id,
+        });
+      } catch (error: any) {
+        // Enhance error message for user creation failure
+        const serverMsg = error?.response?.data?.message || error?.message;
+        if (
+          serverMsg?.includes("already exists") ||
+          serverMsg?.includes("Email")
+        ) {
+          throw new Error(`Email "${data.email}" đã tồn tại trong hệ thống.`);
+        }
+        throw new Error(`Lỗi khi tạo người dùng: ${serverMsg}`);
+      }
+
+      if (!newUser || (!newUser.user_id && !newUser.id)) {
+        throw new Error("Không lấy được thông tin người dùng mới tạo.");
+      }
+
+      // Step 2: Assign logic is handled by backend createUser when organizationId is provided.
+      // We don't need to call assignOrganizationManager here to avoid duplicate key errors.
+
+      return newUser;
+    },
+    onSuccess: () => {
+      message.success("Tạo và thêm thành công");
+      setIsAssignModalOpen(false);
+      setNewUserForm({ name: "", email: "", password: "" });
+      queryClient.invalidateQueries({ queryKey: ["users", "facility", id] });
+    },
+    onError: (error: any) => {
+      message.error(error.message || "Tạo và thêm thất bại");
     },
   });
 
@@ -314,13 +489,30 @@ export function OrganizationDetail() {
   });
 
   const handleAssignManager = () => {
-    if (!selectedAssignUser) return;
-    assignMutation.mutate({
-      organization_id: id,
-      user_id: Number(selectedAssignUser),
-      role_in_org: "FACILITY_MANAGER",
-      is_primary: true,
-    });
+    if (assignMode === "select") {
+      if (!selectedAssignUser) return;
+
+      let role_in_org = "";
+      if (targetRole === "MANAGER") {
+        role_in_org =
+          organization?.type === "SCHOOL" ? "SCHOOL_ADMIN" : "CENTER_ADMIN";
+      } else {
+        role_in_org = targetRole;
+      }
+
+      assignMutation.mutate({
+        organization_id: id,
+        user_id: Number(selectedAssignUser),
+        role_in_org,
+        is_primary: targetRole === "MANAGER",
+      });
+    } else {
+      if (!newUserForm.name || !newUserForm.email || !newUserForm.password) {
+        message.warning("Vui lòng điền đầy đủ thông tin");
+        return;
+      }
+      createAndAssignMutation.mutate(newUserForm);
+    }
   };
 
   const handleRevokeManager = (user: UserItem) => {
@@ -396,7 +588,7 @@ export function OrganizationDetail() {
 
   // Load wards when province changes in editForm
   useEffect(() => {
-    if (editForm.city) {
+    if (editForm.city && typeof editForm.city === "number") {
       fetchProvinceById(editForm.city).then((p) => {
         if (p && p.communes) setActiveWards(p.communes);
         else setActiveWards([]);
@@ -406,8 +598,14 @@ export function OrganizationDetail() {
     }
   }, [editForm.city]);
 
-  const loadLocationNames = async (cityCode: number, wardCode: number) => {
-    if (!cityCode || isNaN(cityCode) || cityCode <= 0) return;
+  const loadLocationNames = async (
+    cityCode: number | string,
+    wardCode: number | string,
+  ) => {
+    const cCode = Number(cityCode);
+    const wCode = Number(wardCode);
+
+    if (!cCode || isNaN(cCode) || cCode <= 0) return;
 
     try {
       const provinces = await fetchProvinces();
@@ -415,11 +613,11 @@ export function OrganizationDetail() {
       if (province) {
         setProvinceName(province.name);
 
-        if (!wardCode || isNaN(wardCode) || wardCode <= 0) return;
-        const provinceDetail = await fetchProvinceById(cityCode);
+        if (!wCode || isNaN(wCode) || wCode <= 0) return;
+        const provinceDetail = await fetchProvinceById(cCode);
         if (provinceDetail?.communes) {
           const ward = provinceDetail.communes.find(
-            (c: Commune) => Number(c.id) === wardCode,
+            (c: Commune) => Number(c.id) === wCode,
           );
           if (ward) setWardName(ward.name);
         }
@@ -453,7 +651,8 @@ export function OrganizationDetail() {
     if (
       isAddDepartmentModalOpen &&
       organization?.type === "PROVINCE" &&
-      organization.city
+      organization.city &&
+      typeof organization.city === "number"
     ) {
       setLoadingAddDepartmentWards(true);
       fetchProvinceById(organization.city)
@@ -526,18 +725,54 @@ export function OrganizationDetail() {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (organization && editForm) {
-      // Construct full address
-      const province = provincesList.find((p) => p.id === editForm.city);
-      const ward = activeWards.find((w) => Number(w.id) === editForm.ward);
+      // 1. Get City Name
+      let provinceName = "";
+      if (editForm.city) {
+        const province = provincesList.find((p) => p.id === editForm.city);
+        if (province) provinceName = province.name;
+      }
 
-      const addressParts = [editForm.street];
-      if (ward) addressParts.push(ward.name);
-      if (province) addressParts.push(province.name);
-      const fullAddress = addressParts.filter(Boolean).join(", ");
+      // 2. Get Ward Name
+      let wardName = "";
+      if (editForm.ward) {
+        // Try to find in currently loaded activeWards
+        const ward = activeWards.find((w) => Number(w.id) === editForm.ward);
+        if (ward) {
+          wardName = ward.name;
+        } else if (editForm.city) {
+          // Fallback: If for some reason activeWards is empty or doesn't have it, try to fetch
+          try {
+            const p = await fetchProvinceById(Number(editForm.city));
+            const w = p?.communes?.find(
+              (c: Commune) => Number(c.id) === editForm.ward,
+            );
+            if (w) wardName = w.name;
+          } catch (error) {
+            console.error("Error fetching ward details:", error);
+          }
+        }
+      }
 
-      const payload = { ...editForm, address: fullAddress };
+      // 3. Construct Address String: "street, ward, city"
+      // User requirements: "street" + ", " + "ward" + ", " + "city"
+      const addressParts = [];
+      if (editForm.street && editForm.street.trim()) {
+        addressParts.push(editForm.street.trim());
+      }
+      if (wardName) addressParts.push(wardName);
+      if (provinceName) addressParts.push(provinceName);
+
+      const fullAddress = addressParts.join(", ");
+
+      const payload = {
+        ...editForm,
+        address: fullAddress, // Explicitly update address
+        street: editForm.street, // Ensure street is saved
+        city: editForm.city, // Ensure city is saved
+        ward: editForm.ward, // Ensure ward is saved
+      };
 
       updateMutation.mutate(
         { id: organization.id, data: payload },
@@ -545,6 +780,8 @@ export function OrganizationDetail() {
           onSuccess: () => {
             message.success("Cập nhật thành công");
             setIsEditing(false);
+            // The query invalidation in useUpdateOrganization will trigger a refetch,
+            // updating the view with the new address.
           },
           onError: (error: any) => {
             message.error(error.message || "Cập nhật thất bại");
@@ -570,6 +807,12 @@ export function OrganizationDetail() {
 
   const getFullAddress = () => {
     if (!organization) return "";
+    // Prioritize the full address string saved in DB
+    if (organization.address && organization.address.trim() !== "") {
+      return organization.address;
+    }
+
+    // Fallback construction
     const parts = [];
     if (organization.street) parts.push(organization.street);
     if (wardName) parts.push(wardName);
@@ -604,26 +847,57 @@ export function OrganizationDetail() {
     );
   }
 
+  // Check access for facility managers - they can only view their org and children
+  if (isFacilityManager && !hasAccessToOrg && allOrgsForAccess.length > 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
+          <X size={32} className="text-red-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Không có quyền truy cập
+        </h2>
+        <p className="text-gray-500 mb-6 text-center max-w-md">
+          Bạn chỉ có thể xem và quản lý tổ chức được phân công hoặc các tổ chức
+          con thuộc quyền quản lý của bạn.
+        </p>
+        <button
+          onClick={() => {
+            // Redirect to the first organization they manage, or back to list
+            if (userManagedOrgIds.length > 0) {
+              router.push(`/organizations-management/${userManagedOrgIds[0]}`);
+            } else {
+              router.push("/organizations-management");
+            }
+          }}
+          className="px-6 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors"
+        >
+          Về tổ chức của tôi
+        </button>
+      </div>
+    );
+  }
+
   // Define logic for gradients and labels based on type
   const getBannerGradient = (type: string) => {
     switch (type) {
       case "PROVINCE":
-        return "from-purple-600 to-indigo-700";
+        return "from-purple-600 to-indigo-700"; // Bộ GD&ĐT level (legacy)
       case "DEPARTMENT":
-        return "from-indigo-500 to-purple-600";
+        return "from-indigo-500 to-blue-600"; // Sở GD&ĐT
       default:
-        return "from-primary-500 to-primary-600";
+        return "from-green-500 to-emerald-600"; // Trường
     }
   };
 
   const getTypeName = (type: string) => {
     switch (type) {
       case "PROVINCE":
-        return "Tỉnh / Thành phố";
+        return "Bộ GD&ĐT"; // Legacy support
       case "DEPARTMENT":
-        return "Sở Giáo dục";
+        return "Sở GD&ĐT";
       default:
-        return "Trường";
+        return "Trường học";
     }
   };
 
@@ -1080,10 +1354,21 @@ export function OrganizationDetail() {
 
           {activeTab === "managers" && (
             <div className="animate-in fade-in duration-300 space-y-4">
-              {canAddChildren && (
+              {/* Header with info for view-only mode */}
+              {isFacilityManager && isOwnOrg && !canManageManagers && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-blue-700 text-sm">
+                  <span className="font-medium">Lưu ý:</span> Bạn chỉ có thể xem
+                  danh sách quản lý của cơ sở này. Liên hệ quản trị viên cấp
+                  trên để thêm hoặc thay đổi quản lý.
+                </div>
+              )}
+              {canManageManagers && (
                 <div className="flex justify-end">
                   <button
-                    onClick={() => setIsAssignModalOpen(true)}
+                    onClick={() => {
+                      setTargetRole("MANAGER");
+                      setIsAssignModalOpen(true);
+                    }}
                     className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
                   >
                     <Plus size={16} /> Thêm quản lý
@@ -1093,7 +1378,7 @@ export function OrganizationDetail() {
               <UserListTable
                 users={managers}
                 emptyMessage="Chưa có quản lý nào được gán cho cơ sở này"
-                onRevoke={isAdmin ? handleRevokeManager : undefined}
+                onRevoke={canManageManagers ? handleRevokeManager : undefined}
               />
             </div>
           )}
@@ -1253,7 +1538,20 @@ export function OrganizationDetail() {
             )}
 
           {activeTab === "teachers" && (
-            <div className="animate-in fade-in duration-300">
+            <div className="animate-in fade-in duration-300 space-y-4">
+              {canManageStaff && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      setTargetRole("TEACHER");
+                      setIsAssignModalOpen(true);
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
+                  >
+                    <Plus size={16} /> Thêm giáo viên
+                  </button>
+                </div>
+              )}
               <UserListTable
                 users={teachers}
                 emptyMessage="Chưa có giáo viên nào tại cơ sở này"
@@ -1262,7 +1560,20 @@ export function OrganizationDetail() {
           )}
 
           {activeTab === "students" && (
-            <div className="animate-in fade-in duration-300">
+            <div className="animate-in fade-in duration-300 space-y-4">
+              {canManageStaff && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      setTargetRole("STUDENT");
+                      setIsAssignModalOpen(true);
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
+                  >
+                    <Plus size={16} /> Thêm học sinh
+                  </button>
+                </div>
+              )}
               <UserListTable
                 users={students}
                 emptyMessage="Chưa có học sinh nào tại cơ sở này"
@@ -1283,36 +1594,132 @@ export function OrganizationDetail() {
         type="danger"
       />
 
-      {/* Modal Assign Manager */}
       <Modal
         isOpen={isAssignModalOpen}
         onClose={() => setIsAssignModalOpen(false)}
-        title="Gán quản lý cơ sở"
+        title={
+          targetRole === "MANAGER"
+            ? "Gán quản lý cơ sở"
+            : targetRole === "TEACHER"
+              ? "Thêm Giáo viên"
+              : "Thêm Học sinh"
+        }
       >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Chọn người dùng
-            </label>
-            <select
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white"
-              value={selectedAssignUser}
-              onChange={(e) => setSelectedAssignUser(e.target.value)}
+        <div className="space-y-6">
+          {/* Tabs for Mode */}
+          <div className="flex p-1 bg-gray-100 rounded-xl">
+            <button
+              onClick={() => setAssignMode("select")}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                assignMode === "select"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
             >
-              <option value="">-- Chọn người dùng --</option>
-              {potentialManagers
-                .filter((u) => !managers.some((m) => m.id === u.id)) // Exclude existing managers
-                .map((user: UserItem) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email}) - {roleLabels[user.role]}
-                  </option>
-                ))}
-            </select>
+              Chọn từ hệ thống
+            </button>
+            <button
+              onClick={() => setAssignMode("create")}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                assignMode === "create"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Tạo tài khoản mới
+            </button>
           </div>
-          <p className="text-sm text-gray-500">
-            Người được chọn sẽ trở thành quản lý chính của cơ sở này.
-          </p>
-          <div className="flex gap-3 mt-6">
+
+          {assignMode === "select" ? (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Chọn người dùng
+                </label>
+                <select
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white"
+                  value={selectedAssignUser}
+                  onChange={(e) => setSelectedAssignUser(e.target.value)}
+                >
+                  <option value="">-- Chọn người dùng --</option>
+                  {potentialManagers
+                    .filter((u) => !managers.some((m) => m.id === u.id)) // Exclude existing managers
+                    .map((user: UserItem) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name} ({user.email}) - {roleLabels[user.role]}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <p className="text-sm text-gray-500 italic">
+                Lưu ý: Bạn có thể chọn Giáo viên hoặc những người đã có vai trò
+                quản lý tương ứng.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">
+                  Họ và tên <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nhập họ và tên..."
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                  value={newUserForm.name}
+                  onChange={(e) =>
+                    setNewUserForm({ ...newUserForm, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="example@email.com"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                  value={newUserForm.email}
+                  onChange={(e) =>
+                    setNewUserForm({ ...newUserForm, email: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">
+                  Mật khẩu <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                  value={newUserForm.password}
+                  onChange={(e) =>
+                    setNewUserForm({ ...newUserForm, password: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <p className="text-xs text-blue-600 bg-blue-50 p-3 rounded-lg">
+                Tài khoản mới sẽ được tự động cấp vai trò{" "}
+                <strong>
+                  {targetRole === "MANAGER"
+                    ? currentOrganization.type === "SCHOOL"
+                      ? "Quản lý Trường học"
+                      : "Quản lý Sở/Trung tâm"
+                    : targetRole === "TEACHER"
+                      ? "Giáo viên"
+                      : "Học sinh"}
+                </strong>{" "}
+                và gán vào cơ sở này.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4 border-t border-gray-100">
             <button
               onClick={() => setIsAssignModalOpen(false)}
               className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
@@ -1321,10 +1728,22 @@ export function OrganizationDetail() {
             </button>
             <button
               onClick={handleAssignManager}
-              disabled={!selectedAssignUser || assignMutation.isPending}
-              className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={
+                (assignMode === "select" && !selectedAssignUser) ||
+                (assignMode === "create" &&
+                  (!newUserForm.name ||
+                    !newUserForm.email ||
+                    !newUserForm.password)) ||
+                assignMutation.isPending ||
+                createAndAssignMutation.isPending
+              }
+              className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {assignMutation.isPending ? "Đang xử lý..." : "Xác nhận"}
+              {(assignMutation.isPending ||
+                createAndAssignMutation.isPending) && (
+                <Loader2 size={18} className="animate-spin" />
+              )}
+              Xác nhận
             </button>
           </div>
         </div>

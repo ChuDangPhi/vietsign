@@ -35,11 +35,12 @@ async function createVocabulary(data, userId) {
         images_path,
         videos_path,
         created_by,
+        created_id,
         created_date,
         modified_date,
         status
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 'APPROVED')
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 'APPROVED')
     `;
 
     const [result] = await db.execute(query, [
@@ -52,7 +53,8 @@ async function createVocabulary(data, userId) {
       is_private ? 1 : 0,
       images_path || null,
       videos_path || null,
-      userId,
+      userId ? String(userId) : null,
+      userId || 0,
     ]);
 
     return {

@@ -1,28 +1,23 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { DictionaryItem } from "@/data/dictionaryData";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { fetchAllWords } from "@/services/dictionaryService";
 import {
   RefreshCw,
   Trophy,
   ArrowLeft,
   Loader2,
-  Brain,
-  Timer,
   Settings,
+  Brain,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Button, Tooltip } from "antd";
+import { Button, Tooltip, message } from "antd";
 
 interface Card {
-  id: string;
-  wordId: number;
+  id: number;
+  type: "video" | "image" | "text";
   content: string;
-  type: "word" | "image";
-  imageUrl?: string;
-  isFlipped: boolean;
-  isMatched: boolean;
+  pairId: number;
 }
 
 interface MemoryMatchGameProps {
@@ -37,244 +32,176 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
 }) => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [cards, setCards] = useState<Card[]>([]);
-  const [flippedCards, setFlippedCards] = useState<number[]>([]);
+  const [allCards, setAllCards] = useState<Card[]>([]);
+  const [flipped, setFlipped] = useState<number[]>([]);
+  const [matched, setMatched] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
-  const [matches, setMatches] = useState(0);
   const [score, setScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-  const [isGameOver, setIsGameOver] = useState(false);
-  const [time, setTime] = useState(0); // Elapsed time
-  const [lastMatchTime, setLastMatchTime] = useState(0); // Time when last match occurred
-  const [isActive, setIsActive] = useState(false);
+  const [gameCompleted, setGameCompleted] = useState(false);
 
-  // Difficulty configs
-  const diffConfigs = {
-    Dễ: { pairs: 3, gridCols: "grid-cols-3", timeLimit: 90 },
-    "Trung bình": {
-      pairs: 6,
-      gridCols: "grid-cols-3 md:grid-cols-4",
-      timeLimit: 150,
-    },
-    Khó: { pairs: 10, gridCols: "grid-cols-4 md:grid-cols-5", timeLimit: 240 },
-  };
-  const config = diffConfigs[difficulty];
+  // Game config
+  const config = {
+    Dễ: { pairs: 6, gridCols: "grid-cols-3 md:grid-cols-4" },
+    "Trung bình": { pairs: 10, gridCols: "grid-cols-4 md:grid-cols-5" },
+    Khó: { pairs: 15, gridCols: "grid-cols-5 md:grid-cols-6" },
+  }[difficulty];
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isActive) {
-      interval = setInterval(() => {
-        setTime((prevTime) => {
-          const nextTime = prevTime + 1;
-          if (nextTime >= config.timeLimit) {
-            setIsActive(false);
-            setIsGameOver(true);
-            setShowResult(true);
-            return config.timeLimit;
-          }
-          return nextTime;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isActive, config.timeLimit]);
+  const totalPairs = config.pairs;
+  const matchedPairs = matched.length / 2;
 
   const initGame = useCallback(async () => {
     setLoading(true);
+    setGameCompleted(false);
+    setScore(0);
+    setMoves(0);
+    setMatched([]);
+    setFlipped([]);
+
     try {
-      const allWords = await fetchAllWords({ limit: 100 });
+      const allWords = await fetchAllWords({ limit: 200 });
+      // Filter valid items
       const validItems = allWords.filter(
-        (item) => item.imageUrl && item.imageUrl.trim().length > 0,
+        (item) =>
+          (item.videoUrl && item.videoUrl.trim().length > 0) ||
+          (item.imageUrl && item.imageUrl.trim().length > 0),
       );
 
-      const pairCount = config.pairs;
-      const selectedWords = validItems
-        .sort(() => Math.random() - 0.5)
-        .slice(0, pairCount);
+      if (validItems.length < totalPairs) {
+        message.warning("Không đủ dữ liệu từ vựng để tạo trò chơi.");
+        return;
+      }
 
-      const gameCards: Card[] = [];
-      selectedWords.forEach((word) => {
-        gameCards.push({
-          id: `word-${word.id}`,
-          wordId: Number(word.id),
-          content: word.word,
-          type: "word",
-          isFlipped: false,
-          isMatched: false,
+      // Select random pairs
+      const selected = [];
+      const indices = new Set<number>();
+      while (selected.length < totalPairs) {
+        const idx = Math.floor(Math.random() * validItems.length);
+        if (!indices.has(idx)) {
+          indices.add(idx);
+          selected.push(validItems[idx]);
+        }
+      }
+
+      // Generate cards
+      const cards: Card[] = [];
+      selected.forEach((item, index) => {
+        // Card 1: Video/Image
+        cards.push({
+          id: index * 2,
+          content: item.videoUrl || item.imageUrl || "", // Priority video
+          type: item.videoUrl ? "video" : "image",
+          pairId: index,
         });
-        gameCards.push({
-          id: `image-${word.id}`,
-          wordId: Number(word.id),
-          content: word.word,
-          type: "image",
-          imageUrl: word.imageUrl,
-          isFlipped: false,
-          isMatched: false,
+        // Card 2: Word
+        cards.push({
+          id: index * 2 + 1,
+          content: item.word,
+          type: "text",
+          pairId: index,
         });
       });
 
-      setCards(gameCards.sort(() => Math.random() - 0.5));
-      setFlippedCards([]);
-      setMoves(0);
-      setMatches(0);
-      setScore(0);
-      setTime(0);
-      setLastMatchTime(0);
-      setShowResult(false);
-      setIsGameOver(false);
-      setIsActive(true);
+      // Shuffle
+      setAllCards(cards.sort(() => Math.random() - 0.5));
     } catch (error) {
-      console.error("Error initializing game:", error);
+      console.error(error);
+      message.error("Lỗi tải dữ liệu trò chơi.");
     } finally {
       setLoading(false);
     }
-  }, [difficulty, config.pairs]);
+  }, [difficulty, totalPairs]);
 
   useEffect(() => {
     initGame();
   }, [initGame]);
 
-  const calculatePoints = (timeTaken: number) => {
-    if (timeTaken <= 5) return 100;
-    if (timeTaken >= 40) return 10;
-    // Linear decrease from 100 at 5s to 10 at 40s
-    // points = 100 - (timeTaken - 5) * (90 / 35)
-    return Math.floor(100 - (timeTaken - 5) * (90 / 35));
-  };
-
-  const handleCardClick = (index: number) => {
+  const handleFlip = (index: number) => {
+    // Prevent flipping if already matched, already flipped, or 2 cards already flipped
     if (
-      !isActive ||
-      cards[index].isFlipped ||
-      cards[index].isMatched ||
-      flippedCards.length === 2
+      flipped.length === 2 ||
+      matched.includes(index) ||
+      flipped.includes(index)
     ) {
       return;
     }
 
-    const newFlippedCards = [...flippedCards, index];
-    const newCards = [...cards];
-    newCards[index].isFlipped = true;
-    setCards(newCards);
-    setFlippedCards(newFlippedCards);
+    const newFlipped = [...flipped, index];
+    setFlipped(newFlipped);
 
-    if (newFlippedCards.length === 2) {
-      setMoves((m) => m + 1);
-      const [firstIndex, secondIndex] = newFlippedCards;
+    if (newFlipped.length === 2) {
+      setMoves((prev) => prev + 1);
+      const [firstIdx, secondIdx] = newFlipped;
+      const firstCard = allCards[firstIdx];
+      const secondCard = allCards[secondIdx];
 
-      if (cards[firstIndex].wordId === cards[secondIndex].wordId) {
+      if (firstCard.pairId === secondCard.pairId) {
         // Match found
-        const timeTaken = time - lastMatchTime;
-        const points = calculatePoints(timeTaken);
-        setScore((s) => s + points);
-        setLastMatchTime(time);
+        setMatched((prev) => [...prev, firstIdx, secondIdx]);
+        setScore((prev) => prev + 100);
+        setFlipped([]);
 
-        setTimeout(() => {
-          setCards((prev) => {
-            const updated = [...prev];
-            updated[firstIndex].isMatched = true;
-            updated[secondIndex].isMatched = true;
-            return updated;
-          });
-          setMatches((m) => {
-            const newMatches = m + 1;
-            if (newMatches === config.pairs) {
-              setIsActive(false);
-              setTimeout(() => setShowResult(true), 500);
-            }
-            return newMatches;
-          });
-          setFlippedCards([]);
-        }, 600);
+        // Check completion
+        if (matched.length + 2 === allCards.length) {
+          setTimeout(() => setGameCompleted(true), 500);
+        }
       } else {
-        setTimeout(() => {
-          setCards((prev) => {
-            const updated = [...prev];
-            updated[firstIndex].isFlipped = false;
-            updated[secondIndex].isFlipped = false;
-            return updated;
-          });
-          setFlippedCards([]);
-        }, 1000);
+        // No match
+        setTimeout(() => setFlipped([]), 1000);
       }
     }
   };
 
-  const formatTime = (seconds: number) =>
-    `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, "0")}`;
-
-  if (loading)
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="animate-spin text-primary-600" size={40} />
       </div>
     );
+  }
 
-  if (showResult) {
-    const timeLeft = config.timeLimit - time;
+  if (gameCompleted) {
     return (
-      <div className="max-w-2xl mx-auto p-6 text-center space-y-8 animate-in fade-in zoom-in duration-500">
-        <div className="bg-white rounded-3xl p-10 shadow-xl border border-gray-100">
-          <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            {isGameOver ? (
-              <Timer size={48} className="text-red-600" />
-            ) : (
-              <Trophy size={48} className="text-purple-600" />
-            )}
-          </div>
-          <h1 className="text-3xl font-black text-gray-900 mb-2">
-            {isGameOver ? "Hết giờ!" : "Tuyệt vời!"}
-          </h1>
-          <p className="text-gray-500">
-            Mức độ: <strong>{difficulty}</strong>
-          </p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8 animate-in zoom-in duration-500">
+        <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mb-4 mx-auto animate-bounce">
+          <Trophy size={48} className="text-yellow-600" />
+        </div>
+        <div>
+          <h2 className="text-4xl font-black text-gray-900 mb-2">Chúc mừng!</h2>
+          <p className="text-xl text-gray-600">Bạn đã hoàn thành trò chơi</p>
+        </div>
 
-          <div className="text-6xl font-black text-primary-600 my-8">
-            {score}{" "}
-            <span className="text-2xl text-gray-400 font-bold">điểm</span>
+        <div className="grid grid-cols-2 gap-8 w-full max-w-md mx-auto">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="text-gray-500 font-medium mb-1">Số lượt lật</div>
+            <div className="text-3xl font-black text-primary-600">{moves}</div>
           </div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="text-gray-500 font-medium mb-1">Điểm số</div>
+            <div className="text-3xl font-black text-orange-500">{score}</div>
+          </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-8 my-8">
-            <div className="text-center">
-              <div className="text-4xl font-black text-primary-600">
-                {moves}
-              </div>
-              <div className="text-sm text-gray-500 font-bold uppercase whitespace-nowrap">
-                Lượt đi
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-black text-primary-600">
-                {formatTime(time)}
-              </div>
-              <div className="text-sm text-gray-500 font-bold uppercase whitespace-nowrap">
-                Thời gian
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-            <button
-              onClick={initGame}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-colors"
-            >
-              <RefreshCw size={20} /> Chơi lại
-            </button>
-            <button
-              onClick={onChangeDifficulty}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors"
-            >
-              <Settings size={20} /> Đổi độ khó
-            </button>
-          </div>
+        <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
+          <button
+            onClick={initGame}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-colors"
+          >
+            <RefreshCw size={20} /> Chơi lại
+          </button>
+          <button
+            onClick={onChangeDifficulty}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+          >
+            <Settings size={20} /> Đổi độ khó
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
+    <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
@@ -300,58 +227,75 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
             </Tooltip>
           </div>
         </div>
+
         <div className="flex items-center gap-4">
-          <div className="bg-white px-4 md:px-6 py-2 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3 font-bold text-gray-700">
-            <Brain size={20} className="text-purple-500" />
-            <span className="whitespace-nowrap">Lượt: {moves}</span>
+          <div className="bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 font-bold text-orange-500">
+            Điểm: {score}
           </div>
-          <div className="bg-white px-4 md:px-6 py-2 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3 font-bold text-gray-700">
-            <Timer size={20} className="text-blue-500" />
-            <span className="whitespace-nowrap">{formatTime(time)}</span>
+          <div className="bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 font-bold text-gray-700">
+            Ghép: {matchedPairs}/{totalPairs}
           </div>
         </div>
       </div>
 
+      {/* Game Content */}
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-black text-gray-900">Lật bài trí nhớ</h2>
-          <p className="text-gray-500 mt-2">
-            Độ khó: {difficulty} ({config.pairs} cặp thẻ)
+          <h3 className="text-2xl font-bold text-primary-900 mb-3">
+            Lật thẻ để tìm cặp video/hình ảnh - từ tương ứng
+          </h3>
+          <p className="text-gray-500 font-medium">
+            Mức độ: {difficulty} ({totalPairs} cặp thẻ)
           </p>
         </div>
 
+        {/* Card Grid */}
         <div className={`grid ${config.gridCols} gap-4 md:gap-6`}>
-          {cards.map((card, index) => (
-            <div
-              key={card.id}
-              onClick={() => handleCardClick(index)}
-              className={`relative aspect-[3/4] cursor-pointer transition-all duration-500 transform-gpu ${card.isFlipped ? "[transform:rotateY(180deg)]" : ""} ${card.isMatched ? "opacity-0 scale-90 pointer-events-none" : "hover:scale-105 active:scale-95"}`}
-              style={{ transformStyle: "preserve-3d" }}
-            >
+          {allCards.map((card, idx) => {
+            const isFlipped = flipped.includes(idx) || matched.includes(idx);
+            const isMatched = matched.includes(idx);
+
+            return (
               <div
-                className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl shadow-lg border-4 border-white flex items-center justify-center overflow-hidden"
-                style={{ backfaceVisibility: "hidden" }}
+                key={idx}
+                onClick={() => handleFlip(idx)}
+                className="relative aspect-[4/3] cursor-pointer transition-transform duration-300 hover:scale-105"
               >
-                <Brain size={48} className="text-white opacity-30" />
-              </div>
-              <div
-                className={`absolute inset-0 bg-white rounded-2xl shadow-xl border-4 border-primary-100 flex items-center justify-center p-2 [transform:rotateY(180deg)]`}
-                style={{ backfaceVisibility: "hidden" }}
-              >
-                {card.type === "word" ? (
-                  <span className="text-base md:text-xl font-black text-primary-700 text-center leading-tight px-1 uppercase">
-                    {card.content}
-                  </span>
+                {/* Conditional Rendering logic exactly like FlipCardStep */}
+                {isFlipped ? (
+                  <div
+                    className={`absolute inset-0 rounded-2xl shadow-xl overflow-hidden animate-in zoom-in duration-300 border-4 flex items-center justify-center p-2 
+                      ${isMatched ? "border-green-500 bg-green-50" : "border-primary-200 bg-white"}`}
+                  >
+                    {card.type === "video" ? (
+                      <video
+                        src={card.content}
+                        className="w-full h-full object-contain rounded-lg"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                      />
+                    ) : card.type === "image" ? (
+                      <img
+                        src={card.content}
+                        alt="card content"
+                        className="w-full h-full object-contain rounded-lg"
+                      />
+                    ) : (
+                      <span className="text-lg md:text-xl font-bold text-center text-primary-800 break-words">
+                        {card.content}
+                      </span>
+                    )}
+                  </div>
                 ) : (
-                  <img
-                    src={card.imageUrl}
-                    alt="Sign"
-                    className="w-full h-full object-contain rounded-xl"
-                  />
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl shadow-lg border-4 border-white flex items-center justify-center">
+                    <Brain size={32} className="text-white opacity-40" />
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

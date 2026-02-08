@@ -8,16 +8,7 @@ const examService = require("../services/exam.services");
 // Create new exam
 const createExam = async (req, res) => {
   try {
-    const {
-      name,
-      description,
-      exam_type,
-      class_room_id,
-      created_by,
-      duration_minutes,
-      total_points,
-      passing_score,
-    } = req.body;
+    const { name } = req.body;
 
     // Validation
     if (!name) {
@@ -28,26 +19,8 @@ const createExam = async (req, res) => {
       });
     }
 
-    if (
-      !["MULTIPLE_CHOICE", "PRACTICAL"].includes(exam_type || "MULTIPLE_CHOICE")
-    ) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid exam type. Must be MULTIPLE_CHOICE or PRACTICAL",
-        message: "Loại bài kiểm tra không hợp lệ",
-      });
-    }
-
-    const exam = await examService.createExam(
-      name,
-      description,
-      exam_type,
-      class_room_id,
-      created_by,
-      duration_minutes,
-      total_points,
-      passing_score,
-    );
+    const userId = req.user.user_id;
+    const exam = await examService.createExam(req.body, userId);
 
     return res.status(201).json({
       success: true,

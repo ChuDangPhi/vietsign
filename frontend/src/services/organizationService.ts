@@ -30,11 +30,18 @@ function convertApiToOrganizationItem(apiOrg: any): OrganizationItem {
   return {
     id: Number(id),
     name: apiOrg.name || apiOrg.Name || "",
-    type: apiOrg.type || apiOrg.Type || "SCHOOL",
+    // Map backend types to frontend types
+    type:
+      apiOrg.type === "EDU_SYSTEM"
+        ? "PROVINCE"
+        : apiOrg.type === "CENTER"
+          ? "DEPARTMENT"
+          : apiOrg.type || "SCHOOL",
     parentId: apiOrg.parent_id ?? apiOrg.parentId ?? apiOrg.ParentID ?? null,
-    street: apiOrg.address || apiOrg.street || apiOrg.Address || "", // Try 'address' first as backend changed
-    ward: Number(apiOrg.ward || 0),
-    city: Number(apiOrg.city || 0),
+    street: apiOrg.street || apiOrg.address || "",
+    ward: !isNaN(Number(apiOrg.ward)) ? Number(apiOrg.ward) : apiOrg.ward || "",
+    city: !isNaN(Number(apiOrg.city)) ? Number(apiOrg.city) : apiOrg.city || "",
+    address: apiOrg.address || apiOrg.street || "",
     phone: apiOrg.phone || apiOrg.Phone || "",
     email: apiOrg.email || apiOrg.Email || "",
     createdAt: apiOrg.created_at || apiOrg.createdAt || apiOrg.CreatedAt || "",
@@ -113,13 +120,21 @@ export async function fetchOrganizationById(
 function convertItemToApiPayload(data: Partial<OrganizationItem>): any {
   const payload: any = {
     name: data.name,
-    type: data.type || "SCHOOL", // Use provided type or default to SCHOOL
-    parent_id: data.parentId ?? null, // Parent department ID for schools
-    address: data.street, // Backend expects 'address' field
-    city: String(data.city), // Backend expects string
-    ward: String(data.ward), // Backend expects string
-    phone: data.phone,
-    email: data.email,
+    // Map PROVINCE to EDU_SYSTEM for backend compatibility
+    type: data.type === "PROVINCE" ? "EDU_SYSTEM" : data.type || "SCHOOL",
+    // Map parentId -1 to null for top-level organizations
+    parent_id:
+      data.parentId === -1 ||
+      data.parentId === null ||
+      data.parentId === undefined
+        ? null
+        : data.parentId,
+    address: data.address !== undefined ? data.address : data.street || "",
+    street: data.street || "",
+    city: data.city ? Number(data.city) : null,
+    ward: data.ward ? Number(data.ward) : null,
+    phone: data.phone || null,
+    email: data.email || null,
   };
 
   return payload;
@@ -226,5 +241,32 @@ export async function revokeOrganizationManager(data: {
   } catch (error) {
     console.error("Error revoking organization manager:", error);
     throw error;
+  }
+}
+
+/**
+ * Lấy danh sách tổ chức mà user quản lý
+ */
+export async function fetchUserManagedOrganizations(
+  userId: number,
+): Promise<number[]> {
+  try {
+    const response = await OrganizationManagerModel.getByUser(userId);
+    // Response can be array of manager records or { managers: [...] }
+    let managers: any[] = [];
+    if (Array.isArray(response)) {
+      managers = response;
+    } else if (response?.managers && Array.isArray(response.managers)) {
+      managers = response.managers;
+    } else if (response?.data && Array.isArray(response.data)) {
+      managers = response.data;
+    }
+    // Extract organization_id from each record
+    return managers
+      .map((m) => Number(m.organization_id || m.organizationId))
+      .filter((id) => !isNaN(id));
+  } catch (error) {
+    console.error("Error fetching user managed organizations:", error);
+    return [];
   }
 }

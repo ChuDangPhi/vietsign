@@ -118,7 +118,7 @@ class UserModelClass extends Base {
   // POST /user/create - Tạo user mới (Admin only)
   // Note: Backend seems to use specific endpoints for Teacher/Student
   createUser = async (data: Partial<User>): Promise<any> => {
-    const res = await this.apiPost("/create", data);
+    const res = await this.apiPost("", data);
     return res.data;
   };
 

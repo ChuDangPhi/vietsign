@@ -123,8 +123,15 @@ async function createStudent(req, res) {
 
 async function getStudents(req, res) {
   try {
-    const { page, limit, q, school_id } = req.query || {};
-    const data = await services.getStudents({ page, limit, q, school_id });
+    const { page, limit, q, school_id, organization_id } = req.query || {};
+    // Support both school_id and organization_id from frontend
+    const orgId = organization_id || school_id;
+    const data = await services.getStudents({
+      page,
+      limit,
+      q,
+      organization_id: orgId,
+    });
     return res.json(data);
   } catch (err) {
     const status = err.status || 500;
@@ -222,8 +229,15 @@ async function createTeacher(req, res) {
 
 async function getTeachers(req, res) {
   try {
-    const { page, limit, q, school_id } = req.query || {};
-    const data = await services.getTeachers({ page, limit, q, school_id });
+    const { page, limit, q, school_id, organization_id } = req.query || {};
+    // Support both school_id and organization_id from frontend
+    const orgId = organization_id || school_id;
+    const data = await services.getTeachers({
+      page,
+      limit,
+      q,
+      organization_id: orgId,
+    });
     return res.json(data);
   } catch (err) {
     const status = err.status || 500;
@@ -272,8 +286,15 @@ async function deleteTeacher(req, res) {
 
 async function getUsers(req, res) {
   try {
-    const { page, limit, q, school_id } = req.query || {};
-    const data = await services.getUsers({ page, limit, q, school_id });
+    const { page, limit, q, school_id, organization_id } = req.query || {};
+    // Support both school_id and organization_id from frontend
+    const orgId = organization_id || school_id;
+    const data = await services.getUsers({
+      page,
+      limit,
+      q,
+      organization_id: orgId,
+    });
     return res.json(data);
   } catch (err) {
     const status = err.status || 500;

@@ -1,4 +1,4 @@
-const topicService = require('../services/topic.services');
+const topicService = require("../services/topic.services");
 
 /**
  * Topic Management Controller
@@ -8,14 +8,21 @@ const topicService = require('../services/topic.services');
 // Create new topic
 const createTopic = async (req, res) => {
   try {
-    const { name, classroom_id, image_location, description, creator_id, is_common } = req.body;
+    const {
+      name,
+      classroom_id,
+      image_location,
+      description,
+      creator_id,
+      is_common,
+    } = req.body;
 
     // Validation
     if (!name) {
       return res.status(400).json({
         success: false,
-        error: 'Topic name is required',
-        message: 'Tên chủ đề là bắt buộc'
+        error: "Topic name is required",
+        message: "Tên chủ đề là bắt buộc",
       });
     }
 
@@ -24,29 +31,29 @@ const createTopic = async (req, res) => {
       classroom_id,
       image_location,
       description,
-      creator_id,
-      is_common || false
+      creator_id || (req.user ? req.user.user_id : null),
+      is_common || false,
     );
 
     return res.status(201).json({
       success: true,
       data: topic,
-      message: 'Topic created successfully'
+      message: "Topic created successfully",
     });
   } catch (error) {
-    if (error.message.includes('already exists')) {
+    if (error.message.includes("already exists")) {
       return res.status(409).json({
         success: false,
-        error: 'Topic name already exists',
-        message: 'Tên chủ đề đã tồn tại'
+        error: "Topic name already exists",
+        message: "Tên chủ đề đã tồn tại",
       });
     }
 
-    console.error('Create topic error:', error);
+    console.error("Create topic error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Error creating topic'
+      message: "Error creating topic",
     });
   }
 };
@@ -56,11 +63,22 @@ const getTopics = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const offset = parseInt(req.query.offset) || 0;
-    const classroomId = req.query.classroom_id ? parseInt(req.query.classroom_id) : null;
-    const creatorId = req.query.creator_id ? parseInt(req.query.creator_id) : null;
-    const isCommon = req.query.is_common !== undefined ? req.query.is_common === 'true' : null;
+    const classroomId = req.query.classroom_id
+      ? parseInt(req.query.classroom_id)
+      : null;
+    const creatorId = req.query.creator_id
+      ? parseInt(req.query.creator_id)
+      : null;
+    const isCommon =
+      req.query.is_common !== undefined ? req.query.is_common === "true" : null;
 
-    const result = await topicService.getTopics(limit, offset, classroomId, creatorId, isCommon);
+    const result = await topicService.getTopics(
+      limit,
+      offset,
+      classroomId,
+      creatorId,
+      isCommon,
+    );
 
     return res.status(200).json({
       success: true,
@@ -68,14 +86,14 @@ const getTopics = async (req, res) => {
       total: result.total,
       limit: result.limit,
       offset: result.offset,
-      message: 'Topics retrieved successfully'
+      message: "Topics retrieved successfully",
     });
   } catch (error) {
-    console.error('Get topics error:', error);
+    console.error("Get topics error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Error retrieving topics'
+      message: "Error retrieving topics",
     });
   }
 };
@@ -88,8 +106,8 @@ const getTopicById = async (req, res) => {
     if (!topicId || isNaN(topicId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid topic ID',
-        message: 'ID chủ đề không hợp lệ'
+        error: "Invalid topic ID",
+        message: "ID chủ đề không hợp lệ",
       });
     }
 
@@ -98,22 +116,22 @@ const getTopicById = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: topic,
-      message: 'Topic retrieved successfully'
+      message: "Topic retrieved successfully",
     });
   } catch (error) {
-    if (error.message === 'Topic not found') {
+    if (error.message === "Topic not found") {
       return res.status(404).json({
         success: false,
-        error: 'Topic not found',
-        message: 'Không tìm thấy chủ đề'
+        error: "Topic not found",
+        message: "Không tìm thấy chủ đề",
       });
     }
 
-    console.error('Get topic error:', error);
+    console.error("Get topic error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Error retrieving topic'
+      message: "Error retrieving topic",
     });
   }
 };
@@ -128,12 +146,16 @@ const getTopicsByClassroom = async (req, res) => {
     if (!classroomId || isNaN(classroomId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid classroom ID',
-        message: 'ID lớp học không hợp lệ'
+        error: "Invalid classroom ID",
+        message: "ID lớp học không hợp lệ",
       });
     }
 
-    const result = await topicService.getTopicsByClassroom(classroomId, limit, offset);
+    const result = await topicService.getTopicsByClassroom(
+      classroomId,
+      limit,
+      offset,
+    );
 
     return res.status(200).json({
       success: true,
@@ -141,14 +163,14 @@ const getTopicsByClassroom = async (req, res) => {
       total: result.total,
       limit: result.limit,
       offset: result.offset,
-      message: 'Topics retrieved successfully'
+      message: "Topics retrieved successfully",
     });
   } catch (error) {
-    console.error('Get topics by classroom error:', error);
+    console.error("Get topics by classroom error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Error retrieving topics'
+      message: "Error retrieving topics",
     });
   }
 };
@@ -163,12 +185,16 @@ const getTopicsByCreator = async (req, res) => {
     if (!creatorId || isNaN(creatorId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid creator ID',
-        message: 'ID người tạo không hợp lệ'
+        error: "Invalid creator ID",
+        message: "ID người tạo không hợp lệ",
       });
     }
 
-    const result = await topicService.getTopicsByCreator(creatorId, limit, offset);
+    const result = await topicService.getTopicsByCreator(
+      creatorId,
+      limit,
+      offset,
+    );
 
     return res.status(200).json({
       success: true,
@@ -176,14 +202,14 @@ const getTopicsByCreator = async (req, res) => {
       total: result.total,
       limit: result.limit,
       offset: result.offset,
-      message: 'Topics retrieved successfully'
+      message: "Topics retrieved successfully",
     });
   } catch (error) {
-    console.error('Get topics by creator error:', error);
+    console.error("Get topics by creator error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Error retrieving topics'
+      message: "Error retrieving topics",
     });
   }
 };
@@ -198,8 +224,8 @@ const searchTopicsByName = async (req, res) => {
     if (!name) {
       return res.status(400).json({
         success: false,
-        error: 'Name parameter is required',
-        message: 'Tham số tên là bắt buộc'
+        error: "Name parameter is required",
+        message: "Tham số tên là bắt buộc",
       });
     }
 
@@ -211,14 +237,14 @@ const searchTopicsByName = async (req, res) => {
       total: result.total,
       limit: result.limit,
       offset: result.offset,
-      message: 'Topics retrieved successfully'
+      message: "Topics retrieved successfully",
     });
   } catch (error) {
-    console.error('Search topics error:', error);
+    console.error("Search topics error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Error searching topics'
+      message: "Error searching topics",
     });
   }
 };
@@ -232,16 +258,16 @@ const updateTopic = async (req, res) => {
     if (!topicId || isNaN(topicId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid topic ID',
-        message: 'ID chủ đề không hợp lệ'
+        error: "Invalid topic ID",
+        message: "ID chủ đề không hợp lệ",
       });
     }
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'No fields to update',
-        message: 'Không có trường nào để cập nhật'
+        error: "No fields to update",
+        message: "Không có trường nào để cập nhật",
       });
     }
 
@@ -250,30 +276,30 @@ const updateTopic = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: topic,
-      message: 'Topic updated successfully'
+      message: "Topic updated successfully",
     });
   } catch (error) {
-    if (error.message === 'Topic not found') {
+    if (error.message === "Topic not found") {
       return res.status(404).json({
         success: false,
-        error: 'Topic not found',
-        message: 'Không tìm thấy chủ đề'
+        error: "Topic not found",
+        message: "Không tìm thấy chủ đề",
       });
     }
 
-    if (error.message.includes('already exists')) {
+    if (error.message.includes("already exists")) {
       return res.status(409).json({
         success: false,
-        error: 'Topic name already exists',
-        message: 'Tên chủ đề đã tồn tại'
+        error: "Topic name already exists",
+        message: "Tên chủ đề đã tồn tại",
       });
     }
 
-    console.error('Update topic error:', error);
+    console.error("Update topic error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Error updating topic'
+      message: "Error updating topic",
     });
   }
 };
@@ -286,8 +312,8 @@ const deleteTopic = async (req, res) => {
     if (!topicId || isNaN(topicId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid topic ID',
-        message: 'ID chủ đề không hợp lệ'
+        error: "Invalid topic ID",
+        message: "ID chủ đề không hợp lệ",
       });
     }
 
@@ -296,22 +322,22 @@ const deleteTopic = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: { topic_id: topicId },
-      message: 'Topic deleted successfully'
+      message: "Topic deleted successfully",
     });
   } catch (error) {
-    if (error.message === 'Topic not found') {
+    if (error.message === "Topic not found") {
       return res.status(404).json({
         success: false,
-        error: 'Topic not found',
-        message: 'Không tìm thấy chủ đề'
+        error: "Topic not found",
+        message: "Không tìm thấy chủ đề",
       });
     }
 
-    console.error('Delete topic error:', error);
+    console.error("Delete topic error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Error deleting topic'
+      message: "Error deleting topic",
     });
   }
 };
@@ -324,8 +350,8 @@ const deleteTopicsByClassroom = async (req, res) => {
     if (!classroomId || isNaN(classroomId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid classroom ID',
-        message: 'ID lớp học không hợp lệ'
+        error: "Invalid classroom ID",
+        message: "ID lớp học không hợp lệ",
       });
     }
 
@@ -334,14 +360,14 @@ const deleteTopicsByClassroom = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: result,
-      message: 'Topics deleted successfully'
+      message: "Topics deleted successfully",
     });
   } catch (error) {
-    console.error('Delete topics error:', error);
+    console.error("Delete topics error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Error deleting topics'
+      message: "Error deleting topics",
     });
   }
 };
@@ -349,21 +375,23 @@ const deleteTopicsByClassroom = async (req, res) => {
 // Get topic statistics
 const getTopicStatistics = async (req, res) => {
   try {
-    const classroomId = req.query.classroom_id ? parseInt(req.query.classroom_id) : null;
+    const classroomId = req.query.classroom_id
+      ? parseInt(req.query.classroom_id)
+      : null;
 
     const stats = await topicService.getTopicStatistics(classroomId);
 
     return res.status(200).json({
       success: true,
       data: stats,
-      message: 'Topic statistics retrieved successfully'
+      message: "Topic statistics retrieved successfully",
     });
   } catch (error) {
-    console.error('Get topic statistics error:', error);
+    console.error("Get topic statistics error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Error retrieving topic statistics'
+      message: "Error retrieving topic statistics",
     });
   }
 };
@@ -378,5 +406,5 @@ module.exports = {
   updateTopic,
   deleteTopic,
   deleteTopicsByClassroom,
-  getTopicStatistics
+  getTopicStatistics,
 };

@@ -111,6 +111,23 @@ async function getClassroomStudents(req, res) {
   }
 }
 
+async function getMyClasses(req, res) {
+  try {
+    const userId = req.user?.user_id;
+    const userRole = req.user?.role || req.user?.code;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const result = await classroomServices.getMyClasses(userId, userRole);
+    return res.status(200).json(result);
+  } catch (err) {
+    const statusCode = err.status || 500;
+    return res.status(statusCode).json({ error: err.message });
+  }
+}
+
 module.exports = {
   createClassroom,
   getClassrooms,
@@ -120,4 +137,5 @@ module.exports = {
   addStudentToClassroom,
   removeStudentFromClassroom,
   getClassroomStudents,
+  getMyClasses,
 };

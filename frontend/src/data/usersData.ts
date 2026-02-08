@@ -15,7 +15,10 @@ export interface UserItem {
 }
 
 export const roleLabels: Record<string, string> = {
+  SUPER_ADMIN: "Quản trị tối cao",
   ADMIN: "Quản trị viên",
+  CENTER_ADMIN: "Quản lý Sở/Trung tâm",
+  SCHOOL_ADMIN: "Quản lý Trường học",
   FACILITY_MANAGER: "Quản lý cơ sở",
   TEACHER: "Giáo viên",
   STUDENT: "Học sinh",
@@ -24,7 +27,10 @@ export const roleLabels: Record<string, string> = {
 };
 
 export const roleColors: Record<string, string> = {
+  SUPER_ADMIN: "bg-red-100 text-red-800",
   ADMIN: "bg-purple-100 text-purple-800",
+  CENTER_ADMIN: "bg-blue-100 text-blue-800",
+  SCHOOL_ADMIN: "bg-indigo-100 text-indigo-800",
   FACILITY_MANAGER: "bg-blue-100 text-blue-800",
   TEACHER: "bg-green-100 text-green-800",
   STUDENT: "bg-amber-100 text-amber-800",

@@ -30,6 +30,11 @@ import {
   createWord,
   deleteWord,
 } from "@/services/dictionaryService";
+import {
+  fetchAllTopics,
+  createTopic,
+  TopicItem,
+} from "@/services/topicService";
 import { removeVietnameseTones } from "@/shared/utils/text";
 import { API_BASE_URL } from "@/core/config/api";
 
@@ -58,6 +63,7 @@ export function DictionaryManagementComponent() {
 
   // State quản lý dữ liệu
   const [words, setWords] = useState<DictionaryItem[]>([]);
+  const [topics, setTopics] = useState<TopicItem[]>([]);
 
   // State cho modal xác nhận xóa
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -66,7 +72,7 @@ export function DictionaryManagementComponent() {
   // State for Create Form
   const [formData, setFormData] = useState({
     word: "",
-    category: "Chào hỏi",
+    category: "",
     level: "easy",
     videoUrl: "",
     imageUrl: "",
@@ -75,7 +81,7 @@ export function DictionaryManagementComponent() {
   });
   const [activeTab, setActiveTab] = useState<"single" | "multiple">("single");
   const [multipleData, setMultipleData] = useState<any[]>([
-    { word: "", category: "Chào hỏi", vocabularyType: "WORD" },
+    { word: "", category: "", vocabularyType: "WORD" },
   ]);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -83,26 +89,27 @@ export function DictionaryManagementComponent() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await fetchAllWords({
-        content: searchQuery,
-      });
+      const [wordsData, topicsData] = await Promise.all([
+        fetchAllWords({ content: searchQuery }),
+        fetchAllTopics(), // Fetch global topics
+      ]);
 
       // Filter by type
-      let filtered = data;
+      let filtered = wordsData;
       if (filterType !== "all") {
         filtered = filtered.filter((w) => w.vocabularyType === filterType);
       }
-      // If backend handles 'content' search, we don't need to filter locally, but to be safe:
+
+      // Client-side search if needed (though backend handles content search)
       if (searchQuery) {
         const normalizedQuery = removeVietnameseTones(searchQuery);
-        filtered = filtered.filter((w) =>
-          removeVietnameseTones(w.word).includes(normalizedQuery),
-        );
+        // Backend search might be partial, so this is just extra safety or if backend search is limited
       }
 
       setWords(filtered);
+      setTopics(topicsData);
     } catch (error) {
-      console.error("Failed to load dictionary", error);
+      console.error("Failed to load dictionary data", error);
     } finally {
       setIsLoading(false);
     }
@@ -116,13 +123,8 @@ export function DictionaryManagementComponent() {
     return () => clearTimeout(timer);
   }, [loadData]);
 
-  const {
-    currentPage,
-    totalPages,
-    paginatedItems,
-    paddedItems,
-    setCurrentPage,
-  } = usePagination(words, ITEMS_PER_PAGE);
+  const { currentPage, totalPages, paginatedItems, setCurrentPage } =
+    usePagination(words, ITEMS_PER_PAGE);
 
   // Mở trang chi tiết
   const openDetailPage = (word: DictionaryItem) => {
@@ -156,34 +158,69 @@ export function DictionaryManagementComponent() {
     }
   };
 
+  const getTopicId = async (topicName: string): Promise<number | null> => {
+    if (!topicName) return null;
+    const existing = topics.find(
+      (t) => t.name.toLowerCase() === topicName.trim().toLowerCase(),
+    );
+    if (existing) return existing.id;
+
+    // Create new topic
+    try {
+      const newTopic = await createTopic({
+        name: topicName,
+        isCommon: true, // Global topic
+        description: "Created from Dictionary Management",
+      });
+      // Update local topics list
+      setTopics((prev) => [...prev, newTopic]);
+      return newTopic.id;
+    } catch (e) {
+      console.error("Failed to create topic", e);
+      return null;
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (activeTab === "single") {
+        const topicId = await getTopicId(formData.category);
         await createWord({
           ...formData,
           status: "published",
+          topic_id: topicId,
         });
       } else {
         const { createMultipleWords } =
           await import("@/services/dictionaryService");
-        await createMultipleWords(
-          multipleData.filter((item) => item.word.trim()),
-        );
+
+        // Process topics for multiple items
+        const itemsToCreate = [];
+        for (const item of multipleData) {
+          if (!item.word.trim()) continue;
+          const tId = await getTopicId(item.category);
+          itemsToCreate.push({
+            ...item,
+            topic_id: tId,
+          });
+        }
+
+        if (itemsToCreate.length > 0) {
+          await createMultipleWords(itemsToCreate);
+        }
       }
       setIsModalOpen(false);
       setFormData({
         word: "",
-        category: "Chào hỏi",
+        category: "",
         level: "easy",
         videoUrl: "",
         imageUrl: "",
         description: "",
         vocabularyType: "WORD",
       });
-      setMultipleData([
-        { word: "", category: "Chào hỏi", vocabularyType: "WORD" },
-      ]);
+      setMultipleData([{ word: "", category: "", vocabularyType: "WORD" }]);
       loadData();
     } catch (error) {
       console.error("Create failed", error);
@@ -194,7 +231,7 @@ export function DictionaryManagementComponent() {
   const addMultipleRow = () => {
     setMultipleData([
       ...multipleData,
-      { word: "", category: "Chào hỏi", vocabularyType: "WORD" },
+      { word: "", category: "", vocabularyType: "WORD" },
     ]);
   };
 
@@ -474,6 +511,36 @@ export function DictionaryManagementComponent() {
                 />
               </div>
 
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  Chủ đề (Topic) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  list="dict-topics-list"
+                  type="text"
+                  placeholder="Nhập hoặc chọn chủ đề..."
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                  required
+                  value={formData.category}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
+                />
+                <datalist id="dict-topics-list">
+                  {topics.map((t) => (
+                    <option key={t.id} value={t.name} />
+                  ))}
+                  <option value="Chào hỏi" />
+                  <option value="Gia đình" />
+                  <option value="Trường học" />
+                  <option value="Động vật" />
+                  <option value="Thể thao" />
+                </datalist>
+                <p className="text-xs text-gray-500 mt-1">
+                  Nhập chủ đề mới để tạo chủ đề.
+                </p>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-gray-700">
                   Mức độ
@@ -633,19 +700,42 @@ export function DictionaryManagementComponent() {
                   className="p-4 border border-gray-100 rounded-2xl bg-gray-50/50 space-y-3 relative group"
                 >
                   <div className="grid grid-cols-1 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase px-1">
-                        Nội dung
-                      </label>
-                      <input
-                        type="text"
-                        value={item.word}
-                        onChange={(e) =>
-                          updateMultipleRow(index, "word", e.target.value)
-                        }
-                        placeholder="Từ/Câu..."
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase px-1">
+                          Nội dung
+                        </label>
+                        <input
+                          type="text"
+                          value={item.word}
+                          onChange={(e) =>
+                            updateMultipleRow(index, "word", e.target.value)
+                          }
+                          placeholder="Từ/Câu..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase px-1">
+                          Chủ đề
+                        </label>
+                        <input
+                          type="text"
+                          list={`cat-list-${index}`}
+                          value={item.category}
+                          onChange={(e) =>
+                            updateMultipleRow(index, "category", e.target.value)
+                          }
+                          placeholder="Chủ đề..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                        <datalist id={`cat-list-${index}`}>
+                          {topics.map((t) => (
+                            <option key={t.id} value={t.name} />
+                          ))}
+                        </datalist>
+                      </div>
                     </div>
                   </div>
                   {multipleData.length > 1 && (

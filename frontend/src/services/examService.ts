@@ -1,5 +1,7 @@
 import ExamModel from "@/domain/entities/Exam";
-import { ExamItem } from "@/data/examsData";
+import type { ExamItem } from "@/data/examsData";
+
+export type { ExamItem };
 
 // Helper to normalize exam data from API
 function normalizeExam(exam: any): any {
@@ -17,6 +19,11 @@ function normalizeExam(exam: any): any {
     questions: exam.total_points || exam.questions || 10,
     passingScore: exam.passing_score || exam.passingScore || 5,
     status: exam.status || (exam.is_active ? "ongoing" : "upcoming"),
+    date:
+      exam.date ||
+      (exam.created_date ? exam.created_date.split("T")[0] : "2024-01-01"),
+    time: exam.time || "08:00",
+    students: exam.students || 0,
   };
 }
 
@@ -43,15 +50,27 @@ export async function fetchExamById(id: number): Promise<ExamItem | undefined> {
 }
 
 export async function createExam(data: any) {
+  // Map frontend exam types to backend format
+  const examTypeMap: Record<string, string> = {
+    QUIZ: "MULTIPLE_CHOICE",
+    PRACTICE: "PRACTICAL",
+    MULTIPLE_CHOICE: "MULTIPLE_CHOICE",
+    PRACTICAL: "PRACTICAL",
+  };
+
+  const examType = data.examType || data.exam_type || "QUIZ";
+
   const payload = {
     name: data.name || data.title,
-    class_room_id: data.class_room_id || data.classId,
+    class_room_id: data.class_room_id || data.classroomId || data.classId,
+    organization_id: data.organization_id || data.organizationId,
     is_private: data.is_private || data.isPrivate ? 1 : 0,
-    exam_type: data.examType || data.exam_type || "QUIZ",
+    exam_type: examTypeMap[examType] || "MULTIPLE_CHOICE",
     duration_minutes: data.durationMinutes || data.duration_minutes || 60,
     total_points: data.totalPoints || data.total_points || 10,
     passing_score: data.passingScore || data.passing_score || 5,
     description: data.description || "",
+    created_by: data.creatorId || data.created_by,
     practice_questions: data.practiceQuestions,
     question_ids: data.questionIds,
   };
@@ -62,6 +81,7 @@ export async function updateExam(id: number, data: any) {
   const payload = {
     name: data.name || data.title,
     class_room_id: data.class_room_id || data.classId,
+    organization_id: data.organization_id || data.organizationId,
     is_private:
       data.is_private !== undefined ? (data.is_private ? 1 : 0) : undefined,
     exam_type: data.examType || data.type,

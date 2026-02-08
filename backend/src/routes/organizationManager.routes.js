@@ -10,20 +10,20 @@ const controllers = require("../controllers/organizationManager.controller");
 // Route to get users by organization (teachers, managers, etc.)
 router.get("/", auth.authRequired, controllers.getUsersByOrganization);
 
-// Route to add a manager to an organization (only SUPER_ADMIN or CENTER_ADMIN can add)
+// Route to add a manager to an organization (only SUPER_ADMIN or CENTER_ADMIN or SCHOOL_ADMIN can add)
 router.post(
   "/",
   auth.authRequired,
-  checkOrgRole(["SUPER_ADMIN", "CENTER_ADMIN"]),
+  checkOrgRole(["SUPER_ADMIN", "CENTER_ADMIN", "SCHOOL_ADMIN"]),
   checkOrgScope(),
   controllers.assignOrgRole,
 );
 
-// Route to remove a manager from an organization (only SUPER_ADMIN or CENTER_ADMIN can remove)
+// Route to remove a manager from an organization
 router.delete(
   "/",
   auth.authRequired,
-  checkOrgRole(["SUPER_ADMIN", "CENTER_ADMIN"]),
+  checkOrgRole(["SUPER_ADMIN", "CENTER_ADMIN", "SCHOOL_ADMIN"]),
   checkOrgScope(),
   controllers.revokeOrgRole,
 );

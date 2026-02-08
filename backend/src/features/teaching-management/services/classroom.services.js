@@ -484,6 +484,30 @@ async function addStudentToClassroom(classroomId, studentId, userId) {
       };
     }
 
+    // NEW: Check if student belongs to the same organization as the class
+    // 1. Get classroom organization
+    const [classRows] = await db.query(
+      "SELECT organization_id FROM class_room WHERE class_room_id = ?",
+      [classroomId],
+    );
+    const classOrgId = classRows[0]?.organization_id;
+
+    // 2. Get student organization (from organization_manager)
+    const [studentRows] = await db.query(
+      "SELECT organization_id FROM organization_manager WHERE user_id = ? AND is_primary = 1",
+      [studentId],
+    );
+    const studentOrgId = studentRows[0]?.organization_id;
+
+    // 3. Enforce match if class belongs to an organization
+    if (classOrgId && Number(classOrgId) !== Number(studentOrgId)) {
+      throw {
+        status: 400,
+        message:
+          "Học sinh không thuộc cùng trường với lớp học này. Chỉ có thể thêm học sinh trong cùng trường.",
+      };
+    }
+
     const insertQuery = `
       INSERT INTO class_student (class_room_id, user_id)
       VALUES (?, ?)
@@ -577,6 +601,70 @@ async function getClassroomStudents(classroomId, query) {
     };
   }
 }
+/**
+ * Get classes for the currently logged-in user
+ * - Teachers: Get classes they teach
+ * - Students: Get classes they're enrolled in
+ */
+async function getMyClasses(userId, userRole) {
+  try {
+    if (!userId) {
+      throw {
+        status: 400,
+        message: "User ID is required",
+      };
+    }
+
+    let sqlQuery = `
+      SELECT 
+        c.class_room_id as id,
+        c.content as name,
+        c.description,
+        c.class_code as classCode,
+        c.class_level as classLevel,
+        c.status,
+        c.thumbnail_path as thumbnailPath,
+        c.organization_id as organizationId,
+        ct.user_id as teacherId,
+        c.created_by as createdBy,
+        c.created_date as createdAt,
+        c.is_active as isActive,
+        o.name as organizationName,
+        o.type as organizationType
+      FROM class_room c
+      LEFT JOIN organization o ON c.organization_id = o.organization_id
+      LEFT JOIN class_teacher ct ON c.class_room_id = ct.class_room_id
+    `;
+
+    const params = [];
+
+    // Filter based on user role
+    if (userRole === "TEACHER") {
+      // Teachers get classes they teach
+      sqlQuery += " WHERE ct.user_id = ?";
+      params.push(userId);
+    } else {
+      // Students get classes they're enrolled in
+      sqlQuery +=
+        " WHERE c.class_room_id IN (SELECT class_room_id FROM class_student WHERE user_id = ?)";
+      params.push(userId);
+    }
+
+    sqlQuery += " ORDER BY c.created_date DESC";
+
+    const [classrooms] = await db.query(sqlQuery, params);
+
+    return {
+      data: classrooms,
+      total: classrooms.length,
+    };
+  } catch (err) {
+    throw {
+      status: err.status || 500,
+      message: err.message || "Error fetching user classes",
+    };
+  }
+}
 
 module.exports = {
   createClassroom,
@@ -587,4 +675,5 @@ module.exports = {
   addStudentToClassroom,
   removeStudentFromClassroom,
   getClassroomStudents,
+  getMyClasses,
 };

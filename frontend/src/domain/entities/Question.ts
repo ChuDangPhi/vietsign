@@ -31,7 +31,8 @@ export class QuestionModel extends Base {
   };
 
   getQuestionsByClassroom = async (classroomId: number) => {
-    const res = await this.apiGet(`/classroom/${classroomId}`);
+    // Backend API expects ?class_room_id=...
+    const res = await this.apiGet("", { class_room_id: classroomId });
     return res.data;
   };
 }

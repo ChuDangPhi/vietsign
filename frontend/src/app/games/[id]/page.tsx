@@ -68,8 +68,6 @@ export default function GameRunnerPage() {
         <div className="max-w-4xl mx-auto py-12 px-4 shadow-xl">
           <div className="bg-white rounded-[2rem] p-8 md:p-12 text-center border border-gray-100 shadow-xl overflow-hidden relative">
             {/* Decorative background gradients */}
-            <div className="absolute -top-24 -left-24 w-64 h-64 bg-primary-100/50 rounded-full blur-3xl"></div>
-            <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-blue-100/50 rounded-full blur-3xl"></div>
 
             <div className="relative z-10">
               <h1 className="text-4xl font-black text-gray-900 mb-4">

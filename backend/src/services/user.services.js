@@ -17,9 +17,11 @@ async function createTeacher(payload, createdBy) {
       phoneNumber,
       password: _password,
       organization_id,
+      organizationId,
+      schoolId: _schoolId,
     } = payload || {};
 
-    let schoolId = organization_id;
+    let schoolId = organization_id || organizationId || _schoolId;
     let classRoomId = undefined;
 
     // find classroom id if provided
@@ -83,7 +85,7 @@ async function createTeacher(payload, createdBy) {
     // Insert into organization_manager
     if (schoolId) {
       await db.query(
-        `INSERT INTO organization_manager (user_id, organization_id, role_in_org) VALUES (?, ?, ?)`,
+        `INSERT INTO organization_manager (user_id, organization_id, role_in_org, is_primary) VALUES (?, ?, ?, 1)`,
         [userId, schoolId, "TEACHER"],
       );
     }
@@ -91,7 +93,7 @@ async function createTeacher(payload, createdBy) {
     // insert mapping into class_teacher if classroom found
     if (classRoomId) {
       await db.query(
-        `INSERT INTO class_teacher (teacher_id, classroom_id) VALUES (?, ?)`,
+        `INSERT INTO class_teacher (user_id, class_room_id) VALUES (?, ?)`,
         [userId, classRoomId],
       );
     }
@@ -128,7 +130,13 @@ async function createTeacher(payload, createdBy) {
       }
     }
 
-    return { message: "Teacher created successfully", userId };
+    console.log("Teacher created with ID:", userId);
+    return {
+      message: "Teacher created successfully",
+      userId,
+      id: userId,
+      user_id: userId,
+    };
   } catch (error) {
     throw error;
   }
@@ -336,9 +344,11 @@ async function createStudent(payload, createdBy) {
       phoneNumber,
       password: _password,
       organization_id,
+      organizationId,
+      schoolId: _schoolId,
     } = payload || {};
 
-    let schoolId = organization_id;
+    let schoolId = organization_id || organizationId || _schoolId;
     let classRoomId = undefined;
 
     // find classroom id if provided
@@ -402,7 +412,7 @@ async function createStudent(payload, createdBy) {
     // Insert into organization_manager
     if (schoolId) {
       await db.query(
-        `INSERT INTO organization_manager (user_id, organization_id, role_in_org) VALUES (?, ?, ?)`,
+        `INSERT INTO organization_manager (user_id, organization_id, role_in_org, is_primary) VALUES (?, ?, ?, 1)`,
         [userId, schoolId, "STUDENT"],
       );
     }
@@ -410,7 +420,7 @@ async function createStudent(payload, createdBy) {
     // insert mapping into class_student if classroom found
     if (classRoomId) {
       await db.query(
-        `INSERT INTO class_student (student_id, classroom_id) VALUES (?, ?)`,
+        `INSERT INTO class_student (user_id, class_room_id) VALUES (?, ?)`,
         [userId, classRoomId],
       );
     }
@@ -447,7 +457,13 @@ async function createStudent(payload, createdBy) {
       }
     }
 
-    return { message: "Student created successfully", userId };
+    console.log("Student created with ID:", userId);
+    return {
+      message: "Student created successfully",
+      userId,
+      id: userId,
+      user_id: userId,
+    };
   } catch (error) {
     console.error("DEBUG createStudent ERROR:", error);
     throw error;
@@ -833,8 +849,9 @@ async function createUser(payload, createdBy) {
       address,
       birthDay,
       code,
-      schoolId, // frontend sends schoolId or organization_id
+      schoolId, // frontend sends schoolId or organization_id or organizationId
       organization_id,
+      organizationId, // camelCase from frontend
       role, // fallback if code not sent
     } = payload || {};
 
@@ -842,8 +859,8 @@ async function createUser(payload, createdBy) {
     if (userCode === "FACILITY_MANAGER") userCode = "FACILITY_MANAGER";
     if (userCode === "ADMIN") userCode = "ADMIN";
 
-    // Map Organization ID
-    const finalSchoolId = schoolId || organization_id || null;
+    // Map Organization ID (support all naming conventions)
+    const finalSchoolId = schoolId || organization_id || organizationId || null;
 
     if (!name || !email) {
       const err = new Error("Missing required fields: name, email");

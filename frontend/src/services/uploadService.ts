@@ -6,6 +6,8 @@ export const uploadFile = async (file: File): Promise<string> => {
 
   const response = await http.post("/upload", formData);
 
-  // Return the path from response
+  // Prioritize URL (MinIO public URL)
+  // Backend now returns { path, url, filename }
+  if (response.data.url) return response.data.url;
   return response.data.path;
 };

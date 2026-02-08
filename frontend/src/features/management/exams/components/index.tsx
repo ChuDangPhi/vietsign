@@ -47,8 +47,12 @@ export function ExamsManagement() {
   const { user } = useSelector((state: RootState) => state.admin);
   const userRole = user?.role?.role || user?.code;
   const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(userRole);
-  const isFacilityManager =
-    userRole === "FacilityManager" || userRole === "FACILITY_MANAGER";
+  const isFacilityManager = [
+    "FacilityManager",
+    "FACILITY_MANAGER",
+    "CENTER_ADMIN",
+    "SCHOOL_ADMIN",
+  ].includes(userRole);
   const isTeacher = userRole === "Teacher" || userRole === "TEACHER";
   const userOrgId = user?.organizationId || (user as any)?.organization_id;
   const userId = user?.id || (user as any)?.user_id;
@@ -526,25 +530,42 @@ function CreateExamForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    if (!formData.title?.trim()) {
+      alert("Tên bài kiểm tra là bắt buộc!");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
+      const selectedClass = classes.find(
+        (c) => String(c.id) === String(formData.classId),
+      );
+      const organizationId = selectedClass?.organizationId || null;
+
+      console.log("Submitting exam:", formData);
       await createExam({
         name: formData.title,
         description: "",
         examType: formData.examType,
-        classroomId: Number(formData.classId),
+        classroomId: Number(formData.classId) || null,
+        organizationId,
         durationMinutes: 60,
         totalPoints: 10,
         passingScore: 5,
         questionIds: formData.examType === "QUIZ" ? selectedQuestionIds : [],
         practiceQuestions:
           formData.examType === "PRACTICE" ? practiceQuestions : [],
-        creatorId: 1,
       });
       refresh();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Tạo bài kiểm tra thất bại");
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Tạo bài kiểm tra thất bại";
+      alert(`Lỗi: ${msg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -702,7 +723,11 @@ function CreateExamForm({
                       className="px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none bg-white"
                       required
                     >
-                      <option value="">Chọn chủ đề</option>
+                      <option value="">
+                        {topics.length === 0
+                          ? "Chưa có chủ đề (cần tạo trong Quản lý từ điển)"
+                          : "Chọn chủ đề"}
+                      </option>
                       {topics.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.name}
@@ -722,7 +747,13 @@ function CreateExamForm({
                       required
                       disabled={!q.topicId}
                     >
-                      <option value="">Chọn từ vựng</option>
+                      <option value="">
+                        {!q.topicId
+                          ? "Chọn chủ đề trước"
+                          : (vocabMap[Number(q.topicId)] || []).length === 0
+                            ? "Chưa có từ vựng trong chủ đề này"
+                            : "Chọn từ vựng"}
+                      </option>
                       {(vocabMap[Number(q.topicId)] || []).map((v) => (
                         <option key={v.id} value={v.id}>
                           {v.word}

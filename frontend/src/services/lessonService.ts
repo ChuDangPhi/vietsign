@@ -66,7 +66,6 @@ export async function fetchLessonsByTopic(topicId: number): Promise<Lesson[]> {
   }
 }
 
-/*
 export async function fetchLessonStatistics(
   classroomId: number,
   topicId?: number,
@@ -82,7 +81,6 @@ export async function fetchLessonStatistics(
     return { total: 0, active: 0 };
   }
 }
-*/
 
 export async function createLesson(data: any) {
   // Pass data directly, assuming input follows BE structure
@@ -97,11 +95,9 @@ export async function deleteLesson(id: number) {
   return await LessonModel.deleteLesson(id);
 }
 
-/*
 export async function reorderLessons(
   topicId: number,
   lessons: { lesson_id: number; order_number: number }[],
 ) {
   return await LessonModel.reorderLessons(topicId, lessons);
 }
-*/

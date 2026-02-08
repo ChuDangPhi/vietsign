@@ -23,43 +23,40 @@ async function createExam(data, userId) {
       practice_questions,
     } = data;
 
+    const isQuiz = exam_type === "MULTIPLE_CHOICE";
+    const isPractice = exam_type === "PRACTICAL";
+
     if (!name) {
       throw { status: 400, message: "Exam name is required" };
     }
 
     const query = `
       INSERT INTO exam (
-        name, 
-        exam_type, 
-        class_room_id, 
-        duration_minutes, 
-        total_points, 
-        passing_score, 
-        description, 
+        name,
+        class_room_id,
         is_private, 
         created_by, 
         created_date, 
         modified_date
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      VALUES (?, ?, ?, ?, NOW(), NOW())
     `;
+
+    // Note: duration_minutes, total_points, passing_score, description, organization_id
+    // are currently NOT in the database schema for 'exam' table.
+    // They are ignored here to prevent SQL errors.
 
     const [result] = await connection.execute(query, [
       name,
-      exam_type || "QUIZ",
       class_room_id || null,
-      duration_minutes || 60,
-      total_points || 10,
-      passing_score || 5,
-      description || null,
       is_private ? 1 : 0,
-      userId,
+      userId || null,
     ]);
 
     const examId = result.insertId;
 
     // Handle Question Mappings if QUIZ
-    if (exam_type === "QUIZ" && Array.isArray(question_ids)) {
+    if (isQuiz && Array.isArray(question_ids)) {
       for (const qId of question_ids) {
         await connection.execute(
           "INSERT INTO question_exam_mapping (exam_id, question_id) VALUES (?, ?)",
@@ -69,7 +66,7 @@ async function createExam(data, userId) {
     }
 
     // Handle Practice Questions if PRACTICE
-    if (exam_type === "PRACTICE" && Array.isArray(practice_questions)) {
+    if (isPractice && Array.isArray(practice_questions)) {
       for (const pq of practice_questions) {
         await connection.execute(
           "INSERT INTO vocabulary_exam_mapping (exam_id, vocabulary_id, content, created_date) VALUES (?, ?, ?, NOW())",
@@ -127,10 +124,10 @@ async function getExams(filters) {
       }
     }
 
-    if (exam_type) {
-      whereClause += " AND exam_type = ?";
-      params.push(exam_type);
-    }
+    // if (exam_type) {
+    //   whereClause += " AND exam_type = ?";
+    //   params.push(exam_type);
+    // }
 
     // Get total count
     const [countRows] = await db.execute(
@@ -163,8 +160,27 @@ async function getExamById(examId) {
 
     const exam = results[0];
 
+    // Fallback: Infer exam_type if not present in DB
+    // Check question mapping first
+    const [qMap] = await db.execute(
+      "SELECT 1 FROM question_exam_mapping WHERE exam_id = ? LIMIT 1",
+      [examId],
+    );
+    const [vMap] = await db.execute(
+      "SELECT 1 FROM vocabulary_exam_mapping WHERE exam_id = ? LIMIT 1",
+      [examId],
+    );
+
+    const actualType =
+      exam.exam_type ||
+      (qMap.length > 0
+        ? "MULTIPLE_CHOICE"
+        : vMap.length > 0
+          ? "PRACTICAL"
+          : "MULTIPLE_CHOICE");
+
     // Fetch associated content based on type
-    if (exam.exam_type === "PRACTICE") {
+    if (actualType === "PRACTICAL" || actualType === "PRACTICE") {
       const [practiceQuestions] = await db.execute(
         `
         SELECT 
@@ -258,26 +274,8 @@ async function updateExam(examId, data) {
       fields.push("is_private = ?");
       params.push(is_private ? 1 : 0);
     }
-    if (exam_type) {
-      fields.push("exam_type = ?");
-      params.push(exam_type);
-    }
-    if (duration_minutes !== undefined) {
-      fields.push("duration_minutes = ?");
-      params.push(duration_minutes);
-    }
-    if (total_points !== undefined) {
-      fields.push("total_points = ?");
-      params.push(total_points);
-    }
-    if (passing_score !== undefined) {
-      fields.push("passing_score = ?");
-      params.push(passing_score);
-    }
-    if (description !== undefined) {
-      fields.push("description = ?");
-      params.push(description);
-    }
+    // Note: Other fields (exam_type, duration, description, etc.) are ignored
+    // as they don't exist in the current schema.
 
     if (fields.length > 0) {
       fields.push("modified_date = NOW()");
@@ -324,7 +322,130 @@ async function updateExam(examId, data) {
   }
 }
 
-async function submitExam(examId, studentId, answers) {
+async function deleteExam(examId) {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.execute(
+      "DELETE FROM question_exam_mapping WHERE exam_id = ?",
+      [examId],
+    );
+    await connection.execute(
+      "DELETE FROM vocabulary_exam_mapping WHERE exam_id = ?",
+      [examId],
+    );
+    await connection.execute("DELETE FROM exam_attempt WHERE exam_id = ?", [
+      examId,
+    ]);
+    const [result] = await connection.execute(
+      "DELETE FROM exam WHERE exam_id = ?",
+      [examId],
+    );
+    await connection.commit();
+    return { success: result.affectedRows > 0 };
+  } catch (err) {
+    await connection.rollback();
+    throw { status: 500, message: err.message };
+  } finally {
+    connection.release();
+  }
+}
+
+async function getExamsByCreator(creatorId, limit, offset) {
+  try {
+    const [exams] = await db.execute(
+      "SELECT * FROM exam WHERE created_by = ? ORDER BY exam_id DESC LIMIT ? OFFSET ?",
+      [creatorId, parseInt(limit), parseInt(offset)],
+    );
+    return { data: exams, total: exams.length };
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+async function getExamsByType(examType, limit, offset) {
+  try {
+    // Note: This is inefficient since exam_type is not in DB
+    // We'd normally filter by exam_type column.
+    // For now, we return exams that have at least one mapping of that type.
+    let query = "";
+    if (examType === "MULTIPLE_CHOICE") {
+      query =
+        "SELECT DISTINCT e.* FROM exam e JOIN question_exam_mapping qem ON e.exam_id = qem.exam_id";
+    } else {
+      query =
+        "SELECT DISTINCT e.* FROM exam e JOIN vocabulary_exam_mapping vem ON e.exam_id = vem.exam_id";
+    }
+    query += " ORDER BY e.exam_id DESC LIMIT ? OFFSET ?";
+    const [exams] = await db.execute(query, [
+      parseInt(limit),
+      parseInt(offset),
+    ]);
+    return { data: exams, total: exams.length };
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+async function deleteExamsByClassroom(classroomId) {
+  try {
+    const [exams] = await db.execute(
+      "SELECT exam_id FROM exam WHERE class_room_id = ?",
+      [classroomId],
+    );
+    for (const e of exams) {
+      await deleteExam(e.exam_id);
+    }
+    return { success: true, affectedRows: exams.length };
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+async function getExamResults(examId, studentId) {
+  try {
+    let query = "SELECT * FROM exam_attempt WHERE exam_id = ?";
+    const params = [examId];
+    if (studentId) {
+      query += " AND user_id = ?";
+      params.push(studentId);
+    }
+    const [results] = await db.execute(query, params);
+    return results;
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+async function getExamStatistics(classroomId, examType) {
+  try {
+    let query = "SELECT COUNT(*) as total FROM exam WHERE 1=1";
+    const params = [];
+    if (classroomId) {
+      query += " AND class_room_id = ?";
+      params.push(classroomId);
+    }
+    // examType filtering is hard without the column, but we'll ignore it for now as it's optional
+    const [rows] = await db.execute(query, params);
+    return rows[0];
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+async function getStudentExamAttempts(studentId, limit, offset) {
+  try {
+    const [attempts] = await db.execute(
+      "SELECT ea.*, e.name as exam_name FROM exam_attempt ea JOIN exam e ON ea.exam_id = e.exam_id WHERE ea.user_id = ? ORDER BY ea.started_at DESC LIMIT ? OFFSET ?",
+      [studentId, parseInt(limit), parseInt(offset)],
+    );
+    return { data: attempts, total: attempts.length };
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+async function submitExam(examId, studentId, score, answers, timeSpent) {
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
@@ -332,11 +453,33 @@ async function submitExam(examId, studentId, answers) {
     // Insert into exam_attempt
     const [attemptResult] = await connection.execute(
       "INSERT INTO exam_attempt (exam_id, user_id, score, started_at, finished_at) VALUES (?, ?, ?, NOW(), NOW())",
-      [examId, studentId, 0],
+      [examId, studentId, score || 0],
     );
 
+    const attemptId = attemptResult.insertId;
+
+    // Save individual question responses if provided
+    if (Array.isArray(answers)) {
+      for (const ans of answers) {
+        // ans expected to have questionId, isCorrect, score, selectedAnswers (array of IDs)
+        await connection.execute(
+          `INSERT INTO question_exam_user_mapping 
+           (exam_id, question_id, user_id, attempt_id, is_correct, score) 
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            examId,
+            ans.questionId || ans.id,
+            studentId,
+            attemptId,
+            ans.isCorrect ? 1 : 0,
+            ans.score || 0,
+          ],
+        );
+      }
+    }
+
     await connection.commit();
-    return { success: true, attemptId: attemptResult.insertId };
+    return { success: true, attemptId, score };
   } catch (err) {
     await connection.rollback();
     throw { status: 500, message: err.message };
@@ -349,6 +492,13 @@ module.exports = {
   createExam,
   getExams,
   getExamById,
+  getExamsByCreator,
+  getExamsByType,
   updateExam,
+  deleteExam,
+  deleteExamsByClassroom,
   submitExam,
+  getExamResults,
+  getExamStatistics,
+  getStudentExamAttempts,
 };

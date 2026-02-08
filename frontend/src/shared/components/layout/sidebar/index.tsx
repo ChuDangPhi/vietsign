@@ -73,33 +73,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/home",
       allowedRoles: [
         "ADMIN",
+        "SUPER_ADMIN",
         "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
         "TEACHER",
         "STUDENT",
         "USER",
         "TEST",
       ],
     },
-    {
-      icon: <LayoutDashboard size={22} />,
-      label: "Dashboard",
-      path: "/dashboard",
-      allowedRoles: [
-        "ADMIN",
-        "FACILITY_MANAGER",
-        "TEACHER",
-        "STUDENT",
-        "USER",
-        "TEST",
-      ],
-    },
+    // {
+    //   icon: <LayoutDashboard size={22} />,
+    //   label: "Dashboard",
+    //   path: "/dashboard",
+    //   allowedRoles: [
+    //     "ADMIN",
+    //     "SUPER_ADMIN",
+    //     "FACILITY_MANAGER",
+    //     "CENTER_ADMIN",
+    //     "SCHOOL_ADMIN",
+    //     "TEACHER",
+    //     "STUDENT",
+    //     "USER",
+    //     "TEST",
+    //   ],
+    // },
     {
       icon: <MessageCircle size={22} />,
       label: "Tin nhắn",
       path: "/messages",
       allowedRoles: [
         "ADMIN",
+        "SUPER_ADMIN",
         "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
         "TEACHER",
         "STUDENT",
         "USER",
@@ -112,7 +121,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <Users size={22} />,
       label: "Quản lý người dùng",
       path: "/users-management",
-      allowedRoles: ["ADMIN", "FACILITY_MANAGER", "TEST"],
+      allowedRoles: [
+        "ADMIN",
+        "SUPER_ADMIN",
+        "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
+        "TEST",
+      ],
     },
     // {
     //   icon: <Shield size={22} />,
@@ -124,19 +140,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <Building size={22} />,
       label: "Quản lý tổ chức",
       path: "/organizations-management",
-      allowedRoles: ["ADMIN", "FACILITY_MANAGER", "TEST"],
+      allowedRoles: [
+        "ADMIN",
+        "SUPER_ADMIN",
+        "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
+        "TEST",
+      ],
     },
     {
       icon: <GraduationCap size={22} />,
       label: "Quản lý học tập",
       path: "/learning-management",
-      allowedRoles: ["ADMIN", "FACILITY_MANAGER", "TEACHER", "TEST"],
+      allowedRoles: ["ADMIN", "SUPER_ADMIN", "TEST"],
     },
     {
       icon: <BookOpenCheck size={22} />,
       label: "Quản lý lớp học",
       path: "/classes-management",
-      allowedRoles: ["ADMIN", "FACILITY_MANAGER", "TEACHER", "TEST"],
+      allowedRoles: [
+        "ADMIN",
+        "SUPER_ADMIN",
+        "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
+        "TEACHER",
+        "TEST",
+      ],
     },
     {
       icon: <Bell size={22} />,
@@ -144,7 +175,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/notifications",
       allowedRoles: [
         "ADMIN",
+        "SUPER_ADMIN",
         "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
         "TEACHER",
         "STUDENT",
         "USER",
@@ -155,25 +189,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <Wrench size={22} />,
       label: "Quản lý công cụ",
       path: "/tools",
-      allowedRoles: ["ADMIN", "TEST"],
+      allowedRoles: ["ADMIN", "SUPER_ADMIN", "TEST"],
     },
     {
       icon: <ClipboardCheck size={22} />,
       label: "Quản lý kiểm tra",
       path: "/exams-management",
-      allowedRoles: ["ADMIN", "FACILITY_MANAGER", "TEACHER", "TEST"],
+      allowedRoles: [
+        "ADMIN",
+        "SUPER_ADMIN",
+        "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
+        "TEACHER",
+        "TEST",
+      ],
     },
     {
       icon: <BarChart3 size={22} />,
       label: "Thống kê",
       path: "/statistics",
-      allowedRoles: ["ADMIN", "FACILITY_MANAGER", "TEACHER", "TEST"],
+      allowedRoles: [
+        "ADMIN",
+        "SUPER_ADMIN",
+        "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
+        "TEACHER",
+        "TEST",
+      ],
     },
     {
       icon: <Library size={22} />,
       label: "Quản lý từ điển",
       path: "/dictionary-management",
-      allowedRoles: ["ADMIN", "TEST"],
+      allowedRoles: ["ADMIN", "SUPER_ADMIN", "TEST"],
     },
     // {
     //   icon: <Gamepad2 size={22} />,
@@ -185,7 +235,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <HelpCircle size={22} />,
       label: "Quản lý câu hỏi",
       path: "/questions-management",
-      allowedRoles: ["ADMIN", "FACILITY_MANAGER", "TEACHER", "TEST"],
+      allowedRoles: [
+        "ADMIN",
+        "SUPER_ADMIN",
+        "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
+        "TEACHER",
+        "TEST",
+      ],
     },
 
     // === CHỈ FACILITY_MANAGER, TEACHER, STUDENT, USER ===
@@ -195,7 +253,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/vocabularies",
       allowedRoles: [
         "ADMIN",
+        "SUPER_ADMIN",
         "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
         "TEACHER",
         "STUDENT",
         "USER",
@@ -210,7 +271,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/games",
       allowedRoles: [
         "ADMIN",
+        "SUPER_ADMIN",
         "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
         "TEACHER",
         "STUDENT",
         "USER",
@@ -223,7 +287,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/practice",
       allowedRoles: [
         "ADMIN",
+        "SUPER_ADMIN",
         "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
         "TEACHER",
         "STUDENT",
         "USER",
@@ -236,7 +303,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <PenLine size={22} />,
       label: "Chấm điểm",
       path: "/grading",
-      allowedRoles: ["ADMIN", "FACILITY_MANAGER", "TEACHER", "TEST"],
+      allowedRoles: [
+        "ADMIN",
+        "SUPER_ADMIN",
+        "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
+        "TEACHER",
+        "TEST",
+      ],
     },
 
     // === CHỈ STUDENT & USER ===
@@ -250,7 +325,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <BookOpenCheck size={22} />,
       label: "Lớp học của tôi",
       path: "/study",
-      allowedRoles: ["ADMIN", "TEACHER", "STUDENT", "TEST"],
+      allowedRoles: ["ADMIN", "SUPER_ADMIN", "TEACHER", "STUDENT", "TEST"],
     },
 
     // === TRANG BỔ SUNG ===
@@ -260,7 +335,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/learn",
       allowedRoles: [
         "ADMIN",
+        "SUPER_ADMIN",
         "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
         "TEACHER",
         "STUDENT",
         "USER",
@@ -273,7 +351,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/daily-signs",
       allowedRoles: [
         "ADMIN",
+        "SUPER_ADMIN",
         "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
         "TEACHER",
         "STUDENT",
         "USER",
@@ -285,7 +366,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Lọc menu dựa trên role của user hiện tại
   const filteredMenuItems = useMemo(() => {
     if (!user) return [];
-    return MENU_ITEMS.filter((item) => item.allowedRoles.includes(user.code));
+    const userRole = user.code;
+    return MENU_ITEMS.filter((item) => {
+      // Admin and Super Admin can access everything
+      if (["ADMIN", "SUPER_ADMIN", "TEST"].includes(userRole)) return true;
+      return item.allowedRoles.includes(userRole);
+    });
   }, [user]);
 
   const isActive = (path: string) => pathname === path;

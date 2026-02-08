@@ -7,12 +7,15 @@ export interface TopicItem {
   classroomId?: number;
 }
 
-export async function fetchAllTopics(query?: any): Promise<TopicItem[]> {
+export async function fetchAllTopics(query: any = {}): Promise<TopicItem[]> {
   try {
-    const response = await Topics.getTopics(query);
+    const response = await Topics.getTopics({ limit: 1000, ...query });
     const data = response.data || response;
-    return Array.isArray(data)
-      ? data.map((t: any) => ({
+    // Check if data is array or object with data property
+    const items = Array.isArray(data) ? data : data.data || [];
+
+    return Array.isArray(items)
+      ? items.map((t: any) => ({
           id: t.topic_id || t.id,
           name: t.name || t.content,
           classroomId: t.classroom_id,
@@ -30,8 +33,10 @@ export async function fetchTopicsByClassroom(
   try {
     const response = await Topics.getTopicsByClassroom(classroomId);
     const data = response.data || response;
-    return Array.isArray(data)
-      ? data.map((t: any) => ({
+    const items = Array.isArray(data) ? data : data.data || [];
+
+    return Array.isArray(items)
+      ? items.map((t: any) => ({
           id: t.topic_id || t.id,
           name: t.name || t.content,
           classroomId: t.classroom_id,
@@ -49,8 +54,10 @@ export async function fetchVocabulariesByTopic(
   try {
     const response = await Dictionary.getAllWords({ topic_id: topicId });
     const data = response.data || response;
-    return Array.isArray(data)
-      ? data.map((v: any) => ({
+    const items = Array.isArray(data) ? data : data.data || [];
+
+    return Array.isArray(items)
+      ? items.map((v: any) => ({
           id: v.vocabulary_id || v.id,
           word: v.word || v.content,
         }))
@@ -58,5 +65,15 @@ export async function fetchVocabulariesByTopic(
   } catch (error) {
     console.error("Error fetching vocabularies by topic:", error);
     return [];
+  }
+}
+
+export async function createTopic(data: any): Promise<any> {
+  try {
+    const response = await Topics.createTopic(data);
+    return response.data || response;
+  } catch (error) {
+    console.error("Error creating topic:", error);
+    throw error;
   }
 }

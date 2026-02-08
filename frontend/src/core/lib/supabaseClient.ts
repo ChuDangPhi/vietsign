@@ -1,12 +1,94 @@
 import { createClient } from "@supabase/supabase-js";
 import { getEnv } from "@/shared/utils/env";
 
-const supabaseUrl =
-  getEnv("NEXT_PUBLIC_SUPABASE_URL") || "https://your-project.supabase.co";
-const supabaseAnonKey =
-  getEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY") || "your-anon-key";
+const defaultUrl = "https://your-project.supabase.co";
+const defaultKey = "your-anon-key";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL") || defaultUrl;
+const supabaseAnonKey =
+  getEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY") || defaultKey;
+
+const isConfigured =
+  supabaseUrl !== defaultUrl &&
+  supabaseAnonKey !== defaultKey &&
+  supabaseUrl.startsWith("http");
+
+// Mock client builder to prevent crashes when not configured
+const createMockClient = () => {
+  console.warn(
+    "Supabase is not configured. Using mock client to prevent errors.",
+  );
+  const mockChain = () => ({
+    select: () => mockChain(),
+    insert: () => mockChain(),
+    update: () => mockChain(),
+    delete: () => mockChain(),
+    eq: () => mockChain(),
+    neq: () => mockChain(),
+    gt: () => mockChain(),
+    lt: () => mockChain(),
+    gte: () => mockChain(),
+    lte: () => mockChain(),
+    in: () => mockChain(),
+    is: () => mockChain(),
+    order: () => mockChain(),
+    limit: () => mockChain(),
+    single: () =>
+      Promise.resolve({
+        data: null,
+        error: { message: "Supabase not configured" },
+      }),
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    then: (resolve: any) => resolve({ data: [], error: null }),
+  });
+
+  return {
+    from: () => mockChain(),
+    channel: () => ({
+      on: () => ({ subscribe: () => {} }),
+      subscribe: () => ({ unsubscribe: () => {} }),
+      unsubscribe: () => {},
+      send: () => Promise.resolve(),
+      track: () => Promise.resolve(),
+    }),
+    auth: {
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      onAuthStateChange: () => ({
+        data: { subscription: { unsubscribe: () => {} } },
+      }),
+      getSession: () =>
+        Promise.resolve({ data: { session: null }, error: null }),
+      signInWithPassword: () =>
+        Promise.resolve({
+          data: { user: null, session: null },
+          error: { message: "Supabase not configured" },
+        }),
+      signOut: () => Promise.resolve({ error: null }),
+    },
+    storage: {
+      from: () => ({
+        upload: () =>
+          Promise.resolve({
+            data: null,
+            error: { message: "Supabase not configured" },
+          }),
+        getPublicUrl: () => ({ data: { publicUrl: "" } }),
+        download: () =>
+          Promise.resolve({
+            data: null,
+            error: { message: "Supabase not configured" },
+          }),
+      }),
+    },
+    realtime: {
+      setAuth: () => {},
+    },
+  } as any;
+};
+
+export const supabase = isConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createMockClient();
 
 /**
  * Types cho Database (theo schema Supabase của bạn)

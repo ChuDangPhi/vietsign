@@ -66,7 +66,7 @@ export function ModalChooseQuestions({
   };
 
   const filteredQuestions = questions.filter((q) =>
-    q.content.toLowerCase().includes(searchQuery.toLowerCase()),
+    (q.content || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const handleConfirm = () => {

@@ -87,6 +87,11 @@ export const Messages: React.FC = () => {
   const [groupMembers, setGroupMembers] = useState("");
   const [newMemberId, setNewMemberId] = useState("");
 
+  // User search states for creating direct chat
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [showUserSuggestions, setShowUserSuggestions] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
+
   // File upload
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -441,19 +446,45 @@ export const Messages: React.FC = () => {
     }
   };
 
+  // ==================== USER SEARCH FOR CHAT ====================
+  // Filter users based on search query
+  const filteredUserSuggestions = useMemo(() => {
+    if (!userSearchQuery.trim()) return [];
+    const query = userSearchQuery.toLowerCase();
+    return Object.values(usersMap)
+      .filter(
+        (u) =>
+          u.id.toString() !== currentUserId &&
+          (u.name?.toLowerCase().includes(query) ||
+            u.email?.toLowerCase().includes(query)),
+      )
+      .slice(0, 10); // Limit to 10 suggestions
+  }, [userSearchQuery, usersMap, currentUserId]);
+
+  // Handle user selection from suggestions
+  const handleSelectUser = (user: UserItem) => {
+    setSelectedUser(user);
+    setNewConvPartnerId(user.id.toString());
+    setUserSearchQuery(user.name || `User ${user.id}`);
+    setShowUserSuggestions(false);
+  };
+
   // ==================== CREATE DIRECT CHAT ====================
   const handleCreateConversation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newConvPartnerId) return;
+    const partnerId = selectedUser?.id?.toString() || newConvPartnerId;
+    if (!partnerId) return;
 
     try {
       const room = await chatService.getOrCreateDirectRoom(
         currentUserId,
-        newConvPartnerId,
+        partnerId,
       );
       setRooms((prev) => [room, ...prev.filter((r) => r.id !== room.id)]);
       setIsCreateModalOpen(false);
       setNewConvPartnerId("");
+      setUserSearchQuery("");
+      setSelectedUser(null);
       setSelectedRoom(room.id);
     } catch (error) {
       console.error("Error creating conversation:", error);
@@ -971,34 +1002,150 @@ export const Messages: React.FC = () => {
       {/* Create Direct Chat Modal */}
       <Modal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="Chat riêng"
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setUserSearchQuery("");
+          setSelectedUser(null);
+          setShowUserSuggestions(false);
+        }}
+        title="Tìm người dùng"
       >
         <form onSubmit={handleCreateConversation} className="space-y-4">
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              ID Người dùng
+              Tìm kiếm người dùng
             </label>
-            <input
-              type="text"
-              value={newConvPartnerId}
-              onChange={(e) => setNewConvPartnerId(e.target.value)}
-              placeholder="Nhập ID người dùng"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-              required
-            />
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                size={18}
+              />
+              <input
+                type="text"
+                value={userSearchQuery}
+                onChange={(e) => {
+                  setUserSearchQuery(e.target.value);
+                  setShowUserSuggestions(true);
+                  if (!e.target.value.trim()) {
+                    setSelectedUser(null);
+                    setNewConvPartnerId("");
+                  }
+                }}
+                onFocus={() => setShowUserSuggestions(true)}
+                placeholder="Nhập tên hoặc email người dùng..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                autoComplete="off"
+              />
+            </div>
+
+            {/* User Suggestions Dropdown */}
+            {showUserSuggestions && filteredUserSuggestions.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {filteredUserSuggestions.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-sm">
+                      {user.name?.charAt(0)?.toUpperCase() || "U"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">
+                        {user.name || `User ${user.id}`}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {user.email || ""}{" "}
+                        {user.role && (
+                          <span className="text-primary-600">
+                            • {roleLabels[user.role] || user.role}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const room = await chatService.getOrCreateDirectRoom(
+                            currentUserId,
+                            user.id.toString(),
+                          );
+                          setRooms((prev) => [
+                            room,
+                            ...prev.filter((r) => r.id !== room.id),
+                          ]);
+                          setIsCreateModalOpen(false);
+                          setUserSearchQuery("");
+                          setSelectedUser(null);
+                          setShowUserSuggestions(false);
+                          setSelectedRoom(room.id);
+                        } catch (error) {
+                          console.error("Error creating conversation:", error);
+                          alert("Lỗi khi tạo cuộc trò chuyện");
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shrink-0"
+                    >
+                      <MessageCircle size={14} />
+                      Nhắn tin
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* No results message */}
+            {showUserSuggestions &&
+              userSearchQuery.trim() &&
+              filteredUserSuggestions.length === 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500 text-sm">
+                  Không tìm thấy người dùng nào
+                </div>
+              )}
           </div>
-          <div className="flex justify-end gap-2">
+
+          {/* Selected User Preview */}
+          {selectedUser && (
+            <div className="flex items-center gap-3 p-3 bg-primary-50 rounded-lg border border-primary-200">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-sm">
+                {selectedUser.name?.charAt(0)?.toUpperCase() || "U"}
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">
+                  {selectedUser.name || `User ${selectedUser.id}`}
+                </p>
+                <p className="text-xs text-gray-500">{selectedUser.email}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedUser(null);
+                  setUserSearchQuery("");
+                  setNewConvPartnerId("");
+                }}
+                className="p-1 hover:bg-primary-100 rounded-full"
+              >
+                <X size={16} className="text-gray-500" />
+              </button>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
-              onClick={() => setIsCreateModalOpen(false)}
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                setUserSearchQuery("");
+                setSelectedUser(null);
+              }}
               className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+              disabled={!selectedUser && !newConvPartnerId}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Bắt đầu chat
             </button>

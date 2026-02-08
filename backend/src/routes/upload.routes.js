@@ -2,44 +2,55 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
+const { minioClient, bucketName } = require("../utils/minio");
 
-// Ensure upload directory exists
-const uploadDir = path.join(__dirname, "../../uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    // preserve extension
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
-
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-router.post("/", upload.single("file"), (req, res) => {
+router.post("/", upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: "No file uploaded" });
   }
-  // Return the path accessible via static serving
-  const relativePath = `/uploads/${req.file.filename}`;
-  // You might want to return full URL or just path. For now, path.
-  // Assuming the client will prepend domain or use it as is if same domain.
-  // Actually, client is localhost:3000 (FE), server is localhost:3001 ?
-  // Need to check ports.
-  // Usually full URL is safer if on different ports, but path is fine if stored in DB.
 
-  res.json({
-    message: "File uploaded successfully",
-    path: relativePath,
-    filename: req.file.filename,
-  });
+  try {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const filename = uniqueSuffix + path.extname(req.file.originalname);
+
+    // Upload to MinIO
+    await minioClient.putObject(
+      bucketName,
+      filename,
+      req.file.buffer,
+      req.file.size,
+      { "Content-Type": req.file.mimetype },
+    );
+
+    // Return the relative path and information
+    // For MinIO, the path usually prefix with bucket
+    const relativePath = `/uploads/${filename}`;
+
+    // Full external URL (optional, can be constructed by FE)
+    // Note: In docker environment, internal endpoint is 'minio',
+    // but browser needs 'localhost' or external domain.
+    const publicUrl = process.env.MINIO_PUBLIC_URL
+      ? `${process.env.MINIO_PUBLIC_URL}/${bucketName}/${filename}`
+      : `http://localhost:9000/${bucketName}/${filename}`;
+
+    res.json({
+      message: "File uploaded successfully to MinIO",
+      path: relativePath,
+      filename: filename,
+      url: publicUrl,
+    });
+  } catch (error) {
+    console.error("MinIO upload error:", error);
+    res
+      .status(500)
+      .json({
+        message: "Error uploading file to storage",
+        error: error.message,
+      });
+  }
 });
 
 module.exports = router;

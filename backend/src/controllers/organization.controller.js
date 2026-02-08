@@ -209,12 +209,10 @@ async function updateOrganization(req, res) {
     );
 
     if (!result || result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({
-          message: "Organization not found (no rows updated)",
-          organization_id: orgId,
-        });
+      return res.status(404).json({
+        message: "Organization not found (no rows updated)",
+        organization_id: orgId,
+      });
     }
 
     const [rows] = await db.query(

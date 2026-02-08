@@ -125,12 +125,18 @@ export async function fetchUserById(id: number): Promise<UserItem | undefined> {
 }
 
 /**
- * Lấy users theo role
+ * Lấy users theo role và tùy chọn theo organization
  */
-export async function fetchUsersByRole(role: string): Promise<UserItem[]> {
+export async function fetchUsersByRole(
+  role: string,
+  organizationId?: number,
+): Promise<UserItem[]> {
   try {
-    const result = await fetchAllUsers({ role });
-    return result.users;
+    // Request with a larger limit to ensure we get enough candidates
+    const result = await fetchAllUsers({ role, organizationId, limit: 1000 });
+
+    // Explicitly filter on client side to ensure only users with the target role are returned
+    return result.users.filter((u) => u.role === role);
   } catch (error) {
     console.error(`Error fetching users by role ${role}`, error);
     return [];
@@ -144,11 +150,33 @@ export async function fetchUsersByFacility(
   organizationId: number,
 ): Promise<UserItem[]> {
   try {
-    const [teachersRes, studentsRes] = await Promise.all([
-      fetchAllUsers({ role: "TEACHER", organizationId }),
-      fetchAllUsers({ role: "STUDENT", organizationId }),
+    // Fetch generic users (which includes Admins, Managers), Teachers, and Students
+    // We fetch separately to ensure we cover all role-specific endpoints if they exist
+    const [genericRes, teachersRes, studentsRes] = await Promise.all([
+      fetchAllUsers({ organizationId, limit: 1000 }), // Gets Admins/Managers (and maybe others)
+      fetchAllUsers({ role: "TEACHER", organizationId, limit: 1000 }),
+      fetchAllUsers({ role: "STUDENT", organizationId, limit: 1000 }),
     ]);
-    return [...teachersRes.users, ...studentsRes.users];
+
+    // Client-side validation: ensure they actually belong to the organization
+    // (in case backend ignores the filter on the generic endpoint)
+    const validGeneric = genericRes.users.filter(
+      (u) => u.organizationId === organizationId,
+    );
+
+    // Combine all unique users
+    const allUsers = [
+      ...validGeneric,
+      ...teachersRes.users,
+      ...studentsRes.users,
+    ];
+
+    // Unique by ID
+    const uniqueUsers = Array.from(
+      new Map(allUsers.map((u) => [u.id, u])).values(),
+    );
+
+    return uniqueUsers;
   } catch (error) {
     console.error("Error fetching users by facility:", error);
     return [];
@@ -184,16 +212,24 @@ export async function createUser(data: any): Promise<any> {
       classRoomName: data.className,
       schoolName: data.schoolName || data.facilityName,
       organization_id: data.organizationId, // Map to organization_id (underscore for BE)
+      code: data.role || data.code, // Pass role code for generic user creation
     };
 
+    let res;
     if (data.role === "TEACHER" || payload.code === "TEACHER") {
-      return await UserModel.createTeacher(payload);
+      res = await UserModel.createTeacher(payload);
     } else if (data.role === "STUDENT" || payload.code === "STUDENT") {
-      return await UserModel.createStudent(payload);
+      res = await UserModel.createStudent(payload);
+    } else {
+      // Fallback for other roles or generic create if supported
+      res = await UserModel.createUser(payload);
     }
 
-    // Fallback for other roles or generic create if supported
-    return await UserModel.createUser(payload);
+    // Backend returns { userId }, frontend needs { id } or { user_id }
+    if (res && res.userId) {
+      return { ...res, id: res.userId, user_id: res.userId };
+    }
+    return res;
   } catch (error) {
     console.error("API create user failed", error);
     throw error;

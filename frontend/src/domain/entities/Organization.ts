@@ -68,6 +68,12 @@ class OrganizationManagerModelClass extends Base {
     return res.data;
   };
 
+  // GET /organization-managers?user_id=X - Get organizations managed by a user
+  getByUser = async (userId: number | string): Promise<any> => {
+    const res = await this.apiGet("", { user_id: userId });
+    return res.data;
+  };
+
   assign = async (data: {
     organization_id: string | number;
     user_id: string | number;

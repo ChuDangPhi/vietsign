@@ -13,8 +13,8 @@ export interface OrganizationItem {
   parentId: number | null; // -1 nếu là Tỉnh, ID của Province nếu là Sở, ID của Sở nếu là Trường
   // Thông tin địa chỉ
   street: string; // Số nhà, đường (tên mới)
-  ward: number; // Mã phường/xã (tên mới)
-  city: number; // Mã tỉnh/thành phố (tên mới)
+  ward: number | string; // Mã phường/xã (tên mới) hoặc tên
+  city: number | string; // Mã tỉnh/thành phố (tên mới) hoặc tên
   address?: string; // Địa chỉ đầy đủ
   // Thông tin liên hệ
   phone: string;
@@ -71,7 +71,9 @@ export function getOrganizationById(id: number): OrganizationItem | undefined {
 // Alias for backward compatibility
 export const getFacilityById = getOrganizationById;
 
-export function getOrganizationsByCity(cityCode: number): OrganizationItem[] {
+export function getOrganizationsByCity(
+  cityCode: number | string,
+): OrganizationItem[] {
   return mockOrganizations.filter((f) => f.city === cityCode);
 }
 
@@ -86,25 +88,26 @@ export function getActiveOrganizations(): OrganizationItem[] {
 export const getActiveFacilities = getActiveOrganizations;
 
 export function getOrganizationsGroupedByCity(): Record<
-  number,
+  number | string,
   OrganizationItem[]
 > {
   return mockOrganizations.reduce(
     (acc, org) => {
-      if (!acc[org.city]) {
-        acc[org.city] = [];
+      const key = org.city;
+      if (!acc[key]) {
+        acc[key] = [];
       }
-      acc[org.city].push(org);
+      acc[key].push(org);
       return acc;
     },
-    {} as Record<number, OrganizationItem[]>,
+    {} as Record<number | string, OrganizationItem[]>,
   );
 }
 
 export const getFacilitiesGroupedByProvince = getOrganizationsGroupedByCity;
 
 // Lấy danh sách unique city codes
-export function getUniqueCityCodes(): number[] {
+export function getUniqueCityCodes(): (number | string)[] {
   return [...new Set(mockOrganizations.map((f) => f.city))];
 }
 

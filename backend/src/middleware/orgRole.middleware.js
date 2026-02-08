@@ -1,5 +1,31 @@
 const db = require("../db");
 
+/**
+ * Helper function to get organization's parent chain
+ * Returns array of organization IDs from child to root
+ */
+async function getOrgParentChain(orgId) {
+  const chain = [Number(orgId)];
+  let currentId = orgId;
+
+  // Max depth to prevent infinite loops
+  for (let i = 0; i < 10; i++) {
+    const [rows] = await db.query(
+      "SELECT parent_id FROM organization WHERE organization_id = ? LIMIT 1",
+      [currentId],
+    );
+
+    if (rows.length === 0 || !rows[0].parent_id || rows[0].parent_id <= 0) {
+      break;
+    }
+
+    currentId = rows[0].parent_id;
+    chain.push(currentId);
+  }
+
+  return chain;
+}
+
 const orgScopeMiddleware = (allowRoles = []) => {
   return async (req, res, next) => {
     try {
@@ -9,20 +35,9 @@ const orgScopeMiddleware = (allowRoles = []) => {
       }
 
       const userId = req.user.user_id;
-      // Check multiple possible parameter names: organization_id and id (used in routes like /:id)
-      const orgId =
-        req.params?.organization_id ||
-        req.params?.id ||
-        req.body?.organization_id ||
-        req.body?.organizationId || // Support camelCase from frontend
-        req.query?.organization_id;
 
-      if (!orgId) {
-        return res.status(400).json({ error: "Organization ID is required" });
-      }
-
-      // Lấy tất cả role của user
-      const [roles] = await db.query(
+      // 1. Get all roles of user across organizations
+      const [userRoles] = await db.query(
         `
             SELECT role_in_org, organization_id
             FROM organization_manager
@@ -31,40 +46,71 @@ const orgScopeMiddleware = (allowRoles = []) => {
         [userId],
       );
 
-      // Nếu có SUPER_ADMIN ở BẤT KỲ org nào → cho qua
-      const isSuperAdmin = roles.some((r) => r.role_in_org === "SUPER_ADMIN");
+      // 2. If SUPER_ADMIN anywhere, allow global access (bypass orgId requirement if missing)
+      const isSuperAdmin = userRoles.some(
+        (r) => r.role_in_org === "SUPER_ADMIN",
+      );
+
+      // Check multiple possible parameter names for organization_id
+      let orgId =
+        req.params?.organization_id ||
+        req.params?.id ||
+        req.body?.organization_id ||
+        req.body?.organizationId ||
+        req.body?.schoolId ||
+        req.query?.organization_id;
+
+      // If orgId is missing but classroomId is present, resolve it from the classroom
+      const classroomId = req.params?.classroomId || req.body?.classroomId;
+      if (!orgId && classroomId) {
+        const [classRows] = await db.query(
+          "SELECT organization_id FROM class_room WHERE class_room_id = ? LIMIT 1",
+          [classroomId],
+        );
+        if (classRows.length > 0) {
+          orgId = classRows[0].organization_id;
+        }
+      }
 
       if (isSuperAdmin) {
         req.orgRole = "SUPER_ADMIN";
-        req.organization_id = orgId;
+        req.organization_id = orgId || null;
         return next();
       }
 
-      // Kiểm tra role trong org cụ thể
-      const [row] = await db.query(
-        `
-            SELECT role_in_org
-            FROM organization_manager
-            WHERE user_id = ? AND organization_id = ?
-            `,
-        [userId, orgId],
-      );
+      // 3. For non-super-admins, organization ID is required
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID is required" });
+      }
 
-      if (row.length === 0) {
+      // Get parent chain of target organization
+      const orgChain = await getOrgParentChain(orgId);
+
+      // Check if user has allowed role in target org or any of its parents
+      let foundRole = null;
+      let foundOrgId = null;
+
+      for (const checkOrgId of orgChain) {
+        const userRoleInOrg = userRoles.find(
+          (r) => Number(r.organization_id) === Number(checkOrgId),
+        );
+        if (userRoleInOrg && allowRoles.includes(userRoleInOrg.role_in_org)) {
+          foundRole = userRoleInOrg.role_in_org;
+          foundOrgId = checkOrgId;
+          break;
+        }
+      }
+
+      if (!foundRole) {
         return res.status(403).json({
-          error: "Access denied: User is not part of the organization",
+          error:
+            "Access denied: User does not have permission for this organization or its hierarchy",
         });
       }
 
-      const userRole = row[0].role_in_org;
-      if (!allowRoles.includes(userRole)) {
-        return res
-          .status(403)
-          .json({ error: "Access denied: Insufficient role permissions" });
-      }
-
-      req.orgRole = userRole;
+      req.orgRole = foundRole;
       req.organization_id = orgId;
+      req.managedOrgId = foundOrgId; // The org where user actually has the role
 
       next();
     } catch (error) {

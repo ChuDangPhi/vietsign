@@ -12,9 +12,19 @@ const createQuestion = async (req, res) => {
       content,
       explanation,
       class_room_id,
+      classroomId,
       image_location,
+      imageLocation,
       video_location,
+      videoLocation,
+      question_type,
+      questionType,
+      file_type,
+      fileType,
+      answers,
+      answerReqs,
       created_by,
+      creatorId,
     } = req.body;
 
     // Validation
@@ -30,11 +40,14 @@ const createQuestion = async (req, res) => {
       {
         content,
         explanation,
-        class_room_id,
-        image_location,
-        video_location,
+        class_room_id: class_room_id || classroomId,
+        image_location: image_location || imageLocation,
+        video_location: video_location || videoLocation,
+        question_type: question_type || questionType,
+        file_type: file_type || fileType,
+        answers: answers || answerReqs,
       },
-      created_by || (req.user ? req.user.id : null),
+      created_by || creatorId || (req.user ? req.user.user_id : null),
     );
 
     return res.status(201).json({

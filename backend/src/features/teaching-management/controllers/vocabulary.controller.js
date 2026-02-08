@@ -7,7 +7,7 @@ const vocabularyService = require("../services/vocabulary.services");
 // POST - Tạo từ vựng mới
 const createVocabulary = async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.user_id;
     const result = await vocabularyService.createVocabulary(req.body, userId);
     return res.status(201).json({
       success: true,
@@ -193,7 +193,7 @@ const getVocabularyByContent = async (req, res) => {
 const updateVocabulary = async (req, res) => {
   try {
     const { vocabulary_id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.user_id;
 
     const result = await vocabularyService.updateVocabulary(
       parseInt(vocabulary_id),
@@ -219,7 +219,7 @@ const updateVocabulary = async (req, res) => {
 const deleteVocabulary = async (req, res) => {
   try {
     const { vocabulary_id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.user_id;
 
     const result = await vocabularyService.deleteVocabulary(
       parseInt(vocabulary_id),
@@ -244,7 +244,7 @@ const deleteVocabulary = async (req, res) => {
 const deleteVocabulariesByTopic = async (req, res) => {
   try {
     const { topic_id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.user_id;
 
     const result = await vocabularyService.deleteVocabulariesByTopicId(
       parseInt(topic_id),

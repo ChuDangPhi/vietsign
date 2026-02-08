@@ -111,3 +111,50 @@ export async function updateClass(id: number, data: any) {
 export async function deleteClass(id: number) {
   return await ClassModel.deleteClass(id);
 }
+
+// Student management
+export interface ClassMember {
+  id: number;
+  userId: number;
+  name: string;
+  email?: string;
+  role: "STUDENT" | "TEACHER";
+  enrolledAt?: string;
+}
+
+export async function fetchClassroomStudents(
+  classroomId: number,
+): Promise<ClassMember[]> {
+  try {
+    const response = await ClassModel.getClassroomStudents(classroomId);
+    const data = response.data || response;
+
+    if (!Array.isArray(data)) return [];
+
+    return data.map((item: any) => ({
+      id: item.id || item.enrollment_id,
+      userId: item.user_id || item.userId,
+      name: item.name || item.user_name || `User ${item.user_id}`,
+      email: item.email,
+      role: "STUDENT" as const,
+      enrolledAt: item.enrolled_at || item.enrolledAt,
+    }));
+  } catch (error) {
+    console.error("Error fetching classroom students:", error);
+    return [];
+  }
+}
+
+export async function addStudentToClassroom(
+  classroomId: number,
+  studentId: number,
+) {
+  return await ClassModel.addStudentToClassroom(classroomId, studentId);
+}
+
+export async function removeStudentFromClassroom(
+  classroomId: number,
+  studentId: number,
+) {
+  return await ClassModel.removeStudentFromClassroom(classroomId, studentId);
+}

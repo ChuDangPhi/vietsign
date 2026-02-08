@@ -12,6 +12,11 @@ import {
   Clock,
   User,
   Building,
+  Plus,
+  UserPlus,
+  GraduationCap,
+  Search,
+  Loader2,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { ClassItem, statusConfig } from "@/data";
@@ -19,6 +24,10 @@ import {
   fetchClassById,
   updateClass,
   deleteClass,
+  fetchClassroomStudents,
+  addStudentToClassroom,
+  removeStudentFromClassroom,
+  ClassMember,
 } from "@/services/classService";
 import { fetchUserById, fetchUsersByRole } from "@/services/userService";
 import {
@@ -26,6 +35,7 @@ import {
   OrganizationItem,
 } from "@/services/organizationService";
 import { ConfirmModal } from "@/shared/components/common/ConfirmModal";
+import { Modal } from "@/shared/components/common/Modal";
 
 export function ClassManagementDetail() {
   const params = useParams();
@@ -47,6 +57,18 @@ export function ClassManagementDetail() {
   const [facilitiesMap, setFacilitiesMap] = useState<Record<number, string>>(
     {},
   );
+
+  // State for class members
+  const [classMembers, setClassMembers] = useState<ClassMember[]>([]);
+  const [allStudents, setAllStudents] = useState<any[]>([]);
+  const [isMembersLoading, setIsMembersLoading] = useState(false);
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
+  const [isRemoveMemberModalOpen, setIsRemoveMemberModalOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<ClassMember | null>(
+    null,
+  );
+  const [isAddingMember, setIsAddingMember] = useState(false);
 
   // Load class and teachers
   // Load class and teachers
@@ -151,6 +173,83 @@ export function ClassManagementDetail() {
       }
     }
   };
+
+  // Load class members (students)
+  const loadClassMembers = async () => {
+    if (!id) return;
+    setIsMembersLoading(true);
+    try {
+      const students = await fetchClassroomStudents(id);
+      setClassMembers(students);
+    } catch (error) {
+      console.error("Failed to load class members", error);
+    } finally {
+      setIsMembersLoading(false);
+    }
+  };
+
+  // Load all students for adding - filtered by organization
+  const loadAllStudents = async () => {
+    if (!classItem) return;
+    try {
+      const studentsList = await fetchUsersByRole(
+        "STUDENT",
+        classItem.organizationId || undefined,
+      );
+      setAllStudents(studentsList);
+    } catch (error) {
+      console.error("Failed to load students", error);
+    }
+  };
+
+  // Load members when class is loaded
+  useEffect(() => {
+    if (classItem) {
+      loadClassMembers();
+      loadAllStudents();
+    }
+  }, [classItem?.id]);
+
+  // Handle add member
+  const handleAddMember = async (studentId: number) => {
+    if (!classItem) return;
+    setIsAddingMember(true);
+    try {
+      await addStudentToClassroom(classItem.id, studentId);
+      await loadClassMembers();
+      setIsAddMemberModalOpen(false);
+      setMemberSearchQuery("");
+    } catch (error) {
+      console.error("Failed to add member", error);
+      alert("Thêm thành viên thất bại");
+    } finally {
+      setIsAddingMember(false);
+    }
+  };
+
+  // Handle remove member
+  const handleRemoveMember = async () => {
+    if (!classItem || !memberToRemove) return;
+    try {
+      await removeStudentFromClassroom(classItem.id, memberToRemove.userId);
+      await loadClassMembers();
+      setIsRemoveMemberModalOpen(false);
+      setMemberToRemove(null);
+    } catch (error) {
+      console.error("Failed to remove member", error);
+      alert("Xóa thành viên thất bại");
+    }
+  };
+
+  // Get filtered students for adding (exclude already enrolled)
+  const filteredStudentsToAdd = allStudents.filter((s) => {
+    const isNotEnrolled = !classMembers.some((m) => m.userId === s.id);
+    const matchesSearch = memberSearchQuery
+      ? s.name?.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+        s.email?.toLowerCase().includes(memberSearchQuery.toLowerCase())
+      : true;
+    return isNotEnrolled && matchesSearch;
+  });
 
   if (!classItem) {
     if (isLoading)
@@ -411,6 +510,197 @@ export function ClassManagementDetail() {
           )}
         </div>
       </div>
+
+      {/* Class Members Section */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Users className="w-6 h-6 text-primary-600" />
+            <h2 className="text-lg font-bold text-gray-900">
+              Thành viên lớp học
+            </h2>
+            <span className="text-sm text-gray-500">
+              ({classMembers.length + (classItem.teacherId ? 1 : 0)} người)
+            </span>
+          </div>
+          <button
+            onClick={() => setIsAddMemberModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-medium text-sm shadow-sm"
+          >
+            <UserPlus size={16} />
+            Thêm học sinh
+          </button>
+        </div>
+
+        <div className="p-6">
+          {/* Teacher Section */}
+          {classItem.teacherId && (
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                Giáo viên phụ trách
+              </h3>
+              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl border border-primary-100">
+                <div className="w-12 h-12 rounded-full bg-primary-600 flex items-center justify-center text-white font-bold text-lg">
+                  {teacherName.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900">{teacherName}</p>
+                  <p className="text-sm text-gray-500 flex items-center gap-1">
+                    <GraduationCap size={14} />
+                    Giáo viên
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Students Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Danh sách học sinh
+            </h3>
+
+            {isMembersLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
+                <span className="ml-2 text-gray-500">Đang tải...</span>
+              </div>
+            ) : classMembers.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-xl">
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500">Chưa có học sinh trong lớp</p>
+                <button
+                  onClick={() => setIsAddMemberModalOpen(true)}
+                  className="mt-3 text-primary-600 font-medium hover:underline"
+                >
+                  Thêm học sinh ngay
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {classMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                      {member.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">
+                        {member.name}
+                      </p>
+                      {member.email && (
+                        <p className="text-sm text-gray-500 truncate">
+                          {member.email}
+                        </p>
+                      )}
+                    </div>
+                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                      Học sinh
+                    </span>
+                    <button
+                      onClick={() => {
+                        setMemberToRemove(member);
+                        setIsRemoveMemberModalOpen(true);
+                      }}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                      title="Xóa khỏi lớp"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Add Member Modal */}
+      <Modal
+        isOpen={isAddMemberModalOpen}
+        onClose={() => {
+          setIsAddMemberModalOpen(false);
+          setMemberSearchQuery("");
+        }}
+        title="Thêm học sinh vào lớp"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-4">
+          <div className="relative">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              size={18}
+            />
+            <input
+              type="text"
+              placeholder="Tìm kiếm học sinh..."
+              value={memberSearchQuery}
+              onChange={(e) => setMemberSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
+          <div className="max-h-[300px] overflow-y-auto space-y-2">
+            {filteredStudentsToAdd.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                {memberSearchQuery
+                  ? "Không tìm thấy học sinh phù hợp"
+                  : "Tất cả học sinh đã được thêm vào lớp"}
+              </div>
+            ) : (
+              filteredStudentsToAdd.map((student) => (
+                <div
+                  key={student.id}
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                    {student.name?.charAt(0).toUpperCase() || "?"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">
+                      {student.name}
+                    </p>
+                    {student.email && (
+                      <p className="text-sm text-gray-500 truncate">
+                        {student.email}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleAddMember(student.id)}
+                    disabled={isAddingMember}
+                    className="px-3 py-1.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {isAddingMember ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Plus size={14} />
+                    )}
+                    Thêm
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Remove Member Confirm Modal */}
+      <ConfirmModal
+        isOpen={isRemoveMemberModalOpen}
+        onClose={() => {
+          setIsRemoveMemberModalOpen(false);
+          setMemberToRemove(null);
+        }}
+        onConfirm={handleRemoveMember}
+        title="Xóa học sinh khỏi lớp"
+        message={`Bạn có chắc chắn muốn xóa "${memberToRemove?.name}" khỏi lớp học này?`}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+      />
 
       <ConfirmModal
         isOpen={isDeleteModalOpen}

@@ -99,7 +99,7 @@ CREATE TABLE `class_learning_progress` (
   PRIMARY KEY (`progress_id`),
   UNIQUE KEY `uk_user_class` (`user_id`,`class_room_id`),
   KEY `idx_user` (`user_id`),
-  KEY `idx_class_room` (`class_room_id`),
+  KEY `idx_class_room` (`class_room_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

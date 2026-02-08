@@ -21,12 +21,20 @@ export interface QuestionItem {
   // Common fields
   content: string; // Nội dung câu hỏi (trắc nghiệm) hoặc từ cần thực hành
   description?: string; // Mô tả chi tiết
+  explanation?: string; // Giải thích đáp án
   category?: string; // Danh mục (VD: "Ký hiệu cơ bản", "Số đếm", "Màu sắc"...)
   videoUrl?: string; // Video minh họa (nếu có)
   imageUrl?: string; // Hình ảnh minh họa (nếu có)
 
+  // API response fields
+  image?: string; // image_location from API
+  video?: string; // video_location from API
+  question_type?: string; // ONE_ANSWER, MULTIPLE_ANSWERS, PRACTICE
+  questionType?: string; // camelCase variant
+
   // For multiple choice
   answers?: AnswerOption[];
+  answerResList?: any[]; // Answers from API
 
   // For practice
   practiceWord?: string; // Từ cần thực hành
@@ -37,13 +45,13 @@ export interface QuestionItem {
   classId?: number; // ID lớp học liên quan
 
   // Ownership & Permissions
-  creatorId: number; // ID người tạo
-  organizationId: number; // ID cơ sở giáo dục
-  allowedEditorIds: number[]; // Danh sách ID người được phép sửa
+  creatorId?: number; // ID người tạo
+  organizationId?: number; // ID cơ sở giáo dục
+  allowedEditorIds?: number[]; // Danh sách ID người được phép sửa
 
   // Metadata
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface QuestionSetItem {

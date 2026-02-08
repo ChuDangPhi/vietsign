@@ -26,28 +26,37 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { ClassItem, statusConfig, getClassStudents } from "@/data/classesData";
-import { fetchClassById } from "@/services/classService";
-import { fetchUserById } from "@/services/userService";
+import { ClassItem, statusConfig } from "@/data/classesData";
+import {
+  fetchClassById,
+  fetchClassroomStudents,
+  addStudentToClassroom,
+  removeStudentFromClassroom,
+  ClassMember,
+} from "@/services/classService";
+import { fetchUserById, fetchUsersByRole } from "@/services/userService";
 import {
   fetchLessonsByClassroom,
   Lesson,
   deleteLesson,
 } from "@/services/lessonService";
 import { mockOrganizations } from "@/data/organizationsData";
-import { getUserById } from "@/data/usersData";
 import {
-  getExamsByClassId,
-  getDocumentsByClassId,
-  DocumentItem,
+  fetchExamsByClassroom,
   ExamItem,
-} from "@/data/lessonsData";
+  deleteExam,
+} from "@/services/examService";
 import Link from "next/link";
 import { ConfirmModal } from "@/shared/components/common/ConfirmModal";
 import { toast } from "react-hot-toast";
+import { Modal } from "@/shared/components/common/Modal";
+import { LessonModal } from "./LessonModal";
+import { ExamModal } from "./ExamModal";
+import { fetchTopicsByClassroom, TopicItem } from "@/services/topicService";
+import { fetchLessonStatistics } from "@/services/lessonService";
 
-type TabType = "lessons" | "exams" | "documents" | "members";
-type DeleteType = "lesson" | "exam" | "document" | "member" | null;
+type TabType = "lessons" | "exams" | "members";
+type DeleteType = "lesson" | "exam" | "member" | null;
 
 export function StudyDetail() {
   const params = useParams();
@@ -55,20 +64,42 @@ export function StudyDetail() {
   const id = Number(params.id);
 
   const [classItem, setClassItem] = useState<ClassItem | null>(null);
+  const [teacher, setTeacher] = useState<any>(null);
   const [teacherName, setTeacherName] = useState<string>("Đang tải...");
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("lessons");
 
-  // Permission state (Simulate current user is teacher for demo)
-  // In real app, check auth context -> user.id === classItem.teacherId
+  // Permission state
   const [isTeacher, setIsTeacher] = useState(false);
 
   // Data states
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [exams, setExams] = useState<
-    (ExamItem & { studentStatus: string; score?: number })[]
-  >([]);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [topics, setTopics] = useState<TopicItem[]>([]);
+  const [lessonStats, setLessonStats] = useState<any>(null);
+  const [exams, setExams] = useState<ExamItem[]>([]);
+  const [classMembers, setClassMembers] = useState<ClassMember[]>([]);
+
+  // Add Member State
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [allStudents, setAllStudents] = useState<any[]>([]);
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
+  const [isAddingMember, setIsAddingMember] = useState(false);
+
+  // Lesson/Exam Modal States
+  const [lessonModal, setLessonModal] = useState<{
+    isOpen: boolean;
+    data: Lesson | null;
+  }>({
+    isOpen: false,
+    data: null,
+  });
+  const [examModal, setExamModal] = useState<{
+    isOpen: boolean;
+    data: ExamItem | null;
+  }>({
+    isOpen: false,
+    data: null,
+  });
 
   // Delete Modal State
   const [deleteModal, setDeleteModal] = useState<{
@@ -83,51 +114,91 @@ export function StudyDetail() {
     itemName: "",
   });
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        // Fetch class from API
-        const fetchedClass = await fetchClassById(id);
-        if (fetchedClass) {
-          setClassItem(fetchedClass);
-          if (fetchedClass.teacherId) {
-            const teacher = await fetchUserById(fetchedClass.teacherId);
-            setTeacherName(teacher?.name || "Không xác định");
+  const loadData = async () => {
+    // ... existing loadData logic ...
+    setIsLoading(true);
+    try {
+      // 1. Fetch Class
+      const fetchedClass = await fetchClassById(id);
+      if (fetchedClass) {
+        setClassItem(fetchedClass);
+        setIsTeacher(true); // TODO: check permission
+
+        if (fetchedClass.teacherId) {
+          try {
+            const t = await fetchUserById(fetchedClass.teacherId);
+            setTeacher(t);
+            setTeacherName(t?.name || "Không xác định");
+          } catch (e) {
+            console.error("Failed to fetch teacher", e);
+            setTeacherName("Lỗi tải thông tin GV");
           }
-          // Simulate: If loaded, set permissions
-          setIsTeacher(true);
-        } else {
-          setClassItem(null);
         }
 
-        // Load lessons from API, exams and documents from mock
         const lessonsData = await fetchLessonsByClassroom(id);
         setLessons(lessonsData);
-        setExams(getExamsByClassId(id));
-        setDocuments(getDocumentsByClassId(id));
-      } catch (error) {
-        console.error("Failed to load class", error);
+
+        const topicsData = await fetchTopicsByClassroom(id);
+        setTopics(topicsData);
+
+        try {
+          const stats = await fetchLessonStatistics(id);
+          setLessonStats(stats);
+        } catch (e) {
+          console.error("Failed to fetch lesson stats", e);
+        }
+
+        const examsData = await fetchExamsByClassroom(id);
+        setExams(examsData);
+
+        const membersData = await fetchClassroomStudents(id);
+        setClassMembers(membersData);
+      } else {
         setClassItem(null);
-        setTeacherName("Không xác định");
-        setLessons([]);
-        setExams(getExamsByClassId(id));
-        setDocuments(getDocumentsByClassId(id));
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Failed to load class data", error);
+      toast.error("Lỗi tải dữ liệu lớp học");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, [id]);
 
-  // Handlers
+  useEffect(() => {
+    if (isAddMemberOpen && allStudents.length === 0) {
+      fetchUsersByRole("STUDENT").then(setAllStudents).catch(console.error);
+    }
+  }, [isAddMemberOpen]);
+
   const handleAdd = (type: TabType) => {
-    toast.success(`Chức năng thêm ${type} (Demo)`);
-    // Router push to create page or open modal
+    switch (type) {
+      case "lessons":
+        setLessonModal({ isOpen: true, data: null });
+        break;
+      case "exams":
+        setExamModal({ isOpen: true, data: null });
+        break;
+      case "members":
+        setIsAddMemberOpen(true);
+        break;
+    }
   };
 
   const handleEdit = (type: TabType, itemId: number) => {
-    toast.success(`Chức năng sửa ${type} ${itemId} (Demo)`);
+    switch (type) {
+      case "lessons":
+        const lesson = lessons.find((l) => l.id === itemId);
+        if (lesson) setLessonModal({ isOpen: true, data: lesson });
+        break;
+      case "exams":
+        const exam = exams.find((e) => e.id === itemId);
+        if (exam) setExamModal({ isOpen: true, data: exam });
+        break;
+    }
   };
 
   const handleDeleteClick = (
@@ -145,51 +216,64 @@ export function StudyDetail() {
 
   const handleConfirmDelete = async () => {
     const { type, itemId } = deleteModal;
-    if (!type || !itemId) return;
+    if (!type || !itemId || !classItem) return;
 
     try {
       switch (type) {
         case "lesson":
           await deleteLesson(itemId);
           setLessons((prev) => prev.filter((i) => i.id !== itemId));
+          toast.success("Đã xóa bài học");
           break;
         case "exam":
+          await deleteExam(itemId);
           setExams((prev) => prev.filter((i) => i.id !== itemId));
-          break;
-        case "document":
-          setDocuments((prev) => prev.filter((i) => i.id !== itemId));
+          toast.success("Đã xóa bài kiểm tra");
           break;
         case "member":
+          await removeStudentFromClassroom(classItem.id, itemId);
+          setClassMembers((prev) => prev.filter((m) => m.userId !== itemId)); // Assuming itemId passed is userId
           toast.success("Đã xóa thành viên khỏi lớp");
           break;
       }
-      toast.success("Đã xóa thành công");
     } catch (error) {
       console.error("Failed to delete:", error);
       toast.error("Xóa thất bại");
+    } finally {
+      setDeleteModal({ isOpen: false, type: null, itemId: null, itemName: "" });
     }
-    setDeleteModal({ isOpen: false, type: null, itemId: null, itemName: "" });
   };
+
+  const handleAddMember = async (studentId: number) => {
+    if (!classItem) return;
+    setIsAddingMember(true);
+    try {
+      await addStudentToClassroom(classItem.id, studentId);
+      toast.success("Đã thêm học sinh vào lớp");
+
+      // Reload members
+      const membersData = await fetchClassroomStudents(classItem.id);
+      setClassMembers(membersData);
+    } catch (error: any) {
+      console.error(error);
+      const msg = error?.response?.data?.message || "Thêm học sinh thất bại";
+      toast.error(msg);
+    } finally {
+      setIsAddingMember(false);
+    }
+  };
+
+  const filteredStudentsToAdd = allStudents.filter(
+    (student) =>
+      !classMembers.some((m) => m.userId === student.id) &&
+      (student.name?.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+        student.email?.toLowerCase().includes(memberSearchQuery.toLowerCase())),
+  );
 
   const getFacilityName = (organizationId: number | null): string => {
     if (organizationId === null) return "Online";
     const facility = mockOrganizations.find((f) => f.id === organizationId);
     return facility?.name || "Không xác định";
-  };
-
-  const getDocIcon = (type: DocumentItem["type"]) => {
-    switch (type) {
-      case "pdf":
-        return <File className="text-red-500" size={20} />;
-      case "doc":
-        return <FileText className="text-blue-500" size={20} />;
-      case "video":
-        return <Video className="text-purple-500" size={20} />;
-      case "link":
-        return <LinkIcon className="text-green-500" size={20} />;
-      default:
-        return <File className="text-gray-500" size={20} />;
-    }
   };
 
   if (isLoading) {
@@ -214,11 +298,11 @@ export function StudyDetail() {
     );
   }
 
-  const statusInfo = statusConfig[classItem.status];
-  const completedLessons = lessons.filter((l) => l.completed).length;
-  const progress = Math.round((completedLessons / lessons.length) * 100) || 0;
-  const students = getClassStudents(classItem.id);
-  const teacher = getUserById(classItem.teacherId);
+  const statusInfo = statusConfig[classItem.status] || {
+    label: classItem.status || "Không xác định",
+    color: "bg-gray-100 text-gray-800",
+  };
+  const completedLessons = lessons.filter((l: any) => l.completed).length; // Type assertion if needed
 
   const tabs = [
     {
@@ -234,21 +318,15 @@ export function StudyDetail() {
       count: exams.length,
     },
     {
-      id: "documents" as TabType,
-      label: "Tài liệu",
-      icon: FolderOpen,
-      count: documents.length,
-    },
-    {
       id: "members" as TabType,
       label: "Thành viên",
       icon: Users,
-      count: students.length + 1,
+      count: classMembers.length + (teacher ? 1 : 0),
     },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500">
+    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
       {/* Navigation */}
       <div className="flex items-center">
         <button
@@ -279,7 +357,7 @@ export function StudyDetail() {
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-4">
                 <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-white/20 backdrop-blur-sm border border-white/10">
-                  {/* classItem.level doesn't exist on type, use hardcoded or remove */}
+                  {/* Level hardcoded as logic not clear from ClassItem */}
                   Cơ bản
                 </span>
                 <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-white/20 backdrop-blur-sm border border-white/10">
@@ -360,100 +438,273 @@ export function StudyDetail() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Lessons Tab */}
         {activeTab === "lessons" && (
-          <div className="divide-y divide-gray-100">
-            {lessons.map((lesson) => (
-              <div
-                key={lesson.id}
-                className="p-5 flex items-center gap-4 hover:bg-gray-50 transition-colors group"
-              >
-                <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    lesson.completed
-                      ? "bg-green-100 text-green-600"
-                      : "bg-primary-50 text-primary-600"
-                  }`}
-                >
-                  {lesson.completed ? (
-                    <CheckCircle size={24} />
-                  ) : (
-                    <Play size={24} />
-                  )}
+          <div className="p-6 space-y-8">
+            {/* Statistics Summary */}
+            {lessonStats && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-primary-50 p-4 rounded-2xl border border-primary-100 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-primary-600 shadow-sm">
+                    <BookOpen size={24} />
+                  </div>
+                  <div>
+                    <div className="text-xs text-primary-600 font-medium uppercase tracking-wider">
+                      Tổng số bài học
+                    </div>
+                    <div className="text-2xl font-bold text-primary-900">
+                      {lessonStats.total || 0}
+                    </div>
+                  </div>
                 </div>
-
-                <Link
-                  href={`/study/${classItem.id}/${lesson.id}`}
-                  className="flex-1 min-w-0 cursor-pointer block"
-                >
-                  <h3
-                    className={`font-medium truncate ${
-                      lesson.completed ? "text-gray-900" : "text-gray-700"
-                    }`}
-                  >
-                    {lesson.name}
-                  </h3>
-                  <p className="text-sm text-gray-500 truncate">
-                    {lesson.description}
-                  </p>
-                </Link>
-
-                <div className="flex items-center gap-2">
-                  {isTeacher && (
-                    <>
-                      <button
-                        onClick={() => handleEdit("lessons", lesson.id)}
-                        className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"
-                      >
-                        <Pencil size={18} />
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleDeleteClick("lesson", lesson.id, lesson.name)
-                        }
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </>
-                  )}
-                  <Link href={`/study/${classItem.id}/${lesson.id}`}>
-                    <ChevronRight
-                      size={20}
-                      className="text-gray-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all"
-                    />
-                  </Link>
+                <div className="bg-green-50 p-4 rounded-2xl border border-green-100 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-green-600 shadow-sm">
+                    <CheckCircle size={24} />
+                  </div>
+                  <div>
+                    <div className="text-xs text-green-600 font-medium uppercase tracking-wider">
+                      Đã hoàn thành
+                    </div>
+                    <div className="text-2xl font-bold text-green-900">
+                      {lessons.filter((l) => l.completed).length} /{" "}
+                      {lessons.length}
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-amber-600 shadow-sm">
+                    <Clock size={24} />
+                  </div>
+                  <div>
+                    <div className="text-xs text-amber-600 font-medium uppercase tracking-wider">
+                      Đang giảng dạy
+                    </div>
+                    <div className="text-2xl font-bold text-amber-900">
+                      {lessons.filter((l) => l.is_active).length} bài học
+                    </div>
+                  </div>
                 </div>
               </div>
-            ))}
+            )}
+
+            {lessons.length === 0 && (
+              <div className="p-12 text-center">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FolderOpen size={40} className="text-gray-300" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900">
+                  Chưa có bài học nào
+                </h3>
+                <p className="text-gray-500 max-w-sm mx-auto mt-1">
+                  Bắt đầu thêm giáo trình của bạn để sinh viên có thể học tập.
+                </p>
+              </div>
+            )}
+
+            {/* Grouped by Topic */}
+            {topics.map((topic) => {
+              const topicLessons = lessons.filter(
+                (l) => l.topic_id === topic.id,
+              );
+              if (topicLessons.length === 0 && !isTeacher) return null;
+
+              return (
+                <div key={topic.id} className="space-y-4">
+                  <div className="flex items-center gap-3 border-b border-gray-100 pb-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center text-primary-600">
+                      <FolderOpen size={18} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      {topic.name}
+                    </h3>
+                    <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+                      {topicLessons.length} bài học
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3">
+                    {topicLessons.length === 0 && (
+                      <div className="py-8 text-center border-2 border-dashed border-gray-100 rounded-2xl text-gray-400 text-sm">
+                        Chưa có bài học trong chủ đề này
+                      </div>
+                    )}
+                    {topicLessons.map((lesson) => (
+                      <div
+                        key={lesson.id}
+                        className="group flex items-center gap-4 p-4 rounded-2xl border border-gray-100 hover:border-primary-200 hover:shadow-md hover:shadow-primary-500/5 transition-all bg-white"
+                      >
+                        <div
+                          className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                            lesson.completed
+                              ? "bg-green-100 text-green-600"
+                              : "bg-primary-50 text-primary-600 group-hover:bg-primary-600 group-hover:text-white"
+                          }`}
+                        >
+                          {lesson.completed ? (
+                            <CheckCircle size={24} />
+                          ) : (
+                            <Play size={24} />
+                          )}
+                        </div>
+
+                        <Link
+                          href={`/study/${classItem.id}/${lesson.id}`}
+                          className="flex-1 min-w-0"
+                        >
+                          <h4 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors truncate">
+                            {lesson.name}
+                          </h4>
+                          <div className="flex items-center gap-4 mt-1">
+                            <span className="text-xs text-gray-500 flex items-center gap-1">
+                              <FileText size={12} />
+                              {lesson.difficulty_level}
+                            </span>
+                            {lesson.description && (
+                              <span className="text-xs text-gray-400 truncate">
+                                {lesson.description}
+                              </span>
+                            )}
+                          </div>
+                        </Link>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {isTeacher && (
+                            <>
+                              <button
+                                onClick={() => handleEdit("lessons", lesson.id)}
+                                className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                              >
+                                <Pencil size={18} />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteClick(
+                                    "lesson",
+                                    lesson.id,
+                                    lesson.name,
+                                  )
+                                }
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </>
+                          )}
+                          <Link
+                            href={`/study/${classItem.id}/${lesson.id}`}
+                            className="p-2 text-gray-400 hover:text-primary-600"
+                          >
+                            <ChevronRight size={20} />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Uncategorized Lessons */}
+            {lessons.filter((l) => !l.topic_id).length > 0 && (
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center gap-3 border-b border-gray-100 pb-2">
+                  <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">
+                    <BookOpen size={18} />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    Bài học bổ sung
+                  </h3>
+                </div>
+                <div className="grid gap-3">
+                  {lessons
+                    .filter((l) => !l.topic_id)
+                    .map((lesson) => (
+                      <div
+                        key={lesson.id}
+                        className="group flex items-center gap-4 p-4 rounded-2xl border border-gray-100 hover:border-primary-200 hover:shadow-md transition-all bg-white"
+                      >
+                        <div
+                          className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                            lesson.completed
+                              ? "bg-green-100 text-green-600"
+                              : "bg-primary-50 text-primary-600 group-hover:bg-primary-600 group-hover:text-white"
+                          }`}
+                        >
+                          {lesson.completed ? (
+                            <CheckCircle size={24} />
+                          ) : (
+                            <Play size={24} />
+                          )}
+                        </div>
+
+                        <Link
+                          href={`/study/${classItem.id}/${lesson.id}`}
+                          className="flex-1 min-w-0"
+                        >
+                          <h4 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                            {lesson.name}
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {lesson.description || "Tài liệu học tập bổ sung"}
+                          </p>
+                        </Link>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {isTeacher && (
+                            <>
+                              <button
+                                onClick={() => handleEdit("lessons", lesson.id)}
+                                className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"
+                              >
+                                <Pencil size={18} />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteClick(
+                                    "lesson",
+                                    lesson.id,
+                                    lesson.name,
+                                  )
+                                }
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </>
+                          )}
+                          <Link href={`/study/${classItem.id}/${lesson.id}`}>
+                            <ChevronRight size={20} />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Exams Tab */}
         {activeTab === "exams" && (
           <div className="divide-y divide-gray-100">
+            {exams.length === 0 && (
+              <div className="p-8 text-center text-gray-500">
+                Chưa có bài kiểm tra nào
+              </div>
+            )}
             {exams.map((exam) => (
               <div
                 key={exam.id}
                 className="p-5 flex items-center gap-4 hover:bg-gray-50 transition-colors"
               >
-                <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    exam.studentStatus === "completed"
-                      ? "bg-green-100 text-green-600"
-                      : exam.status === "completed" // Check general status if student status is not relevant for color
-                        ? "bg-amber-100 text-amber-600" // Ongoing/Expired logic might be different
-                        : "bg-amber-100 text-amber-600"
-                  }`}
-                >
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-amber-100 text-amber-600">
                   <ClipboardCheck size={24} />
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-gray-900 truncate">
-                    {exam.title}
+                    {exam.title || exam.name}
                   </h3>
                   <p className="text-sm text-gray-500">
-                    {exam.questions} câu hỏi • {exam.duration} • Hạn:{" "}
-                    {exam.date}
+                    {exam.questions} câu hỏi • {exam.duration} phút
                   </p>
                 </div>
 
@@ -468,7 +719,11 @@ export function StudyDetail() {
                       </button>
                       <button
                         onClick={() =>
-                          handleDeleteClick("exam", exam.id, exam.title)
+                          handleDeleteClick(
+                            "exam",
+                            exam.id,
+                            exam.title || exam.name,
+                          )
                         }
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                       >
@@ -476,73 +731,11 @@ export function StudyDetail() {
                       </button>
                     </>
                   )}
-                  {exam.studentStatus === "completed" &&
-                  exam.score !== undefined ? (
-                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                      {exam.score} điểm
-                    </span>
-                  ) : exam.studentStatus === "pending" ? (
-                    <button
-                      onClick={() =>
-                        router.push(`/study/${id}/exam/${exam.id}`)
-                      }
-                      className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors"
-                    >
-                      Làm bài
-                    </button>
-                  ) : (
-                    <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">
-                      Hết hạn
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Documents Tab */}
-        {activeTab === "documents" && (
-          <div className="divide-y divide-gray-100">
-            {documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="p-5 flex items-center gap-4 hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
-                  {getDocIcon(doc.type)}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900 truncate">
-                    {doc.title}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {doc.size && `${doc.size} • `}Tải lên: {doc.uploadedAt}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {isTeacher && (
-                    <>
-                      <button
-                        onClick={() => handleEdit("documents", doc.id)}
-                        className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"
-                      >
-                        <Pencil size={18} />
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleDeleteClick("document", doc.id, doc.title)
-                        }
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </>
-                  )}
-                  <button className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-colors">
-                    <Download size={20} />
+                  <button
+                    onClick={() => router.push(`/study/${id}/exam/${exam.id}`)}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors"
+                  >
+                    Làm bài
                   </button>
                 </div>
               </div>
@@ -569,51 +762,48 @@ export function StudyDetail() {
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 w-[20%]">
                       Trạng thái
                     </th>
-                    {isTeacher && (
-                      <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900 w-[10%]">
-                        Hành động
-                      </th>
-                    )}
+                    {isTeacher && <th className="px-6 py-4 w-[10%]"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {/* Teacher Row */}
+                  {/* Render Teacher First */}
                   {teacher && (
-                    <tr className="hover:bg-gray-50 transition-colors">
+                    <tr className="group hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="w-10 h-10 min-w-[40px] rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold overflow-hidden border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold uppercase">
                             {teacher.avatar ? (
                               <img
                                 src={teacher.avatar}
                                 alt={teacher.name}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full rounded-full object-cover"
                               />
                             ) : (
-                              (teacher.name || "T").charAt(0)
+                              teacher.name?.charAt(0) || "T"
                             )}
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900 truncate">
+                          <div>
+                            <div className="font-medium text-gray-900">
                               {teacher.name}
-                            </p>
-                            <p className="text-sm text-gray-500 truncate">
+                            </div>
+                            <div className="text-sm text-gray-500">
                               {teacher.email}
-                            </p>
+                            </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                           Giáo viên
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {classItem.startDate}
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {/* Teacher join date unknown, skip or show class start date */}
+                        -
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <div className="w-2 h-2 rounded-full bg-green-600 animate-pulse"></div>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                           Trực tuyến
                         </span>
                       </td>
@@ -622,19 +812,16 @@ export function StudyDetail() {
                   )}
 
                   {/* Students Rows */}
-                  {students.map((student) => {
-                    // Mock online status: random based on ID roughly 70% online
-                    const isOnline =
-                      (student.id + (classItem?.id || 0)) % 3 !== 0;
-
+                  {classMembers.map((student) => {
+                    const isOnline = student.status === "online";
                     return (
                       <tr
-                        key={student.id}
+                        key={student.id} // Assuming student.id is unique class_student_id or user_id
                         className="hover:bg-gray-50 transition-colors group"
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="w-10 h-10 min-w-[40px] rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white font-semibold overflow-hidden border border-gray-100 shadow-sm">
+                            <div className="w-10 h-10 min-w-[40px] rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-semibold overflow-hidden border border-gray-100 shadow-sm">
                               {student.avatar ? (
                                 <img
                                   src={student.avatar}
@@ -661,7 +848,7 @@ export function StudyDetail() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
-                          {classItem.startDate}
+                          {student.joinDate || "-"}
                         </td>
                         <td className="px-6 py-4">
                           {isOnline ? (
@@ -682,7 +869,7 @@ export function StudyDetail() {
                               onClick={() =>
                                 handleDeleteClick(
                                   "member",
-                                  student.id,
+                                  student.userId, // Use userId for removal
                                   student.name,
                                 )
                               }
@@ -699,7 +886,7 @@ export function StudyDetail() {
                 </tbody>
               </table>
 
-              {students.length === 0 && !teacher && (
+              {classMembers.length === 0 && !teacher && (
                 <div className="p-12 text-center text-gray-500">
                   Chưa có thành viên nào trong lớp học này.
                 </div>
@@ -719,13 +906,89 @@ export function StudyDetail() {
             ? "bài học"
             : deleteModal.type === "exam"
               ? "bài kiểm tra"
-              : deleteModal.type === "document"
-                ? "tài liệu"
-                : "thành viên"
+              : "thành viên"
         } "${deleteModal.itemName}" không? Hành động này không thể hoàn tác.`}
         confirmText="Xóa ngay"
-        cancelText="Để tôi suy nghĩ lại"
+        cancelText="Hủy bỏ"
+        type="danger"
       />
+
+      <Modal
+        isOpen={isAddMemberOpen}
+        onClose={() => setIsAddMemberOpen(false)}
+        title="Thêm học sinh vào lớp"
+      >
+        <div className="space-y-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Tìm kiếm học sinh theo tên hoặc email..."
+              value={memberSearchQuery}
+              onChange={(e) => setMemberSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+            />
+            <div className="absolute left-3 top-2.5 text-gray-400">
+              <User size={18} />
+            </div>
+          </div>
+
+          <div className="max-h-60 overflow-y-auto space-y-2">
+            {filteredStudentsToAdd.length === 0 ? (
+              <p className="text-center text-gray-500 py-4">
+                Không tìm thấy học sinh nào hoặc đã có trong lớp.
+              </p>
+            ) : (
+              filteredStudentsToAdd.map((student) => (
+                <div
+                  key={student.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 text-xs font-bold">
+                      {student.name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {student.name}
+                      </p>
+                      <p className="text-xs text-gray-500">{student.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleAddMember(student.id)}
+                    disabled={isAddingMember}
+                    className="px-3 py-1 bg-primary-600 text-white text-xs font-medium rounded-md hover:bg-primary-700 disabled:opacity-50"
+                  >
+                    {isAddingMember ? "Đang thêm..." : "Thêm"}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {classItem && (
+        <>
+          <LessonModal
+            isOpen={lessonModal.isOpen}
+            onClose={() => setLessonModal({ ...lessonModal, isOpen: false })}
+            onSuccess={loadData}
+            classId={classItem.id}
+            organizationId={classItem.organizationId}
+            initialData={lessonModal.data}
+          />
+
+          <ExamModal
+            isOpen={examModal.isOpen}
+            onClose={() => setExamModal({ ...examModal, isOpen: false })}
+            onSuccess={loadData}
+            classId={classItem.id}
+            organizationId={classItem.organizationId}
+            initialData={examModal.data}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ const teachingManagementRoutes = require("./features/teaching-management");
 const learnRoutes = require("./features/learn");
 const { authRequired } = require("./middleware/auth.middleware");
 const { specs, swaggerUi } = require("./swagger/index");
+const { initMinio, minioClient, bucketName } = require("./utils/minio");
 
 const app = express();
 
@@ -30,7 +31,30 @@ app.use("/teaching-management", teachingManagementRoutes);
 app.use("/learn", learnRoutes);
 app.use("/upload", uploadRoutes);
 const path = require("path");
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
+// Proxy /uploads to MinIO or serve local files (for transition)
+app.get("/uploads/:filename", async (req, res) => {
+  const filename = req.params.filename;
+  const localPath = path.join(__dirname, "../uploads", filename);
+
+  // Try local first (existing files)
+  const fs = require("fs");
+  if (fs.existsSync(localPath)) {
+    return res.sendFile(localPath);
+  }
+
+  // Then try MinIO
+  try {
+    const dataStream = await minioClient.getObject(bucketName, filename);
+    dataStream.pipe(res);
+  } catch (err) {
+    if (err.code === "NoSuchKey") {
+      return res.status(404).send("File not found");
+    }
+    console.error("MinIO retrieval error:", err);
+    res.status(500).send("Error retrieving file");
+  }
+});
 
 //router login
 app.get("/me", authRequired, (req, res) => {
@@ -44,10 +68,24 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
+
+  // Initialize MinIO
+  await initMinio();
   try {
     const db = require("./db");
-    const [rows] = await db.query("DESCRIBE `user`");
+    const [tables] = await db.query("SHOW TABLES");
+    const tableList = tables.map((t) => Object.values(t)[0]);
+    console.log("Available tables in database:", tableList);
+
+    if (tableList.includes("user")) {
+      const [rows] = await db.query("DESCRIBE `user`");
+      console.log("Confirmed: 'user' table exists and is accessible.");
+    } else {
+      console.error(
+        "CRITICAL ERROR: Table 'user' does not exist in the database!",
+      );
+    }
   } catch (err) {
-    console.error("DEBUG TABLE ERROR:", err);
+    console.error("DATABASE INITIALIZATION ERROR:", err);
   }
 });

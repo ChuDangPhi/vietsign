@@ -189,9 +189,13 @@ export function UsersManagement() {
     setOrgError("");
 
     // Validate logic
-    const requiresOrg = ["TEACHER", "STUDENT", "FACILITY_MANAGER"].includes(
-      formData.role,
-    );
+    const requiresOrg = [
+      "TEACHER",
+      "STUDENT",
+      "FACILITY_MANAGER",
+      "CENTER_ADMIN",
+      "SCHOOL_ADMIN",
+    ].includes(formData.role);
 
     // Nếu nhập text mà chưa chọn ID -> Báo lỗi (User experience)
     // Nhưng user yêu cầu: "nếu không chọn sở mà nhập luôn trường -> list all".
@@ -288,7 +292,8 @@ export function UsersManagement() {
             >
               <option value="all">Tất cả vai trò</option>
               <option value="ADMIN">Quản trị viên</option>
-              <option value="FACILITY_MANAGER">Quản trị viên cơ sở</option>
+              <option value="CENTER_ADMIN">Quản lý Sở/Trung tâm</option>
+              <option value="SCHOOL_ADMIN">Quản lý Trường học</option>
               <option value="TEACHER">Giáo viên</option>
               <option value="STUDENT">Học sinh</option>
               <option value="USER">Người dùng</option>
@@ -589,7 +594,11 @@ export function UsersManagement() {
                   className={`space-y-1.5 relative ${showSchoolSuggestions ? "mb-48" : ""}`}
                 >
                   <label className="text-sm font-semibold text-gray-700">
-                    {formData.role === "FACILITY_MANAGER"
+                    {[
+                      "FACILITY_MANAGER",
+                      "CENTER_ADMIN",
+                      "SCHOOL_ADMIN",
+                    ].includes(formData.role)
                       ? "Cơ sở vật chất (Trường/Trung tâm)"
                       : "Trường học"}
                   </label>

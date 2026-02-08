@@ -46,8 +46,12 @@ export function QuestionsManagement() {
   const { user } = useSelector((state: RootState) => state.admin);
   const userRole = user?.role?.role || user?.code;
   const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(userRole);
-  const isFacilityManager =
-    userRole === "FacilityManager" || userRole === "FACILITY_MANAGER";
+  const isFacilityManager = [
+    "FacilityManager",
+    "FACILITY_MANAGER",
+    "CENTER_ADMIN",
+    "SCHOOL_ADMIN",
+  ].includes(userRole);
   const isTeacher = userRole === "Teacher" || userRole === "TEACHER";
   const userOrgId = user?.organizationId || (user as any)?.organization_id;
   const userId = user?.id || (user as any)?.user_id;
@@ -593,6 +597,10 @@ function CreateQuestionForm({
   classes: any[];
   refresh: () => void;
 }) {
+  // Get current user from Redux to pass creatorId
+  const { user } = useSelector((state: RootState) => state.admin);
+  const userId = user?.id || (user as any)?.user_id;
+
   const [formData, setFormData] = useState({
     content: "",
     explanation: "",
@@ -665,23 +673,41 @@ function CreateQuestionForm({
         }),
       );
 
+      const selectedClass = classes.find(
+        (c) => String(c.id) === String(formData.classId),
+      );
+      const organizationId = selectedClass?.organizationId || null;
+
+      console.log("Submitting question form data:", formData);
+
+      if (!formData.content?.trim()) {
+        alert("Nội dung câu hỏi là bắt buộc!");
+        setIsSubmitting(false);
+        return;
+      }
+
       await createQuestion({
         content: formData.content,
         explanation: formData.explanation,
-        classroomId: Number(formData.classId),
+        classroomId: Number(formData.classId) || null,
+        organizationId,
+        creatorId: userId, // Add creatorId
         imageLocation,
         videoLocation,
         questionType: formData.questionType,
         fileType: formData.fileType,
         answerReqs: processedAnswers,
-        creatorId: 1, // TODO: Get from auth context
       });
 
       refresh();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create error", error);
-      alert("Tạo câu hỏi thất bại");
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Tạo câu hỏi thất bại";
+      alert(`Lỗi: ${msg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -706,6 +732,7 @@ function CreateQuestionForm({
           >
             <option value="ONE_ANSWER">Một đáp án</option>
             <option value="MULTIPLE_ANSWERS">Nhiều đáp án</option>
+            <option value="PRACTICE">Thực hành</option>
           </select>
         </div>
 
@@ -788,82 +815,84 @@ function CreateQuestionForm({
         </div>
       )}
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-semibold text-gray-700">
-            Danh sách đáp án
-          </label>
-          <button
-            type="button"
-            onClick={addAnswer}
-            className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1"
-          >
-            <Plus size={14} /> Thêm đáp án
-          </button>
-        </div>
+      {formData.questionType !== "PRACTICE" && (
         <div className="space-y-3">
-          {answers.map((answer, index) => (
-            <div
-              key={index}
-              className="p-3 border border-gray-100 rounded-xl bg-gray-50/50 space-y-2"
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold text-gray-700">
+              Danh sách đáp án
+            </label>
+            <button
+              type="button"
+              onClick={addAnswer}
+              className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1"
             >
-              <div className="flex items-center gap-3">
-                <input
-                  type={
-                    formData.questionType === "ONE_ANSWER"
-                      ? "radio"
-                      : "checkbox"
-                  }
-                  checked={answer.correct}
-                  onChange={(e) =>
-                    updateAnswer(index, "correct", e.target.checked)
-                  }
-                  name="correct-answer"
-                  className="w-4 h-4 text-primary-600 focus:ring-primary-500"
-                />
-                <input
-                  type="text"
-                  value={answer.content}
-                  onChange={(e) =>
-                    updateAnswer(index, "content", e.target.value)
-                  }
-                  placeholder={`Đáp án ${index + 1}`}
-                  className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => removeAnswer(index)}
-                  className="text-gray-400 hover:text-red-600 p-1"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-              <div className="flex items-center gap-4 pl-7 text-[10px]">
-                <select
-                  value={answer.fileType}
-                  onChange={(e) =>
-                    updateAnswer(index, "fileType", e.target.value)
-                  }
-                  className="bg-transparent border-none outline-none text-gray-500 cursor-pointer"
-                >
-                  <option value="TEXT">Chỉ chữ</option>
-                  <option value="NOT_EXISTED">Tải media</option>
-                </select>
-                {answer.fileType === "NOT_EXISTED" && (
+              <Plus size={14} /> Thêm đáp án
+            </button>
+          </div>
+          <div className="space-y-3">
+            {answers.map((answer, index) => (
+              <div
+                key={index}
+                className="p-3 border border-gray-100 rounded-xl bg-gray-50/50 space-y-2"
+              >
+                <div className="flex items-center gap-3">
                   <input
-                    type="file"
-                    onChange={(e) =>
-                      updateAnswer(index, "file", e.target.files?.[0])
+                    type={
+                      formData.questionType === "ONE_ANSWER"
+                        ? "radio"
+                        : "checkbox"
                     }
-                    className="flex-1"
+                    checked={answer.correct}
+                    onChange={(e) =>
+                      updateAnswer(index, "correct", e.target.checked)
+                    }
+                    name="correct-answer"
+                    className="w-4 h-4 text-primary-600 focus:ring-primary-500"
                   />
-                )}
+                  <input
+                    type="text"
+                    value={answer.content}
+                    onChange={(e) =>
+                      updateAnswer(index, "content", e.target.value)
+                    }
+                    placeholder={`Đáp án ${index + 1}`}
+                    className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeAnswer(index)}
+                    className="text-gray-400 hover:text-red-600 p-1"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-4 pl-7 text-[10px]">
+                  <select
+                    value={answer.fileType}
+                    onChange={(e) =>
+                      updateAnswer(index, "fileType", e.target.value)
+                    }
+                    className="bg-transparent border-none outline-none text-gray-500 cursor-pointer"
+                  >
+                    <option value="TEXT">Chỉ chữ</option>
+                    <option value="NOT_EXISTED">Tải media</option>
+                  </select>
+                  {answer.fileType === "NOT_EXISTED" && (
+                    <input
+                      type="file"
+                      onChange={(e) =>
+                        updateAnswer(index, "file", e.target.files?.[0])
+                      }
+                      className="flex-1"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="space-y-1.5">
         <label className="text-sm font-semibold text-gray-700">
@@ -989,10 +1018,16 @@ function EditQuestionForm({
       );
 
       const { updateQuestion } = await import("@/services/questionService");
+      const selectedClass = classes.find(
+        (c) => String(c.id) === String(formData.classId),
+      );
+      const organizationId = selectedClass?.organizationId || null;
+
       await updateQuestion(initialData.id, {
         content: formData.content,
         explanation: formData.explanation,
         classId: Number(formData.classId),
+        organizationId,
         imageLocation,
         videoLocation,
         questionType: formData.questionType,
@@ -1028,6 +1063,7 @@ function EditQuestionForm({
           >
             <option value="ONE_ANSWER">Một đáp án</option>
             <option value="MULTIPLE_ANSWERS">Nhiều đáp án</option>
+            <option value="PRACTICE">Thực hành</option>
           </select>
         </div>
 
@@ -1093,85 +1129,87 @@ function EditQuestionForm({
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-semibold text-gray-700">
-            Danh sách đáp án
-          </label>
-          <button
-            type="button"
-            onClick={addAnswer}
-            className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1"
-          >
-            <Plus size={14} /> Thêm đáp án
-          </button>
-        </div>
+      {formData.questionType !== "PRACTICE" && (
         <div className="space-y-3">
-          {answers.map((answer, index) => (
-            <div
-              key={index}
-              className="p-3 border border-gray-100 rounded-xl bg-gray-50/50 space-y-2"
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold text-gray-700">
+              Danh sách đáp án
+            </label>
+            <button
+              type="button"
+              onClick={addAnswer}
+              className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1"
             >
-              <div className="flex items-center gap-3">
-                <input
-                  type={
-                    formData.questionType === "ONE_ANSWER"
-                      ? "radio"
-                      : "checkbox"
-                  }
-                  checked={answer.correct}
-                  onChange={(e) =>
-                    updateAnswer(index, "correct", e.target.checked)
-                  }
-                  name="correct-answer"
-                  className="w-4 h-4 text-primary-600 focus:ring-primary-500"
-                />
-                <input
-                  type="text"
-                  value={answer.content}
-                  onChange={(e) =>
-                    updateAnswer(index, "content", e.target.value)
-                  }
-                  placeholder={`Đáp án ${index + 1}`}
-                  className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => removeAnswer(index)}
-                  className="text-gray-400 hover:text-red-600 p-1"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-              <div className="flex items-center gap-4 pl-7 text-[10px]">
-                <select
-                  value={answer.fileType}
-                  onChange={(e) =>
-                    updateAnswer(index, "fileType", e.target.value)
-                  }
-                  className="bg-transparent border-none outline-none text-gray-500 cursor-pointer"
-                >
-                  <option value="TEXT">Chỉ chữ</option>
-                  <option value="NOT_EXISTED">Tải media</option>
-                </select>
-                {answer.fileType === "NOT_EXISTED" && (
+              <Plus size={14} /> Thêm đáp án
+            </button>
+          </div>
+          <div className="space-y-3">
+            {answers.map((answer, index) => (
+              <div
+                key={index}
+                className="p-3 border border-gray-100 rounded-xl bg-gray-50/50 space-y-2"
+              >
+                <div className="flex items-center gap-3">
                   <input
-                    type="file"
-                    onChange={(e) =>
-                      updateAnswer(index, "file", e.target.files?.[0])
+                    type={
+                      formData.questionType === "ONE_ANSWER"
+                        ? "radio"
+                        : "checkbox"
                     }
-                    className="flex-1"
+                    checked={answer.correct}
+                    onChange={(e) =>
+                      updateAnswer(index, "correct", e.target.checked)
+                    }
+                    name="correct-answer"
+                    className="w-4 h-4 text-primary-600 focus:ring-primary-500"
                   />
-                )}
-                {(answer.imageLocation || answer.videoLocation) && (
-                  <span className="text-primary-600 italic">Đã có media</span>
-                )}
+                  <input
+                    type="text"
+                    value={answer.content}
+                    onChange={(e) =>
+                      updateAnswer(index, "content", e.target.value)
+                    }
+                    placeholder={`Đáp án ${index + 1}`}
+                    className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeAnswer(index)}
+                    className="text-gray-400 hover:text-red-600 p-1"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-4 pl-7 text-[10px]">
+                  <select
+                    value={answer.fileType}
+                    onChange={(e) =>
+                      updateAnswer(index, "fileType", e.target.value)
+                    }
+                    className="bg-transparent border-none outline-none text-gray-500 cursor-pointer"
+                  >
+                    <option value="TEXT">Chỉ chữ</option>
+                    <option value="NOT_EXISTED">Tải media</option>
+                  </select>
+                  {answer.fileType === "NOT_EXISTED" && (
+                    <input
+                      type="file"
+                      onChange={(e) =>
+                        updateAnswer(index, "file", e.target.files?.[0])
+                      }
+                      className="flex-1"
+                    />
+                  )}
+                  {(answer.imageLocation || answer.videoLocation) && (
+                    <span className="text-primary-600 italic">Đã có media</span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="space-y-1.5">
         <label className="text-sm font-semibold text-gray-700">

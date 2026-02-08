@@ -3,7 +3,7 @@ const progressService = require("../services/progress.services");
 // Get student's own progress
 const getMyProgress = async (req, res) => {
   try {
-    const studentId = req.user.id;
+    const studentId = req.user.user_id;
 
     const progress = await progressService.getStudentProgress(studentId);
 
@@ -85,7 +85,7 @@ const getExamHistory = async (req, res) => {
     const history = await progressService.getStudentExamHistory(
       studentId,
       parseInt(limit),
-      parseInt(offset)
+      parseInt(offset),
     );
 
     return res.status(200).json({
@@ -127,7 +127,7 @@ const getLessonProgress = async (req, res) => {
     const progress = await progressService.getStudentLessonProgress(
       studentId,
       parseInt(limit),
-      parseInt(offset)
+      parseInt(offset),
     );
 
     return res.status(200).json({
@@ -169,7 +169,7 @@ const getVocabularyProgress = async (req, res) => {
     const progress = await progressService.getStudentVocabularyProgress(
       studentId,
       parseInt(limit),
-      parseInt(offset)
+      parseInt(offset),
     );
 
     return res.status(200).json({
@@ -211,7 +211,7 @@ const getClassroomProgressSummary = async (req, res) => {
     const summary = await progressService.getClassroomProgressSummary(
       classroomId,
       parseInt(limit),
-      parseInt(offset)
+      parseInt(offset),
     );
 
     return res.status(200).json({
@@ -251,7 +251,7 @@ const getProgressByClassroom = async (req, res) => {
 
     const progress = await progressService.getProgressByClassroom(
       studentId,
-      classroomId
+      classroomId,
     );
 
     return res.status(200).json({
@@ -294,7 +294,7 @@ const getProgressByDateRange = async (req, res) => {
     const progress = await progressService.getProgressByDateRange(
       studentId,
       start_date,
-      end_date
+      end_date,
     );
 
     return res.status(200).json({
@@ -334,7 +334,7 @@ const getProgressComparison = async (req, res) => {
 
     const comparison = await progressService.getProgressComparison(
       studentId,
-      classroomId
+      classroomId,
     );
 
     return res.status(200).json({
@@ -368,7 +368,7 @@ const getLearningTrends = async (req, res) => {
 
     const trends = await progressService.getLearningTrends(
       studentId,
-      parseInt(weeks)
+      parseInt(weeks),
     );
 
     return res.status(200).json({

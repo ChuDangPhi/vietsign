@@ -4,13 +4,46 @@ const router = express.Router();
 const authRequired = require("../middleware/auth.middleware").authRequired;
 const { orgRoleMiddleware } = require("../middleware/orgRole.middleware");
 
-// GET users by organization
+// GET users by organization OR get organizations by user
 async function getUsersByOrganization(req, res) {
   try {
-    const { organization_id, role_in_org } = req.query;
+    const { organization_id, user_id, role_in_org } = req.query;
 
+    // Support query by user_id to get organizations managed by a user
+    if (user_id && !organization_id) {
+      let query = `
+        SELECT 
+          om.organization_id,
+          om.role_in_org,
+          om.is_primary,
+          o.name as organization_name,
+          o.type as organization_type
+        FROM organization_manager om
+        INNER JOIN organization o ON om.organization_id = o.organization_id
+        WHERE om.user_id = ?
+      `;
+      const params = [user_id];
+
+      if (role_in_org) {
+        query += " AND om.role_in_org = ?";
+        params.push(role_in_org);
+      }
+
+      query += " ORDER BY o.name ASC";
+
+      const [rows] = await pool.query(query, params);
+
+      return res.status(200).json({
+        managers: rows,
+        total: rows.length,
+      });
+    }
+
+    // Original logic: query by organization_id
     if (!organization_id) {
-      return res.status(400).json({ message: "organization_id is required" });
+      return res
+        .status(400)
+        .json({ message: "organization_id or user_id is required" });
     }
 
     let query = `
@@ -77,11 +110,9 @@ async function assignOrgRole(req, res) {
     );
 
     if (exists.length > 0) {
-      return res
-        .status(409)
-        .json({
-          message: "Conflict: User already has a role in this organization",
-        });
+      return res.status(409).json({
+        message: "Conflict: User already has a role in this organization",
+      });
     }
 
     // 3. Nếu is_primary = true thì set tất cả các is_primary khác về false

@@ -18,22 +18,27 @@ import Link from "next/link";
 
 import { ClassRegistrationModal } from "./ClassRegistrationModal";
 
+import { useSelector } from "react-redux";
+import { RootState } from "@/core/store";
+
 export const Study: React.FC = () => {
-  // Simulate registered classes (hardcoded IDs for demo)
-  // In a real app, this would come from an API endpoint: GET /user/registrations
+  // Get user from Redux store for consistency
+  const { user: currentUser } = useSelector((state: RootState) => state.admin);
+
   const [registeredClasses, setRegisteredClasses] = useState<ClassItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [teachersMap, setTeachersMap] = useState<Record<number, string>>({});
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const userJson = localStorage.getItem("user");
-        const user = userJson ? JSON.parse(userJson) : null;
-        setCurrentUser(user);
+        const userId = currentUser?.id || (currentUser as any)?.user_id;
+        const userRole =
+          currentUser?.role?.role ||
+          currentUser?.role ||
+          (currentUser as any)?.code;
 
         const teachers = await fetchUsersByRole("TEACHER");
 
@@ -46,12 +51,42 @@ export const Study: React.FC = () => {
 
         let myClasses: ClassItem[] = [];
 
-        if (user) {
-          if (user.role === "TEACHER") {
-            myClasses = await fetchAllClasses({ teacherId: user.id });
+        if (currentUser && userId) {
+          if (userRole === "TEACHER" || userRole === "Teacher") {
+            // Giáo viên: Lấy các lớp mình phụ trách
+            // Pass correct teacherId parameters
+            myClasses = await fetchAllClasses({ teacherId: userId });
           } else {
-            // STUDENT & TEST roles: fetch enrolled classes
-            myClasses = await fetchAllClasses({ studentId: user.id });
+            // STUDENT & TEST roles: Lấy các lớp đã đăng ký qua endpoint /my-classes
+            try {
+              const ClassModel = (await import("@/domain/entities/Class"))
+                .default;
+              const response = await ClassModel.getStudentClasses();
+              const data = response.data || response;
+              myClasses = Array.isArray(data)
+                ? data.map((item: any) => ({
+                    id: item.id,
+                    name: item.name,
+                    description: item.description,
+                    teacherId: item.teacherId,
+                    organizationId: item.organizationId,
+                    organizationName: item.organizationName,
+                    schedule: item.schedule,
+                    status: item.status,
+                    students: item.students || 0,
+                    maxStudents: item.maxStudents,
+                    startDate: item.startDate,
+                    endDate: item.endDate,
+                    classLevel: item.classLevel,
+                    code: item.classCode,
+                    thumbnail: item.thumbnailPath,
+                  }))
+                : [];
+            } catch (e) {
+              console.error("Error fetching student classes:", e);
+              // Fallback to studentId query
+              myClasses = await fetchAllClasses({ studentId: userId });
+            }
           }
         }
 
@@ -63,8 +98,11 @@ export const Study: React.FC = () => {
         setIsLoading(false);
       }
     };
-    loadData();
-  }, []);
+
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser]);
 
   // Helper to get teacher name
   const getTeacherName = (teacherId: number) => {

@@ -94,18 +94,44 @@ export function ClassesManagement() {
 
   // Auto-fill organization for teachers
   useEffect(() => {
-    if (isUserTeacher && user) {
-      const userOrgId =
-        user.organizationId || (user as any).organization_id || "";
-      if (userOrgId) {
-        setFormData((prev) => ({
-          ...prev,
-          organizationId: String(userOrgId),
-          teacherId: user.id || (user as any).user_id || "",
-        }));
+    const fetchTeacherOrg = async () => {
+      if (isUserTeacher && user) {
+        let orgId = user.organizationId || (user as any).organization_id;
+
+        // If organizationId is missing in profile, fetch from API
+        if (!orgId) {
+          const userId = user.id || (user as any).user_id;
+          if (userId) {
+            try {
+              const res = await OrganizationManagerModel.getByUser(userId);
+              // API returns { managers: [...] } or direct array
+              const list =
+                res.managers || res.data || (Array.isArray(res) ? res : []);
+              if (list.length > 0) {
+                // Use the first organization found (usually teachers belong to one school)
+                orgId = list[0].organization_id;
+              }
+            } catch (e) {
+              console.error("Failed to fetch teacher organization:", e);
+            }
+          }
+        }
+
+        if (orgId) {
+          setFormData((prev) => ({
+            ...prev,
+            organizationId: String(orgId),
+            // Also set teacherId to themselves
+            teacherId: String(user.id || (user as any).user_id || ""),
+          }));
+        }
       }
+    };
+
+    if (isModalOpen) {
+      fetchTeacherOrg();
     }
-  }, [user, isUserTeacher, isModalOpen]); // Run when modal opens too
+  }, [user, isUserTeacher, isModalOpen]);
 
   // Load teachers when organization is selected
   const handleOrganizationChange = async (orgId: string) => {
@@ -149,12 +175,28 @@ export function ClassesManagement() {
         setFacilities(facilitiesRes);
 
         // Build class query params based on role
-        const userRole = user?.role?.role || user?.code;
+        // Build class query params based on role
+        const rawUserCode = user?.code || "";
+        const facilityManagerRoles = [
+          "FacilityManager",
+          "FACILITY_MANAGER",
+          "CENTER_ADMIN",
+          "SCHOOL_ADMIN",
+        ];
+
+        const userRole = facilityManagerRoles.includes(rawUserCode)
+          ? rawUserCode
+          : user?.role?.role || user?.code;
+
         const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(
           userRole,
         );
-        const isFacilityManager =
-          userRole === "FacilityManager" || userRole === "FACILITY_MANAGER";
+        const isFacilityManager = [
+          "FacilityManager",
+          "FACILITY_MANAGER",
+          "CENTER_ADMIN",
+          "SCHOOL_ADMIN",
+        ].includes(userRole);
         const isTeacher = userRole === "Teacher" || userRole === "TEACHER";
         const userOrgId =
           user?.organizationId || (user as any)?.organization_id;
@@ -211,7 +253,12 @@ export function ClassesManagement() {
         ]);
 
         if (classesRes.status === "fulfilled") {
-          setClasses(classesRes.value);
+          // Remove duplicates based on ID to fix React key warning
+          const uniqueClasses = classesRes.value.filter(
+            (c: any, index: number, self: any[]) =>
+              index === self.findIndex((t: any) => t.id === c.id),
+          );
+          setClasses(uniqueClasses);
         } else {
           console.error("Failed to fetch classes:", classesRes.reason);
         }
@@ -334,7 +381,19 @@ export function ClassesManagement() {
 
   // Helper để tạo mô tả theo role
   const getRoleDescription = (): string => {
-    const userRole = user?.role?.role || user?.code;
+    // Prioritize code logic same as loadData
+    const rawUserCode = user?.code || "";
+    const facilityManagerRoles = [
+      "FacilityManager",
+      "FACILITY_MANAGER",
+      "CENTER_ADMIN",
+      "SCHOOL_ADMIN",
+    ];
+
+    const userRole = facilityManagerRoles.includes(rawUserCode)
+      ? rawUserCode
+      : user?.role?.role || user?.code;
+
     const isAdmin = ["Admin", "ADMIN", "SUPER_ADMIN", "TEST"].includes(
       userRole,
     );
@@ -343,7 +402,14 @@ export function ClassesManagement() {
       return `Quản lý tất cả lớp học trong hệ thống (${roleFilteredClasses.length} lớp)`;
     }
 
-    if (userRole === "FacilityManager" || userRole === "FACILITY_MANAGER") {
+    if (
+      [
+        "FacilityManager",
+        "FACILITY_MANAGER",
+        "CENTER_ADMIN",
+        "SCHOOL_ADMIN",
+      ].includes(userRole)
+    ) {
       const userOrgId = user?.organizationId || user?.organization_id;
       const userOrg = facilities.find((f) => f.id === userOrgId);
 
@@ -792,6 +858,7 @@ export function ClassesManagement() {
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white"
                 required
                 value={formData.organizationId}
+                disabled={isUserTeacher && !!formData.organizationId}
                 onChange={(e) => handleOrganizationChange(e.target.value)}
               >
                 <option value="">Chọn cơ sở (Trường)</option>
@@ -799,9 +866,15 @@ export function ClassesManagement() {
                   .filter((facility) => {
                     if (facility.type !== "SCHOOL") return false;
                     if (isUserTeacher) {
-                      const userOrgId =
-                        user?.organizationId || (user as any)?.organization_id;
-                      return Number(facility.id) === Number(userOrgId);
+                      // Prioritize formData since we auto-filled it from API if needed
+                      const targetOrgId =
+                        formData.organizationId ||
+                        user?.organizationId ||
+                        (user as any)?.organization_id;
+
+                      return targetOrgId
+                        ? Number(facility.id) === Number(targetOrgId)
+                        : false;
                     }
                     return true;
                   })
