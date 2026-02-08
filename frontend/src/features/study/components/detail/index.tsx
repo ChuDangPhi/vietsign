@@ -122,7 +122,21 @@ export function StudyDetail() {
       const fetchedClass = await fetchClassById(id);
       if (fetchedClass) {
         setClassItem(fetchedClass);
-        setIsTeacher(true); // TODO: check permission
+
+        // Role check
+        if (typeof window !== "undefined") {
+          const userStr = localStorage.getItem("user");
+          const user = userStr ? JSON.parse(userStr) : null;
+          const role = user?.role || user?.code;
+          const teacherRoles = [
+            "TEACHER",
+            "ADMIN",
+            "SUPER_ADMIN",
+            "CENTER_ADMIN",
+            "SCHOOL_ADMIN",
+          ];
+          setIsTeacher(teacherRoles.includes(role));
+        }
 
         if (fetchedClass.teacherId) {
           try {
@@ -709,13 +723,14 @@ export function StudyDetail() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {isTeacher && (
+                  {isTeacher ? (
                     <>
                       <button
                         onClick={() => handleEdit("exams", exam.id)}
-                        className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"
+                        className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors flex items-center gap-2"
                       >
-                        <Pencil size={18} />
+                        <Pencil size={16} />
+                        Chỉnh sửa
                       </button>
                       <button
                         onClick={() =>
@@ -725,18 +740,22 @@ export function StudyDetail() {
                             exam.title || exam.name,
                           )
                         }
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <Trash2 size={18} />
                       </button>
                     </>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        router.push(`/study/${id}/exam/${exam.id}`)
+                      }
+                      className="px-4 py-2 bg-primary-100 text-primary-700 rounded-xl text-sm font-medium hover:bg-primary-200 transition-colors flex items-center gap-2"
+                    >
+                      <Play size={16} />
+                      Làm bài
+                    </button>
                   )}
-                  <button
-                    onClick={() => router.push(`/study/${id}/exam/${exam.id}`)}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors"
-                  >
-                    Làm bài
-                  </button>
                 </div>
               </div>
             ))}
