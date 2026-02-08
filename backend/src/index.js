@@ -73,6 +73,10 @@ app.listen(PORT, async () => {
   await initMinio();
   try {
     const db = require("./db");
+    console.log(
+      `Connecting to DB: ${process.env.DB_HOST}:${process.env.DB_PORT}, Database: ${process.env.DB_NAME}`,
+    );
+
     const [tables] = await db.query("SHOW TABLES");
     const tableList = tables.map((t) => Object.values(t)[0]);
     console.log("Available tables in database:", tableList);
@@ -82,7 +86,7 @@ app.listen(PORT, async () => {
       console.log("Confirmed: 'user' table exists and is accessible.");
     } else {
       console.error(
-        "CRITICAL ERROR: Table 'user' does not exist in the database!",
+        `CRITICAL ERROR: Table 'user' does not exist in the database '${process.env.DB_NAME}'!`,
       );
     }
   } catch (err) {

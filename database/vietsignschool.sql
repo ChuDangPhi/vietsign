@@ -15,33 +15,8 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
---
--- Table structure for table `_user`
---
-
-DROP TABLE IF EXISTS `_user`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `_user` (
-  `id` int NOT NULL,
-  `email` varchar(255) DEFAULT NULL,
-  `firstname` varchar(255) DEFAULT NULL,
-  `lastname` varchar(255) DEFAULT NULL,
-  `password` varchar(255) DEFAULT NULL,
-  `role` enum('ADMIN','MANAGER','USER') DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `_user`
---
-
-LOCK TABLES `_user` WRITE;
-/*!40000 ALTER TABLE `_user` DISABLE KEYS */;
-INSERT INTO `_user` VALUES (1,'admin@mail.com','Admin','Admin','$2a$10$RjLQEyJ.3ddaX8tLo63mKeoQujmVEmyXicbj11jmXdaQ4mDqvadCS','ADMIN'),(2,'manager@mail.com','Admin','Admin','$2a$10$zD4P4Yu.PS1LrX9grobQp.o1qTn0qvCX/Xv9HHYT/uZOjmc3RYU0m','MANAGER');
-/*!40000 ALTER TABLE `_user` ENABLE KEYS */;
-UNLOCK TABLES;
+-- Legacy _user table section removed to avoid confusion.
+-- The system now uses the 'user' table (user_id, etc.) exclusively.
 
 --
 -- Table structure for table `answer`
@@ -99,7 +74,7 @@ CREATE TABLE `class_learning_progress` (
   PRIMARY KEY (`progress_id`),
   UNIQUE KEY `uk_user_class` (`user_id`,`class_room_id`),
   KEY `idx_user` (`user_id`),
-  KEY `idx_class_room` (`class_room_id`)
+  KEY `idx_class_room` (`class_room_id`),
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1045,11 +1020,11 @@ CREATE TABLE `token` (
   `revoked` bit(1) NOT NULL,
   `token` varchar(255) DEFAULT NULL,
   `token_type` enum('BEARER') DEFAULT NULL,
-  `user_id` int DEFAULT NULL,
+  `user_id` bigint DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UK_pddrhgwxnms2aceeku9s2ewy5` (`token`),
   KEY `FKiblu4cjwvyntq3ugo31klp1c6` (`user_id`),
-  CONSTRAINT `FKiblu4cjwvyntq3ugo31klp1c6` FOREIGN KEY (`user_id`) REFERENCES `_user` (`id`)
+  CONSTRAINT `FKiblu4cjwvyntq3ugo31klp1c6` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1288,8 +1263,7 @@ CREATE TABLE `user` (
   UNIQUE KEY `username` (`username`),
   KEY `FKn3vfurnv0p6bkguxp0os8t1t7` (`code`),
   KEY `idx_approval_status` (`approval_status`),
-  CONSTRAINT `fk_user_role` FOREIGN KEY (`code`) REFERENCES `role` (`code`) ON DELETE SET NULL,
-  CONSTRAINT `FKn3vfurnv0p6bkguxp0os8t1t7` FOREIGN KEY (`code`) REFERENCES `role` (`code`)
+  CONSTRAINT `fk_user_role` FOREIGN KEY (`code`) REFERENCES `role` (`code`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=312 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -2210,3 +2184,201 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-02-01  1:04:57
+-- ============================================================================
+-- Migration: Learn By Topic (Học tập theo chủ đề)
+-- Description: Creates tables for the topic-based learning feature
+-- ============================================================================
+
+-- 1. Learn Categories (5 categories: Chủ đề, Ngữ pháp, Công cụ, Thực hành, Chuyên ngành)
+CREATE TABLE IF NOT EXISTS `learn_category` (
+  `category_id` BIGINT NOT NULL AUTO_INCREMENT,
+  `slug` VARCHAR(50) NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `color_class` VARCHAR(100) DEFAULT NULL,
+  `text_class` VARCHAR(100) DEFAULT NULL,
+  `display_order` INT DEFAULT 0,
+  `is_active` TINYINT(1) DEFAULT 1,
+  `created_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `modified_date` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`category_id`),
+  UNIQUE KEY `uk_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2. Learn Items (individual courses/modules within categories)
+CREATE TABLE IF NOT EXISTS `learn_item` (
+  `item_id` BIGINT NOT NULL AUTO_INCREMENT,
+  `category_id` BIGINT NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `subtitle` VARCHAR(255) DEFAULT NULL,
+  `description` TEXT DEFAULT NULL,
+  `total_lessons` INT DEFAULT 0,
+  `duration` VARCHAR(50) DEFAULT NULL,
+  `level` VARCHAR(50) DEFAULT NULL,
+  `video_url` VARCHAR(500) DEFAULT NULL,
+  `image_url` VARCHAR(500) DEFAULT NULL,
+  `display_order` INT DEFAULT 0,
+  `is_active` TINYINT(1) DEFAULT 1,
+  `created_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `modified_date` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`item_id`),
+  KEY `idx_category` (`category_id`),
+  KEY `idx_level` (`level`),
+  CONSTRAINT `fk_learn_item_category` FOREIGN KEY (`category_id`) REFERENCES `learn_category` (`category_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Learn Item Lessons (lessons within a learn item, linked to vocabulary via topics)
+CREATE TABLE IF NOT EXISTS `learn_item_lesson` (
+  `lesson_id` BIGINT NOT NULL AUTO_INCREMENT,
+  `item_id` BIGINT NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `description` TEXT DEFAULT NULL,
+  `duration` VARCHAR(50) DEFAULT NULL,
+  `video_url` VARCHAR(500) DEFAULT NULL,
+  `display_order` INT DEFAULT 0,
+  `topic_id` BIGINT DEFAULT NULL,
+  `is_active` TINYINT(1) DEFAULT 1,
+  `created_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `modified_date` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`lesson_id`),
+  KEY `idx_item` (`item_id`),
+  KEY `idx_topic` (`topic_id`),
+  CONSTRAINT `fk_learn_lesson_item` FOREIGN KEY (`item_id`) REFERENCES `learn_item` (`item_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_learn_lesson_topic` FOREIGN KEY (`topic_id`) REFERENCES `topic` (`topic_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Learn Item Vocabulary (vocabulary words associated with a learn lesson)
+CREATE TABLE IF NOT EXISTS `learn_item_vocabulary` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `lesson_id` BIGINT NOT NULL,
+  `vocabulary_id` BIGINT DEFAULT NULL,
+  `word` VARCHAR(255) NOT NULL,
+  `display_order` INT DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_lesson` (`lesson_id`),
+  KEY `idx_vocabulary` (`vocabulary_id`),
+  CONSTRAINT `fk_learn_vocab_lesson` FOREIGN KEY (`lesson_id`) REFERENCES `learn_item_lesson` (`lesson_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_learn_vocab_vocabulary` FOREIGN KEY (`vocabulary_id`) REFERENCES `vocabulary` (`vocabulary_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. User Learn Progress (tracks user progress per learn item)
+CREATE TABLE IF NOT EXISTS `user_learn_progress` (
+  `progress_id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `item_id` BIGINT NOT NULL,
+  `progress_percent` INT DEFAULT 0,
+  `completed_lessons` INT DEFAULT 0,
+  `total_lessons` INT DEFAULT 0,
+  `last_lesson_id` BIGINT DEFAULT NULL,
+  `last_activity_at` DATETIME DEFAULT NULL,
+  `created_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `modified_date` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`progress_id`),
+  UNIQUE KEY `uk_user_item` (`user_id`, `item_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_item` (`item_id`),
+  CONSTRAINT `fk_learn_progress_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_learn_progress_item` FOREIGN KEY (`item_id`) REFERENCES `learn_item` (`item_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6. User Vocabulary Progress (tracks which vocabularies a user has learned)
+CREATE TABLE IF NOT EXISTS `user_vocabulary_progress` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `vocabulary_id` BIGINT NOT NULL,
+  `is_learned` TINYINT(1) DEFAULT 0,
+  `learned_at` DATETIME DEFAULT NULL,
+  `review_count` INT DEFAULT 0,
+  `last_review_at` DATETIME DEFAULT NULL,
+  `created_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_vocab` (`user_id`, `vocabulary_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_vocabulary` (`vocabulary_id`),
+  CONSTRAINT `fk_vocab_progress_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_vocab_progress_vocabulary` FOREIGN KEY (`vocabulary_id`) REFERENCES `vocabulary` (`vocabulary_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- SEED DATA: Learn Categories (matching frontend learnData.ts)
+-- ============================================================================
+
+INSERT INTO `learn_category` (`slug`, `title`, `color_class`, `text_class`, `display_order`) VALUES
+  ('topics', 'Chủ đề', 'bg-red-500', 'text-red-500', 1),
+  ('grammar', 'Ngữ pháp', 'bg-purple-600', 'text-purple-600', 2),
+  ('tools', 'Công cụ', 'bg-blue-500', 'text-blue-500', 3),
+  ('practice', 'Thực hành', 'bg-green-500', 'text-green-500', 4),
+  ('specialized', 'Chuyên ngành', 'bg-orange-500', 'text-orange-500', 5);
+
+-- ============================================================================
+-- SEED DATA: Learn Items (matching frontend learnData.ts)
+-- ============================================================================
+
+-- Category 1: Chủ đề (topics)
+INSERT INTO `learn_item` (`category_id`, `title`, `subtitle`, `description`, `total_lessons`, `duration`, `level`, `video_url`, `display_order`) VALUES
+  (1, 'Cơ bản', 'Hội thoại ký hiệu theo chủ đề', 'Khóa học này cung cấp kiến thức cơ bản về ngôn ngữ ký hiệu, giúp bạn làm quen với các bảng chữ cái, số đếm và các câu giao tiếp thông dụng hàng ngày.', 20, '4 giờ', 'Cơ bản', 'https://www.youtube.com/watch?v=DaMjr4AfYA0', 1),
+  (1, 'Độc thoại: Cấp độ 1', 'Luyện tập hiểu ký hiệu', NULL, 15, '3 giờ', 'Cơ bản', NULL, 2),
+  (1, 'Độc thoại: Cấp độ 2', 'Luyện tập ký hiệu nâng cao', NULL, 18, '4 giờ', 'Trung bình', NULL, 3),
+  (1, 'Hội thoại hàng ngày', 'Giao tiếp trong cuộc sống', NULL, 25, '5 giờ', 'Cơ bản', NULL, 4),
+  (1, 'Ký hiệu công sở', 'Giao tiếp trong môi trường làm việc', NULL, 12, '2.5 giờ', 'Nâng cao', NULL, 5),
+  (1, 'Ký hiệu du lịch', 'Giao tiếp khi đi du lịch', NULL, 10, '2 giờ', 'Trung bình', NULL, 6);
+
+-- Category 2: Ngữ pháp (grammar)
+INSERT INTO `learn_item` (`category_id`, `title`, `subtitle`, `description`, `total_lessons`, `duration`, `level`, `display_order`) VALUES
+  (2, 'Biểu cảm: Cấp độ 1', 'Cách khuôn mặt hoạt động với câu', NULL, 10, '2 giờ', 'Cơ bản', 1),
+  (2, 'Biểu cảm: Cấp độ 2', 'Học các loại câu và biểu cảm nâng cao', NULL, 12, '2.5 giờ', 'Trung bình', 2),
+  (2, 'Cấu trúc câu', 'Học cách sắp xếp ký hiệu trong câu', NULL, 15, '3 giờ', 'Trung bình', 3),
+  (2, 'Thì trong ký hiệu', 'Diễn đạt thời gian qua ký hiệu', NULL, 8, '1.5 giờ', 'Nâng cao', 4),
+  (2, 'Câu hỏi và phủ định', 'Cách đặt câu hỏi và phủ định', NULL, 10, '2 giờ', 'Cơ bản', 5),
+  (2, 'Ngữ pháp nâng cao', 'Các cấu trúc phức tạp', NULL, 20, '4 giờ', 'Nâng cao', 6);
+
+-- Category 3: Công cụ (tools)
+INSERT INTO `learn_item` (`category_id`, `title`, `subtitle`, `description`, `total_lessons`, `duration`, `level`, `display_order`) VALUES
+  (3, 'Học tên của tôi', 'Học cách giới thiệu bản thân', NULL, 5, '1 giờ', 'Cơ bản', 1),
+  (3, 'Trò chơi đánh vần', 'Cải thiện kỹ năng ngón tay', NULL, 8, '1.5 giờ', 'Cơ bản', 2),
+  (3, 'Ký hiệu của ngày', 'Học từ mới mỗi ngày', NULL, 30, '1 giờ/ngày', 'Tất cả', 3),
+  (3, 'Từ điển', 'Học những từ mới mỗi ngày', NULL, 300, 'Không giới hạn', 'Tất cả', 4),
+  (3, 'Ôn tập ký hiệu', 'Ôn tập những ký hiệu đã học', NULL, 50, 'Tùy chọn', 'Tất cả', 5),
+  (3, 'Flashcard', 'Học qua thẻ ghi nhớ', NULL, 100, 'Không giới hạn', 'Tất cả', 6);
+
+-- Category 4: Thực hành (practice)
+INSERT INTO `learn_item` (`category_id`, `title`, `subtitle`, `description`, `total_lessons`, `duration`, `level`, `display_order`) VALUES
+  (4, 'Luyện tập camera', 'Thực hành với camera nhận diện', NULL, 20, '4 giờ', 'Tất cả', 1),
+  (4, 'Bài tập tương tác', 'Bài tập có phản hồi ngay', NULL, 30, '6 giờ', 'Cơ bản', 2),
+  (4, 'Mô phỏng hội thoại', 'Thực hành hội thoại thực tế', NULL, 15, '3 giờ', 'Trung bình', 3),
+  (4, 'Thử thách hàng tuần', 'Bài tập thử thách mỗi tuần', NULL, 52, '1 giờ/tuần', 'Tất cả', 4),
+  (4, 'Luyện tập nhóm', 'Thực hành cùng bạn bè', NULL, 10, 'Tùy chọn', 'Trung bình', 5),
+  (4, 'Kiểm tra kỹ năng', 'Đánh giá trình độ hiện tại', NULL, 5, '30 phút', 'Tất cả', 6);
+
+-- Category 5: Chuyên ngành (specialized)
+INSERT INTO `learn_item` (`category_id`, `title`, `subtitle`, `description`, `total_lessons`, `duration`, `level`, `display_order`) VALUES
+  (5, 'Ký hiệu y tế', 'Từ vựng và giao tiếp trong y tế', NULL, 25, '5 giờ', 'Chuyên ngành', 1),
+  (5, 'Ký hiệu giáo dục', 'Từ vựng trong môi trường giáo dục', NULL, 20, '4 giờ', 'Chuyên ngành', 2),
+  (5, 'Ký hiệu pháp luật', 'Từ vựng trong lĩnh vực pháp luật', NULL, 18, '3.5 giờ', 'Chuyên ngành', 3),
+  (5, 'Ký hiệu thể thao', 'Từ vựng trong thể thao', NULL, 15, '3 giờ', 'Chuyên ngành', 4),
+  (5, 'Ký hiệu công nghệ', 'Từ vựng về công nghệ thông tin', NULL, 22, '4.5 giờ', 'Chuyên ngành', 5),
+  (5, 'Ký hiệu nghệ thuật', 'Từ vựng về nghệ thuật và văn hóa', NULL, 12, '2.5 giờ', 'Chuyên ngành', 6);
+
+-- ============================================================================
+-- SEED DATA: Lessons for first learn item "Cơ bản" (matching learnData.ts)
+-- ============================================================================
+
+INSERT INTO `learn_item_lesson` (`item_id`, `title`, `description`, `duration`, `video_url`, `display_order`) VALUES
+  (1, 'Bảng chữ cái', 'Học cách đánh vần bằng ngón tay bảng chữ cái tiếng Việt.', '15 phút', 'https://www.youtube.com/watch?v=DaMjr4AfYA0', 1),
+  (1, 'Số đếm', 'Học cách đếm số từ 0 đến 100 bằng ký hiệu tay.', '20 phút', 'https://www.youtube.com/watch?v=DaMjr4AfYA0', 2),
+  (1, 'Lời chào hỏi', 'Các mẫu câu chào hỏi thông dụng trong giao tiếp hàng ngày.', '10 phút', 'https://www.youtube.com/watch?v=DaMjr4AfYA0', 3);
+
+-- Vocabulary for lesson 1 (Bảng chữ cái)
+INSERT INTO `learn_item_vocabulary` (`lesson_id`, `word`, `display_order`) VALUES
+  (1, 'A', 1), (1, 'B', 2), (1, 'C', 3), (1, 'D', 4), (1, 'Đ', 5),
+  (1, 'E', 6), (1, 'G', 7), (1, 'H', 8), (1, 'I', 9), (1, 'K', 10),
+  (1, 'L', 11), (1, 'M', 12);
+
+-- Vocabulary for lesson 2 (Số đếm)
+INSERT INTO `learn_item_vocabulary` (`lesson_id`, `word`, `display_order`) VALUES
+  (2, '1', 1), (2, '2', 2), (2, '3', 3), (2, '4', 4), (2, '5', 5),
+  (2, '6', 6), (2, '7', 7), (2, '8', 8), (2, '9', 9), (2, '10', 10);
+
+-- Vocabulary for lesson 3 (Lời chào hỏi)
+INSERT INTO `learn_item_vocabulary` (`lesson_id`, `word`, `display_order`) VALUES
+  (3, 'Chào buổi sáng', 1), (3, 'Chào buổi trưa', 2),
+  (3, 'Chào buổi tối', 3), (3, 'Gặp lại sau', 4);
