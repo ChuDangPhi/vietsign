@@ -9,7 +9,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: vietsign.example.com
+    - host: vietsign.ibme.edu.vn
       http:
         paths:
           - path: /api(/|$)(.*)
