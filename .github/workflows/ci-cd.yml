@@ -44,6 +44,7 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-be:${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false
 
       # 2. Build & Push Frontend
       - name: Build and Push Frontend
@@ -57,3 +58,4 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-fe:${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false
