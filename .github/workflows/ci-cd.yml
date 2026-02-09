@@ -27,10 +27,28 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Trích xuất mã định danh commit ngắn (ví dụ: a1b2c3d)
       - name: Get Short SHA
         id: vars
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get Backend Version
+        id: be_version
+        run: echo "version=$(node -p "require('./backend/package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Get Frontend Version
+        id: fe_version
+        run: echo "version=$(node -p "require('./frontend/package.json').version")" >> $GITHUB_OUTPUT
+
+      # Extract metadata (tags, labels) for Docker
+      - name: Extract Backend metadata
+        id: meta-be
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-be
+          tags: |
+            type=raw,value=latest
+            type=raw,value=v${{ steps.be_version.outputs.version }}
+            type=raw,value=${{ steps.vars.outputs.sha_short }}
 
       # 1. Build & Push Backend
       - name: Build and Push Backend
@@ -38,13 +56,22 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-be:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-be:v1.0.1
-            ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-be:${{ steps.vars.outputs.sha_short }}
+          tags: ${{ steps.meta-be.outputs.tags }}
+          labels: ${{ steps.meta-be.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
+
+      # Extract metadata for Frontend
+      - name: Extract Frontend metadata
+        id: meta-fe
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-fe
+          tags: |
+            type=raw,value=latest
+            type=raw,value=v${{ steps.fe_version.outputs.version }}
+            type=raw,value=${{ steps.vars.outputs.sha_short }}
 
       # 2. Build & Push Frontend
       - name: Build and Push Frontend
@@ -52,10 +79,8 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-fe:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-fe:v1.0.1
-            ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-fe:${{ steps.vars.outputs.sha_short }}
+          tags: ${{ steps.meta-fe.outputs.tags }}
+          labels: ${{ steps.meta-fe.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
