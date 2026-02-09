@@ -77,3 +77,23 @@ export async function createTopic(data: any): Promise<any> {
     throw error;
   }
 }
+
+export async function updateTopic(id: number, data: any): Promise<any> {
+  try {
+    const response = await Topics.updateTopic(id, data);
+    return response.data || response;
+  } catch (error) {
+    console.error(`Error updating topic ${id}:`, error);
+    throw error;
+  }
+}
+
+export async function deleteTopic(id: number): Promise<any> {
+  try {
+    const response = await Topics.deleteTopic(id);
+    return response.data || response;
+  } catch (error) {
+    console.error(`Error deleting topic ${id}:`, error);
+    throw error;
+  }
+}

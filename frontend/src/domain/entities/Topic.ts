@@ -19,6 +19,21 @@ export class TopicModel extends Base {
     const res = await this.apiGet(`/${id}`);
     return res.data;
   };
+
+  createTopic = async (data: any) => {
+    const res = await this.apiPost("", data);
+    return res.data;
+  };
+
+  updateTopic = async (id: number, data: any) => {
+    const res = await this.apiPut(`/${id}`, data);
+    return res.data;
+  };
+
+  deleteTopic = async (id: number) => {
+    const res = await this.apiDelete(`/${id}`);
+    return res.data;
+  };
 }
 
 const Topics = new TopicModel();
