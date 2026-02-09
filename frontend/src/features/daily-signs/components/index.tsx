@@ -13,8 +13,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import Link from "next/link";
-import { dailySignSchedule } from "@/data/dailySignsData";
-import { fetchWordById, fetchAllWords } from "@/features/dictionary";
+import { fetchAllWords } from "@/features/dictionary";
 import { DictionaryItem } from "@/data/dictionaryData";
 
 export function DailySigns() {
@@ -34,53 +33,53 @@ export function DailySigns() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // 1. Determine Today's Sign ID
-        const dateStr = new Date().toISOString().split("T")[0]; // simple ISO date
-        // Find entry, simplified matching
-        // In real app might need robust date handling
-        let entry = dailySignSchedule.find((e) => e.date === dateStr);
-        if (!entry) {
-          // Fallback to closest or first
-          entry = dailySignSchedule[0];
+        // 1. Fetch all words
+        const allWords = await fetchAllWords();
+        if (allWords.length === 0) {
+          setIsLoading(false);
+          return;
         }
 
-        // 2. Fetch Today's Sign
-        if (entry) {
-          const sign = await fetchWordById(entry.dictionaryItemId);
-          if (sign) {
-            setTodaySign(sign);
+        // 2. Deterministic hash for word of the day
+        const getWordByDate = (
+          words: DictionaryItem[],
+          dateOffset: number = 0,
+        ) => {
+          const date = new Date();
+          date.setDate(date.getDate() - dateOffset);
+          const dateStr = date.toISOString().split("T")[0];
 
-            // 3. Fetch Related Words (same category)
-            // Try fetching all and filtering? Or backend filter
-            const allWords = await fetchAllWords(); // ideally { category: sign.category }
-            const related = allWords
-              .filter((w) => w.category === sign.category && w.id !== sign.id)
-              .slice(0, 4);
-            setRelatedWords(related);
+          let hash = 0;
+          for (let i = 0; i < dateStr.length; i++) {
+            hash = (hash << 5) - hash + dateStr.charCodeAt(i);
+            hash |= 0;
+          }
+          const index = Math.abs(hash) % words.length;
+          return words[index];
+        };
+
+        // 3. Set Today's Sign
+        const sign = getWordByDate(allWords, 0);
+        if (sign) {
+          setTodaySign(sign);
+
+          // 4. Set Related Words (same category)
+          const related = allWords
+            .filter((w) => w.category === sign.category && w.id !== sign.id)
+            .sort((a, b) => b.views - a.views)
+            .slice(0, 4);
+          setRelatedWords(related);
+        }
+
+        // 5. Set Recent Signs (last 5 days)
+        const recents: DictionaryItem[] = [];
+        for (let i = 1; i <= 5; i++) {
+          const prevSign = getWordByDate(allWords, i);
+          if (prevSign && !recents.find((r) => r.id === prevSign.id)) {
+            recents.push(prevSign);
           }
         }
-
-        // 4. Fetch Recent Signs (last 5 days)
-        // Simplified logic: just take previous entries from schedule
-        const todayIndex = dailySignSchedule.findIndex(
-          (e) => e.date === dateStr,
-        );
-        if (todayIndex > 0) {
-          const recentIndices = [];
-          for (let i = 1; i <= 5; i++) {
-            if (todayIndex - i >= 0)
-              recentIndices.push(dailySignSchedule[todayIndex - i]);
-          }
-
-          const recents = await Promise.all(
-            recentIndices.map((e) => fetchWordById(e.dictionaryItemId)),
-          );
-          setRecentSigns(recents.filter(Boolean) as DictionaryItem[]);
-        } else {
-          // Mock behavior if no recent history (e.g. start of schedule)
-          // Just take some earlier ones or empty
-          setRecentSigns([]);
-        }
+        setRecentSigns(recents);
       } catch (error) {
         console.error("Failed to load daily signs", error);
       } finally {

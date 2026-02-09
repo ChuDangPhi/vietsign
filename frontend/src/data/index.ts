@@ -4,7 +4,6 @@ export * from "./classesData";
 export * from "./examsData";
 export * from "./gamesData";
 export * from "./learnData";
-export * from "./dailySignsData";
 export * from "./vietnamLocationsData";
 export * from "./statisticsData";
 export * from "./usersData";
