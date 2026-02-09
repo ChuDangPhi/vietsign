@@ -26,6 +26,7 @@ export interface ExamItem {
   questionsList?: any[];
   createdAt?: string;
   is_active?: boolean;
+  isPrivate?: boolean;
   name?: string;
 }
 

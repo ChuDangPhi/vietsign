@@ -24,6 +24,10 @@ function normalizeExam(exam: any): any {
       (exam.created_date ? exam.created_date.split("T")[0] : "2024-01-01"),
     time: exam.time || "08:00",
     students: exam.students || 0,
+    isPrivate:
+      exam.is_private === 1 ||
+      exam.is_private === true ||
+      exam.isPrivate === true,
   };
 }
 
