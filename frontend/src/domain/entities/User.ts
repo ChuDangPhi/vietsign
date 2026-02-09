@@ -164,6 +164,26 @@ class UserModelClass extends Base {
     const res = await this.apiPut(`/${userId}/change-role`, { role: roleCode });
     return res.data;
   };
+
+  getPendingUsers = async () => {
+    const res = await this.apiGet("/pending");
+    return res.data;
+  };
+
+  getApprovalStats = async () => {
+    const res = await this.apiGet("/approval-stats");
+    return res.data;
+  };
+
+  approveUser = async (id: number) => {
+    const res = await this.apiPost(`/${id}/approve`);
+    return res.data;
+  };
+
+  rejectUser = async (id: number, reason?: string) => {
+    const res = await this.apiPost(`/${id}/reject`, { reason });
+    return res.data;
+  };
 }
 
 const UserModel = new UserModelClass();

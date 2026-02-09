@@ -306,3 +306,30 @@ export async function changeUserRole(
     throw error;
   }
 }
+
+/**
+ * Lấy danh sách users chờ phê duyệt
+ */
+export async function fetchPendingUsers(): Promise<UserItem[]> {
+  try {
+    const data = await UserModel.getPendingUsers();
+    const items = data?.users || data || [];
+    return Array.isArray(items) ? items.map(convertApiUserToUserItem) : [];
+  } catch (error) {
+    console.error("Error fetching pending users:", error);
+    return [];
+  }
+}
+
+/**
+ * Lấy thống kê phê duyệt
+ */
+export async function fetchApprovalStats(): Promise<any> {
+  try {
+    const data = await UserModel.getApprovalStats();
+    return data || { pending: 0, approved: 0, rejected: 0 };
+  } catch (error) {
+    console.error("Error fetching approval stats:", error);
+    return { pending: 0, approved: 0, rejected: 0 };
+  }
+}
