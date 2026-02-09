@@ -37,7 +37,7 @@ spec:
                   name: mysql-pass
                   key: password
             - name: MYSQL_DATABASE
-              value: vietsign_db
+              value: vietsignschool
           ports:
             - containerPort: 3306
               name: mysql
