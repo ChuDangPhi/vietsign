@@ -25,7 +25,7 @@ export const chatService = {
     if (pError) throw pError;
     if (!participations || participations.length === 0) return [];
 
-    const roomIds = participations.map((p) => p.room_id);
+    const roomIds = participations.map((p: any) => p.room_id);
 
     const { data: rooms, error: rError } = await supabase
       .from("rooms")
@@ -124,9 +124,9 @@ export const chatService = {
       .eq("user_id", userId2);
 
     if (rooms1 && rooms2) {
-      const roomIds1 = rooms1.map((r) => r.room_id);
-      const roomIds2 = rooms2.map((r) => r.room_id);
-      const commonRoomIds = roomIds1.filter((id) => roomIds2.includes(id));
+      const roomIds1 = rooms1.map((r: any) => r.room_id);
+      const roomIds2 = rooms2.map((r: any) => r.room_id);
+      const commonRoomIds = roomIds1.filter((id: any) => roomIds2.includes(id));
 
       for (const roomId of commonRoomIds) {
         const { data: room } = await supabase
@@ -387,7 +387,7 @@ export const chatService = {
           table: "messages",
           filter: `room_id=eq.${roomId}`,
         },
-        (payload) => callback(payload.new as Message),
+        (payload: any) => callback(payload.new as Message),
       )
       .subscribe();
   },
@@ -409,7 +409,7 @@ export const chatService = {
           table: "messages",
           filter: `room_id=eq.${roomId}`,
         },
-        (payload) => callback(payload.new as Message),
+        (payload: any) => callback(payload.new as Message),
       )
       .subscribe();
   },
@@ -456,7 +456,7 @@ export const chatService = {
 
     if (!messages || messages.length === 0) return;
 
-    const statuses = messages.map((msg) => ({
+    const statuses = messages.map((msg: any) => ({
       message_id: msg.id,
       user_id: userId,
       status: "read",

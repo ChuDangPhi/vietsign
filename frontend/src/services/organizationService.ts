@@ -263,7 +263,7 @@ export async function fetchUserManagedOrganizations(
     }
     // Extract organization_id from each record
     return managers
-      .map((m) => Number(m.organization_id || m.organizationId))
+      .map((m: any) => Number(m.organization_id || m.organizationId))
       .filter((id) => !isNaN(id));
   } catch (error) {
     console.error("Error fetching user managed organizations:", error);
