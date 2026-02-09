@@ -31,13 +31,23 @@ spec:
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: vietsign-secrets
-                  key: db-password
+                  name: mysql-pass
+                  key: password
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: vietsign-secrets
                   key: jwt-secret
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: rootUser
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: rootPassword
 ---
 apiVersion: v1
 kind: Service
