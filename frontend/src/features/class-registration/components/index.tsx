@@ -153,11 +153,11 @@ export function ClassRegistrationManagement() {
               <div className="flex items-center gap-4">
                 <div className="text-center">
                   <p className="text-lg font-bold text-gray-900">
-                    {cls.students}/{cls.maxStudents}
+                    {cls.students}/{cls.maxStudents ?? "∞"}
                   </p>
                   <p className="text-xs text-gray-500">Sĩ số</p>
                 </div>
-                {cls.registered || cls.students >= cls.maxStudents ? (
+                {cls.registered || cls.students >= (cls.maxStudents ?? 999) ? (
                   <button
                     disabled
                     className="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 rounded-xl cursor-not-allowed"
