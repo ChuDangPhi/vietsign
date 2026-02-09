@@ -113,31 +113,35 @@ export class CallService {
 
     this.signalChannel = supabase
       .channel(`call:${roomId}`)
-      .on("broadcast", { event: "signal" }, async ({ payload }) => {
-        if (payload.senderId === this.currentUserId) return;
+      .on(
+        "broadcast",
+        { event: "signal" },
+        async ({ payload }: { payload: any }) => {
+          if (payload.senderId === this.currentUserId) return;
 
-        switch (payload.type) {
-          case "offer":
-            await this.handleOffer(payload);
-            break;
-          case "answer":
-            await this.handleAnswer(payload);
-            break;
-          case "ice-candidate":
-            await this.handleIceCandidate(payload);
-            break;
-          case "call-request":
-            this.onIncomingCall?.(payload.callerId, payload.callType);
-            break;
-          case "call-accepted":
-            await this.handleCallAccepted(payload);
-            break;
-          case "call-rejected":
-          case "call-ended":
-            this.endCall();
-            break;
-        }
-      })
+          switch (payload.type) {
+            case "offer":
+              await this.handleOffer(payload);
+              break;
+            case "answer":
+              await this.handleAnswer(payload);
+              break;
+            case "ice-candidate":
+              await this.handleIceCandidate(payload);
+              break;
+            case "call-request":
+              this.onIncomingCall?.(payload.callerId, payload.callType);
+              break;
+            case "call-accepted":
+              await this.handleCallAccepted(payload);
+              break;
+            case "call-rejected":
+            case "call-ended":
+              this.endCall();
+              break;
+          }
+        },
+      )
       .subscribe();
   }
 
@@ -380,15 +384,19 @@ export class CallService {
     roomIds.forEach((roomId) => {
       supabase
         .channel(`call:${roomId}`)
-        .on("broadcast", { event: "signal" }, ({ payload }) => {
-          if (
-            payload.type === "call-request" &&
-            payload.receiverId === this.currentUserId
-          ) {
-            this.currentRoomId = roomId;
-            this.onIncomingCall?.(payload.callerId, payload.callType);
-          }
-        })
+        .on(
+          "broadcast",
+          { event: "signal" },
+          ({ payload }: { payload: any }) => {
+            if (
+              payload.type === "call-request" &&
+              payload.receiverId === this.currentUserId
+            ) {
+              this.currentRoomId = roomId;
+              this.onIncomingCall?.(payload.callerId, payload.callType);
+            }
+          },
+        )
         .subscribe();
     });
   }
