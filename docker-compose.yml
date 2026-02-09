@@ -4,7 +4,7 @@ services:
     container_name: vietsign_db
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: vietsign
+      MYSQL_DATABASE: vietsignschool
     ports:
       - "3308:3306"
     volumes:
@@ -28,12 +28,12 @@ services:
       DB_HOST: db
       DB_USER: root
       DB_PASSWORD: root
-      DB_NAME: vietsign
+      DB_NAME: vietsignschool
       DB_PORT: 3306
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+      MINIO_ACCESS_KEY: admin
+      MINIO_SECRET_KEY: vulinh3122001
       MINIO_BUCKET_NAME: vietsign
       MINIO_USE_SSL: "false"
     depends_on:
@@ -66,8 +66,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: vulinh3122001
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
