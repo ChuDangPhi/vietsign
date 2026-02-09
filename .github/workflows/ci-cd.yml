@@ -36,8 +36,8 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-be:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-be:v1.0.1
             ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-be:${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -48,8 +48,8 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-fe:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-fe:v1.0.1
             ${{ secrets.DOCKERHUB_USERNAME }}/vietsign-fe:${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

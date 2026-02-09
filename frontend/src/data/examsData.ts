@@ -15,7 +15,7 @@ export interface ExamItem {
   questions: number;
   students: number;
   status: "upcoming" | "ongoing" | "completed";
-  type: string;
+  type?: string;
   examType: ExamType;
   passingScore?: number;
   description?: string;

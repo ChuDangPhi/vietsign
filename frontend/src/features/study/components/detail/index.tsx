@@ -715,7 +715,7 @@ export function StudyDetail() {
 
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-gray-900 truncate">
-                    {exam.title || exam.name}
+                    {exam.title || exam.name || ""}
                   </h3>
                   <p className="text-sm text-gray-500">
                     {exam.questions} câu hỏi • {exam.duration} phút
@@ -737,7 +737,7 @@ export function StudyDetail() {
                           handleDeleteClick(
                             "exam",
                             exam.id,
-                            exam.title || exam.name,
+                            exam.title || exam.name || "",
                           )
                         }
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"

@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: fossbk/vietsign-fe:latest
+          image: fossbk/vietsign-fe:v1.0.1
           ports:
             - containerPort: 3000
           resources:

@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: fossbk/vietsign-be:latest # Updated to use potential image name
+          image: fossbk/vietsign-be:v1.0.1 # Updated to use potential image name
           ports:
             - containerPort: 5000
           resources:

@@ -9,7 +9,7 @@ function normalizeExam(exam: any): any {
   return {
     ...exam,
     id: exam.exam_id || exam.id,
-    title: exam.name || exam.title,
+    title: exam.name || exam.title || "",
     classId: exam.class_room_id || exam.classId,
     createdAt: exam.created_date || exam.created_at || exam.createdAt,
     examType: exam.exam_type || exam.examType,
