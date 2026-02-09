@@ -6,7 +6,9 @@ on:
     paths:
       - "backend/**"
       - "frontend/**"
-      - "k8s/**" # Chạy khi có thay đổi cấu hình hạ tầng
+      - "k8s/**"
+      - ".github/workflows/**"
+  workflow_dispatch: # Cho phép chạy thủ công từ tab Actions
 
 jobs:
   build-and-push:
