@@ -24,3 +24,17 @@ spec:
                 name: vietsign-frontend-service
                 port:
                   number: 80
+- path: /minio-api
+        pathType: Prefix
+        backend:
+          service:
+            name: minio
+            port:
+              number: 9000
+      - path: /minio-console
+        pathType: Prefix
+        backend:
+          service:
+            name: minio
+            port:
+              number: 9001
