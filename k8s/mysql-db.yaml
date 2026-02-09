@@ -35,7 +35,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: mysql-pass
-                  key: jin5628376423
+                  key: password
             - name: MYSQL_DATABASE
               value: vietsign_db
           ports:
