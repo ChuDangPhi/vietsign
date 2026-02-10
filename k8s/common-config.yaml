@@ -14,4 +14,4 @@ data:
   DB_HOST: "mysql"
   DB_PORT: "3306"
   DB_NAME: "vietsign_db"
-  API_URL: "https://vietsign.vn/api" # URL cho FE gọi tới BE qua Ingress TLS
+  API_URL: "https://vietsign.ibme.edu.vn/api" # URL cho FE gọi tới BE qua Ingress TLS

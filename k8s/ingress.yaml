@@ -11,10 +11,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - vietsign.vn # ĐỔI THÀNH DOMAIN CỦA BẠN
+        - vietsign.ibme.edu.vn
       secretName: vietsign-tls-secret
   rules:
-    - host: vietsign.vn # ĐỔI THÀNH DOMAIN CỦA BẠN
+    - host: vietsign.ibme.edu.vn
       http:
         paths:
           - path: /api(/|$)(.*)
