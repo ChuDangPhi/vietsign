@@ -191,58 +191,6 @@ const Login: React.FC = () => {
           </Link>
         </p>
       </div>
-
-      {/* Panel Tài khoản Demo */}
-      <div
-        className="w-full max-w-md space-y-4 animate-in fade-in slide-in-from-bottom-2"
-        style={{ animationDelay: "0.1s" }}
-      >
-        <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 m-5">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="bg-amber-100 p-2 rounded-lg">
-              <CheckCircle size={20} className="text-amber-600" />
-            </div>
-            <h3 className="font-bold text-gray-800">
-              Tài khoản Demo (Testing)
-            </h3>
-          </div>
-          <p className="text-sm text-gray-500 mb-4">
-            Chọn một vai trò để tự động điền thông tin và đăng nhập thử nghiệm:
-          </p>
-
-          <div className="grid grid-cols-1 gap-3">
-            {DEMO_ACCOUNTS.map((acc, index) => (
-              <button
-                key={index}
-                onClick={() => handleDemoFill(acc.email, acc.password)}
-                className={`flex items-center justify-between p-3 rounded-xl border transition-all hover:shadow-md hover:scale-[1.02] ${acc.color} bg-opacity-30 border-opacity-50`}
-              >
-                <div className="text-left">
-                  <p className="font-bold text-sm">{acc.label}</p>
-                  <p className="text-xs opacity-80">{acc.email}</p>
-                </div>
-                <Copy size={16} className="opacity-60" />
-              </button>
-            ))}
-
-            <button
-              onClick={handleBypassLogin}
-              className="flex items-center justify-between p-3 rounded-xl border border-dashed border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-all hover:shadow-md hover:scale-[1.02] mt-2 group"
-            >
-              <div className="text-left">
-                <p className="font-bold text-sm">Truy cập nhanh (Không API)</p>
-                <p className="text-xs opacity-80">
-                  Bỏ qua đăng nhập, vào thẳng hệ thống
-                </p>
-              </div>
-              <CheckCircle
-                size={16}
-                className="opacity-60 group-hover:opacity-100 transition-opacity"
-              />
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
