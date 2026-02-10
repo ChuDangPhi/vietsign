@@ -4,12 +4,18 @@ metadata:
   name: vietsign-ingress
   annotations:
     kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
-  ingressClassName: nginx
+  tls:
+    - hosts:
+        - vietsign.vn # ĐỔI THÀNH DOMAIN CỦA BẠN
+      secretName: vietsign-tls-secret
   rules:
-    - http:
+    - host: vietsign.vn # ĐỔI THÀNH DOMAIN CỦA BẠN
+      http:
         paths:
           - path: /api(/|$)(.*)
             pathType: ImplementationSpecific

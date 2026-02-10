@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { login } from "@/core/store/slices/adminSlice";
-import { DEMO_ACCOUNTS } from "@/core/config/mockdata";
 import { Copy, CheckCircle, AlertCircle } from "lucide-react";
 import { LockOutlined, MailOutlined } from "@ant-design/icons";
 import Auth from "@/domain/entities/Auth";

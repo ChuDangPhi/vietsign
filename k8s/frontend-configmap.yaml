@@ -5,8 +5,8 @@ metadata:
 data:
   config.js: |
     window.ENV = {
-      NEXT_PUBLIC_API_ROOT: "http://202.191.100.9:30347/api",
-      NEXT_PUBLIC_API_ROOT_NODE: "http://202.191.100.9:30347/api",
+      NEXT_PUBLIC_API_ROOT: "https://vietsign.vn/api",
+      NEXT_PUBLIC_API_ROOT_NODE: "https://vietsign.vn/api",
       NEXT_PUBLIC_SUPABASE_URL: "https://yquscrbjluhkeslhagnz.supabase.co",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY: "sb_publishable_UrRQWweNkHXcHz4yg6olUg_3QKdjxi4"
     };
