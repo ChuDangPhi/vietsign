@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: jin312/vietsign-be:v1.0.2 # Updated to use potential image name
+          image: jin312/vietsign-be:v1.1.2 # Updated to use potential image name
           ports:
             - containerPort: 5000
           resources:
