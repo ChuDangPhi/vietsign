@@ -38,10 +38,11 @@ kind: Service
 metadata:
   name: vietsign-frontend-service
 spec:
+  type: NodePort
   selector:
     app: vietsign-frontend
   ports:
     - protocol: TCP
       port: 80
       targetPort: 3000
-  type: ClusterIP
+      nodePort: 30347

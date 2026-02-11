@@ -54,10 +54,11 @@ kind: Service
 metadata:
   name: vietsign-backend-service
 spec:
+  type: NodePort
   selector:
     app: vietsign-backend
   ports:
     - protocol: TCP
       port: 5000
       targetPort: 5000
-  type: ClusterIP
+      nodePort: 30080
