@@ -25,9 +25,9 @@ const getEnv = (key: string): string | undefined => {
 
 // API Base URLs
 export const API_BASE_URL =
-  getEnv("NEXT_PUBLIC_API_ROOT") || "http://localhost:5000";
+  getEnv("NEXT_PUBLIC_API_ROOT") || "http://localhost:8080";
 export const API_BASE_URL_NODE =
-  getEnv("NEXT_PUBLIC_API_ROOT_NODE") || "http://localhost:5000";
+  getEnv("NEXT_PUBLIC_API_ROOT_NODE") || "http://localhost:8080";
 
 // API Endpoints theo backend routes
 export const API_ENDPOINTS = {
