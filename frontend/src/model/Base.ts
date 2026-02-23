@@ -13,9 +13,9 @@ export class Base {
 
   constructor(apiPrefix: string | null = null) {
     this.apiRoot = API_ROOT;
-    this.apiRootNode = API_ROOT_NODE + "/api";
+    this.apiRootNode = API_ROOT_NODE;
     this.apiPrefix = `${API_ROOT}/${apiPrefix}`;
-    this.apiPrefixNode = `${API_ROOT_NODE}/api/${apiPrefix}`;
+    this.apiPrefixNode = `${API_ROOT_NODE}/${apiPrefix}`;
   }
 
   normalizeQuery = (query: { [x: string]: any }) => {

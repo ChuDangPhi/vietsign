@@ -3,13 +3,12 @@ import { Base } from "./Base";
 import axios from "axios";
 
 class Learning extends Base {
-
   constructor() {
     super("learning-service");
   }
   // Danh sách topic
   getAllTopics = async (params?: any) => {
-    const res = await this.apiGet("/topics/all", params);
+    const res = await this.apiGetWithoutPrefixNode("/learn/topics", params);
     return res.data;
   };
 
@@ -49,10 +48,10 @@ class Learning extends Base {
     return res.data;
   };
 
-   // Danh sách từ vựng
+  // Danh sách từ vựng
   getAllVocabulary = async (param?: any) => {
-  const res = await this.apiGet("/vocabularies/all", param);
-  return res.data;
+    const res = await this.apiGet("/vocabularies/all", param);
+    return res.data;
   };
 
   // CHi tiết từ vựng
@@ -102,7 +101,10 @@ class Learning extends Base {
 
   // Danh sách từ vựng theo topics
   getVocabularyTopic = async (topicId: number | string, params?: any) => {
-    const res = await this.apiGet(`/vocabularies/${topicId}`, params);
+    const res = await this.apiGetWithoutPrefixNode(
+      `/learn/topics/${topicId}`,
+      params,
+    );
     return res.data;
   };
 
@@ -190,8 +192,8 @@ class Learning extends Base {
   getListSchools = async (params?: any) => {
     const res = await this.apiGet(`/schools/all`, params);
     return res.data;
-  }
-  
+  };
+
   // Thêm mới lớp
   createClass = async (body?: any) => {
     const res = await this.apiPost(`/classrooms`, body);
@@ -270,7 +272,7 @@ class Learning extends Base {
     const res = await this.apiPut(`/parts`, body);
     return res.data;
   };
-  
+
   deletePart = async (id?: number) => {
     const res = await this.apiDelete(`/parts/${id}`);
     return res.data;
@@ -305,47 +307,64 @@ class Learning extends Base {
   };
 
   leaningProcess = async (userId: number) => {
-    const res = await this.apiGetWithoutPrefixNode(`/user/statistics/${userId}`);
+    const res = await this.apiGetWithoutPrefixNode(
+      `/user/statistics/${userId}`,
+    );
     return res.data.statistics;
   };
 
   getVocabularyViews = async (userId: number) => {
-    const res = await this.apiGetWithoutPrefixNode(`/user/vocabulary/recent-view/${userId}`);
+    const res = await this.apiGetWithoutPrefixNode(
+      `/user/vocabulary/recent-view/${userId}`,
+    );
     return res.data;
   };
 
   getLessonViews = async (userId: number) => {
-    const res = await this.apiGetWithoutPrefixNode(`/user/lesson/recent-view/${userId}`);
+    const res = await this.apiGetWithoutPrefixNode(
+      `/user/lesson/recent-view/${userId}`,
+    );
     return res.data;
-  }; 
+  };
 
   getFullLessonViews = async (userId: number) => {
-    const res = await this.apiGetWithoutPrefixNode(`/user/lesson/full-view/${userId}`);
+    const res = await this.apiGetWithoutPrefixNode(
+      `/user/lesson/full-view/${userId}`,
+    );
     return res.data;
-  }; 
+  };
 
   getFullVocabularyViews = async (userId: number) => {
-    const res = await this.apiGetWithoutPrefixNode(`/user/vocabulary/full-view/${userId}`);
+    const res = await this.apiGetWithoutPrefixNode(
+      `/user/vocabulary/full-view/${userId}`,
+    );
     return res.data;
-  }; 
+  };
 
   getFullTestsCompleted = async (userId: number) => {
-    const res = await this.apiGetWithoutPrefixNode(`/user/test/full-view/${userId}`);
+    const res = await this.apiGetWithoutPrefixNode(
+      `/user/test/full-view/${userId}`,
+    );
     return res.data;
-  }; 
+  };
 
   getFullTestResults = async (query?: any) => {
-    const res = await this.apiGetWithoutPrefixNode(`/user/test/full-result`, query);
+    const res = await this.apiGetWithoutPrefixNode(
+      `/user/test/full-result`,
+      query,
+    );
     return res.data;
-  }; 
+  };
 
   viewLesson = async (lessonId: number, userId: number) => {
-  const res = await this.apiPostWithoutPrefixNode(
-    `/user/lesson/view/${lessonId}`, {
-    userId,  
-  });
-  return res.data;
-};
+    const res = await this.apiPostWithoutPrefixNode(
+      `/user/lesson/view/${lessonId}`,
+      {
+        userId,
+      },
+    );
+    return res.data;
+  };
 
   classJoined = async () => {
     // const res = await this.apiGetWithoutPrefix(`/user-auth/class-joined`);
@@ -362,7 +381,7 @@ class Learning extends Base {
       `/user/class-joined`,
       {}, // query
       undefined, // signal
-      { Authorization: `Bearer ${token}` } // headers
+      { Authorization: `Bearer ${token}` }, // headers
     );
     return res.data;
   };
@@ -377,4 +396,3 @@ class Learning extends Base {
 }
 
 export default new Learning();
-

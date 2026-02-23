@@ -145,11 +145,12 @@ const PracticeData: React.FC = () => {
     queryKey: ["getAllTopics"],
     queryFn: async () => {
       const res = await Learning.getAllTopics();
-      return res?.data?.map((item: { topicId: any; content: any }) => ({
-        id: item.topicId,
-        value: item.topicId,
-        label: item.content,
-        text: item.content,
+      const topicsData = res?.data || res;
+      return (Array.isArray(topicsData) ? topicsData : []).map((item: any) => ({
+        id: item.id || item.topicId,
+        value: item.id || item.topicId,
+        label: item.name || item.content,
+        text: item.name || item.content,
       }));
     },
   });
@@ -159,21 +160,22 @@ const PracticeData: React.FC = () => {
     queryKey: ["getVocabularyTopic", filterParams.topic],
     queryFn: async () => {
       const res = await Learning.getVocabularyTopic(filterParams.topic);
-      if (res?.data) {
-        return res?.data?.map(
-          (item: {
-            vocabularyId: any;
-            content: any;
-            vocabularyImageResList: any;
-            vocabularyVideoResList: any;
-          }) => ({
-            id: item.vocabularyId,
-            value: item.vocabularyId,
-            label: item.content,
-            vocabularyImageResList: item.vocabularyImageResList,
-            vocabularyVideoResList: item.vocabularyVideoResList,
-          }),
-        );
+      const topicData = res?.data || res;
+      const vocabularies =
+        topicData?.vocabularies || (Array.isArray(topicData) ? topicData : []);
+
+      if (vocabularies.length > 0) {
+        return vocabularies.map((item: any) => ({
+          id: item.id || item.vocabularyId,
+          value: item.id || item.vocabularyId,
+          label: item.word || item.content,
+          vocabularyImageResList: item.imageUrl
+            ? [{ imageLocation: item.imageUrl, primary: true }]
+            : item.vocabularyImageResList || [],
+          vocabularyVideoResList: item.videoUrl
+            ? [{ videoLocation: item.videoUrl, primary: true }]
+            : item.vocabularyVideoResList || [],
+        }));
       }
       return [];
     },
