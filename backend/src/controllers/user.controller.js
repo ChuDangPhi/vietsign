@@ -106,6 +106,7 @@ module.exports = {
   viewVocabulary,
   getStudentLearningProgress,
   getUsers,
+  getUserStatistics,
 };
 
 // Student CRUD operations
@@ -208,6 +209,25 @@ async function getStudentLearningProgress(req, res) {
     const studentId = req.user?.user_id;
     const result = await services.getStudentLearningProgress(studentId);
     return res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    return res.status(status).json({ message: err.message });
+  }
+}
+
+async function getUserStatistics(req, res) {
+  try {
+    const studentId = req.params.userId;
+    if (!studentId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+    const result = await services.getStudentLearningProgress(studentId);
+    return res.json({
+      statistics: result,
+      lessonViews: result.lessonViews,
+      vocabularyViews: result.vocabularyViews,
+      message: "success",
+    });
   } catch (err) {
     const status = err.status || 500;
     return res.status(status).json({ message: err.message });
@@ -342,4 +362,5 @@ module.exports = {
   getStudentLearningProgress,
   getUsers,
   getUserById,
+  getUserStatistics,
 };

@@ -51,7 +51,7 @@ server_name vietsign.ibme.edu.vn *;
     # Fix: Route /user-service to Backend even if it hits port 3000
     location /user-service/ {
         # Dùng trailing slash để strip /user-service/
-        proxy_pass http://202.191.100.9:30080/;
+        proxy_pass http://127.0.0.1:30080/;
 
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -70,7 +70,7 @@ server_name vietsign.ibme.edu.vn *;
     # Case 1: Nếu còn prefix /user-service (Máy .11 chưa strip)
     location /user-service/ {
         # Dùng trailing slash ở proxy_pass để Nginx tự động strip /user-service/
-        proxy_pass http://202.191.100.9:30080/;
+        proxy_pass http://127.0.0.1:30080/;
 
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -82,7 +82,7 @@ server_name vietsign.ibme.edu.vn *;
 
     # Case 2: Nếu đã strip prefix (Máy .11 đã strip, chỉ còn /...)
     location / {
-        proxy_pass http://202.191.100.9:30080;
+        proxy_pass http://127.0.0.1:30080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

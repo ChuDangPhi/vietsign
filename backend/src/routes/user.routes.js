@@ -18,6 +18,7 @@ const {
   getUsers,
   getUserById,
   createUser,
+  getUserStatistics,
 } = require("../controllers/user.controller");
 const { authRequired } = require("../middleware/auth.middleware");
 const checkOrgRole = require("../middleware/orgRole.middleware");
@@ -156,6 +157,11 @@ router.get(
   authRequired,
   getStudentLearningProgress,
 );
+
+// Statistics endpoints for admin/teacher viewing student progress
+router.get("/statistics/:userId", authRequired, getUserStatistics);
+router.get("/vocabulary/recent-view/:userId", authRequired, getUserStatistics);
+router.get("/lesson/recent-view/:userId", authRequired, getUserStatistics);
 
 // Generic GET user by ID must be at the end to avoid conflicts
 router.get("/:id", authRequired, getUserById);
