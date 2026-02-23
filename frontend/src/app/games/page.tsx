@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { Games } from "@/features/games";
 
 export const metadata: Metadata = {
-  title: "Trò Chơi - VietSignSchool",
+  title: "Trò chơi - VietSignSchool",
   description: "Games for learning Vietnamese Sign Language",
   
 };

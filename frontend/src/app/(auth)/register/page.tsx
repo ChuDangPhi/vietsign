@@ -3,7 +3,7 @@ import { DefaultLayout } from "@/shared/components/layout";
 import { Register } from "@/features/auth";
 
 export const metadata: Metadata = {
-  title: "Register - VietSignSchool",
+  title: "Đăng ký - VietSignSchool",
   description: "Register page for VietSignSchool",
 };
 

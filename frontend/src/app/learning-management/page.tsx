@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { LearningManagement } from "@/features/management/learning";
 
 export const metadata: Metadata = {
-  title: "Quản lý khóa học - VietSignSchool",
+  title: "Quản lý học tập - VietSignSchool",
   description: "Quản lý khóa học VietSignSchool",
 };
 

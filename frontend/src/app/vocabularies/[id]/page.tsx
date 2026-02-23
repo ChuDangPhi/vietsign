@@ -13,7 +13,7 @@ export async function generateMetadata({
   const item = await fetchWordById(id);
 
   return {
-    title: `${item?.word || "Chi tiết từ"} - VietSignSchool`,
+    title: "Chi tiết từ vựng - Từ điển - VietSignSchool",
     description: `Chi tiết từ vựng ngôn ngữ ký hiệu: ${item?.word}`,
   };
 }

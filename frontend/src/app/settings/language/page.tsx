@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { LanguageSettings } from "@/features/settings/components/language";
 
 export const metadata: Metadata = {
-  title: "Cài đặt ngôn ngữ - VietSignSchool",
+  title: "Ngôn ngữ - Cài đặt - VietSignSchool",
   description: "Cài đặt ngôn ngữ VietSignSchool",
 };
 

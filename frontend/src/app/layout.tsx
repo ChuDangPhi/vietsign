@@ -6,8 +6,8 @@ import { ThemeProvider } from "@/core/providers/ThemeProvider";
 import Script from "next/script";
 
 export const metadata = {
-  title: "VietSignSchool App",
-  description: "App cnv",
+  title: "VietSignSchool",
+  description: "Ứng dụng học ngôn ngữ ký hiệu Việt Nam",
 };
 
 export default function RootLayout({

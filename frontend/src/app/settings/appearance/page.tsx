@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { AppearanceSettings } from "@/features/settings/components/appearance";
 
 export const metadata: Metadata = {
-  title: "Cài đặt giao diện - VietSignSchool",
+  title: "Giao diện - Cài đặt - VietSignSchool",
   description: "Cài đặt giao diện VietSignSchool",
 };
 

@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { DailySigns } from "@/features/daily-signs/components";
 
 export const metadata: Metadata = {
-  title: "Ký Hiệu Của Ngày - VietSignSchool",
+  title: "Ký hiệu mỗi ngày - VietSignSchool",
   description: "Daily Sign of the Day",
 };
 

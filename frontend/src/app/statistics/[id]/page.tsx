@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { DetailedStatistics } from "@/features/management/statistics/components/DetailedStatistics";
 
 export const metadata: Metadata = {
-  title: "Chi tiết Thống kê Học viên - VietSignSchool",
+  title: "Chi tiết thống kê - Thống kê - VietSignSchool",
   description: "Chi tiết Thống kê Học viên VietSignSchool",
 };
 

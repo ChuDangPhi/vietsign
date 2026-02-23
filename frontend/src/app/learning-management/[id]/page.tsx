@@ -23,9 +23,7 @@ export async function generateMetadata({
   const learning = allItems.find((l) => l.id === id);
 
   return {
-    title: `Chi tiết: ${
-      learning?.title || "Khóa học"
-    } - Quản lý khóa học - VietSignSchool`,
+    title: "Chi tiết khóa học - Quản lý học tập - VietSignSchool",
     description: `Chi tiết và chỉnh sửa khóa học: ${learning?.title}`,
   };
 }

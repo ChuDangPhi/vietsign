@@ -43,11 +43,13 @@ const GradeDetail: React.FC = () => {
     if (!examId || !userId) return;
     setLoading(true);
     fetchPracticeSubmission(Number(examId), Number(userId))
-      .then((data: any) => {
+      .then((response: any) => {
+        // API returns { success, data: [...] }
+        const data = response?.data || response;
         if (Array.isArray(data)) {
           const list = data.map((q: any) => ({
             contentFromVocabulary: q.contentFromVocabulary || q.content,
-            videoUrl: q.videos?.[0]?.videoUrl || q.studentVideoUrl || "",
+            videoUrl: q.studentVideoUrl || q.videos?.[0]?.videoUrl || "",
             aiAnswer: q.aiAnswer || "",
             questionId: q.vocabularyId,
           }));
@@ -57,7 +59,10 @@ const GradeDetail: React.FC = () => {
           setPracticeQuestions([]);
         }
       })
-      .catch(() => message.error("Lỗi lấy bài làm"))
+      .catch((err: any) => {
+        console.error("fetchPracticeSubmission error:", err);
+        message.error("Lỗi lấy bài làm");
+      })
       .finally(() => setLoading(false));
   }, [examId, userId]);
 

@@ -10,7 +10,7 @@ export async function generateMetadata({
   const { id: idParam } = await params;
 
   return {
-    title: `Chi tiết bài kiểm tra - Quản lý kiểm tra - VietSignSchool`,
+    title: "Chi tiết bài kiểm tra - Quản lý kiểm tra - VietSignSchool",
     description: `Chi tiết và chỉnh sửa bài kiểm tra`,
   };
 }

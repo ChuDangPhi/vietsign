@@ -10,7 +10,7 @@ export async function generateMetadata({
   const { id } = await params;
 
   return {
-    title: `Chi tiết tổ chức - Quản lý tổ chức - VietSignSchool`,
+    title: "Chi tiết tổ chức - Quản lý tổ chức - VietSignSchool",
     description: `Chi tiết và chỉnh sửa thông tin tổ chức giáo dục`,
   };
 }

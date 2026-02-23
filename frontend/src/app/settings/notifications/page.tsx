@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { NotificationsSettings } from "@/features/settings/components/notifications";
 
 export const metadata: Metadata = {
-  title: "Cài đặt thông báo - VietSignSchool",
+  title: "Thông báo - Cài đặt - VietSignSchool",
   description: "Cài đặt thông báo VietSignSchool",
 };
 

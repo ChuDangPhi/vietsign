@@ -35,7 +35,7 @@ export function DetailedStatistics({ userId }: { userId: string }) {
 
   const { data: userData, isFetching: isFetchingUser } = useQuery({
     queryKey: ["user", userId],
-    queryFn: () => fetchUserById(userId),
+    queryFn: () => fetchUserById(Number(userId)),
     enabled: !!userId,
   });
 
@@ -57,7 +57,7 @@ export function DetailedStatistics({ userId }: { userId: string }) {
     return <Empty description="Không tìm thấy thông tin học viên này." />;
   }
 
-  const user = userData.user || userData;
+  const user = userData;
   const stats = statsData || { lessonViews: [], vocabularyViews: [] };
 
   return (
@@ -87,7 +87,7 @@ export function DetailedStatistics({ userId }: { userId: string }) {
             <div className="flex flex-col items-center mb-6">
               <Avatar
                 size={80}
-                src={user.avatar_location || undefined}
+                src={user.avatar || undefined}
                 className="bg-blue-100 text-blue-600 font-bold mb-4"
               >
                 {user.name?.charAt(0)?.toUpperCase()}
@@ -96,26 +96,24 @@ export function DetailedStatistics({ userId }: { userId: string }) {
                 {user.name}
               </Title>
               <Badge
-                status={user.is_deleted ? "error" : "success"}
-                text={user.is_deleted ? "Đã khóa" : "Hoạt động"}
+                status={user.isDeleted ? "error" : "success"}
+                text={user.isDeleted ? "Đã khóa" : "Hoạt động"}
               />
             </div>
 
             <Descriptions column={1} size="small" className="mt-4">
               <Descriptions.Item label="SĐT">
-                {user.phone_number || "Trống"}
+                {user.phone || "Trống"}
               </Descriptions.Item>
               <Descriptions.Item label="Email">{user.email}</Descriptions.Item>
               <Descriptions.Item label="Lớp học">
-                {user.organization_name || "Chưa phân lớp"}
+                {user.organizationName || "Chưa phân lớp"}
               </Descriptions.Item>
               <Descriptions.Item label="Trường">
-                {user.parent_organization_name || "Trống"}
+                {user.parentOrganizationName || "Trống"}
               </Descriptions.Item>
-              <Descriptions.Item label="Ngày sinh">
-                {user.birth_day
-                  ? new Date(user.birth_day).toLocaleDateString("vi-VN")
-                  : "Trống"}
+              <Descriptions.Item label="Ngày tạo">
+                {user.createdAt || "Trống"}
               </Descriptions.Item>
             </Descriptions>
           </Card>

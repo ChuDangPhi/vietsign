@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { WordPractice } from "@/features/practice";
 
 export const metadata = {
-  title: "Luyện tập theo từ | VietSign",
+  title: "Luyện tập theo từ - Luyện tập - VietSignSchool",
   description: "Học và thực hành các ký hiệu cho từng từ riêng lẻ",
 };
 

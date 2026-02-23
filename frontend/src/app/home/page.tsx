@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { Home } from "@/features/home";
 
 export const metadata: Metadata = {
-  title: "Home - VietSignSchool",
+  title: "Trang chủ - VietSignSchool",
   description: "Home page for VietSignSchool",
 };
 

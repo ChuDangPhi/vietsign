@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { Dictionary } from "@/features/dictionary";
 
 export const metadata: Metadata = {
-  title: "Từ Điển - VietSignSchool",
+  title: "Từ điển - VietSignSchool",
   description: "Dictionary of Vietnamese Sign Language",
   
 };

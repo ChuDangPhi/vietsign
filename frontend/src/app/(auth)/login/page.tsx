@@ -3,7 +3,7 @@ import { DefaultLayout } from "@/shared/components/layout";
 import { Login } from "@/features/auth";
 
 export const metadata: Metadata = {
-  title: "Login - VietSignSchool",
+  title: "Đăng nhập - VietSignSchool",
   description: "Login page for VietSignSchool",
 };
 

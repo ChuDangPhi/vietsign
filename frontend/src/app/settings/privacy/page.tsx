@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/shared/components/layout";
 import { PrivacySettings } from "@/features/settings/components/privacy";
 
 export const metadata: Metadata = {
-  title: "Cài đặt quyền riêng tư - VietSignSchool",
+  title: "Quyền riêng tư - Cài đặt - VietSignSchool",
   description: "Cài đặt quyền riêng tư VietSignSchool",
 };
 

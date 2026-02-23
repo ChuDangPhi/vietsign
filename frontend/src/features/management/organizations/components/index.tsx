@@ -535,30 +535,30 @@ export function OrganizationsManagement() {
                     />
                   </div>
 
-                  <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
-                    {provinceName && (
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <MapPin size={14} className="text-gray-400 shrink-0" />
-                        <span className="truncate">{provinceName}</span>
-                      </div>
-                    )}
-                    {!isDepartment && parentDept && (
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Building2
-                          size={14}
-                          className="text-gray-400 shrink-0"
-                        />
-                        <span className="truncate">
-                          thuộc {parentDept.name}
-                        </span>
-                      </div>
-                    )}
-                    {org.phone && (
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Phone size={14} className="text-gray-400 shrink-0" />
-                        <span className="truncate">{org.phone}</span>
-                      </div>
-                    )}
+                  <div
+                    className="mt-3 pt-3 border-t border-gray-50 space-y-1.5"
+                    style={{ minHeight: 76 }}
+                  >
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <MapPin size={14} className="text-gray-400 shrink-0" />
+                      <span className="truncate">{provinceName || "—"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Building2 size={14} className="text-gray-400 shrink-0" />
+                      <span className="truncate">
+                        {isDepartment
+                          ? childCount > 0
+                            ? `${childCount} trường`
+                            : "0 trường"
+                          : parentDept
+                            ? `thuộc ${parentDept.name}`
+                            : "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Phone size={14} className="text-gray-400 shrink-0" />
+                      <span className="truncate">{org.phone || "—"}</span>
+                    </div>
                   </div>
                 </div>
 

@@ -1,4 +1,6 @@
 const examService = require("../services/exam.services");
+const path = require("path");
+const { minioClient, bucketName } = require("../../../utils/minio");
 
 /**
  * Exam Management Controller
@@ -489,6 +491,90 @@ const getStudentExamAttempts = async (req, res) => {
   }
 };
 
+const submitPracticeExam = async (req, res) => {
+  try {
+    const { examId, userId } = req.body;
+    if (!req.files || req.files.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No videos uploaded" });
+    }
+
+    // Create attempt
+    const attempt = await examService.createPracticeAttempt(examId, userId);
+
+    const results = [];
+    for (const file of req.files) {
+      const parts = file.originalname.split("-");
+      let vocabularyId = null;
+      if (parts.length >= 4) {
+        vocabularyId = parts[3];
+      }
+
+      const rawExt = path.extname(file.originalname);
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const filename = uniqueSuffix + rawExt;
+
+      await minioClient.putObject(
+        bucketName,
+        filename,
+        file.buffer,
+        file.size,
+        { "Content-Type": file.mimetype },
+      );
+
+      const minioPath = `${process.env.MINIO_PUBLIC_URL || "http://localhost:9000"}/${bucketName}/${filename}`;
+
+      await examService.savePracticeQuestionVideo(
+        examId,
+        userId,
+        attempt.attemptId,
+        vocabularyId,
+        minioPath,
+      );
+      results.push(minioPath);
+    }
+
+    res.json({ success: true, videos: results });
+  } catch (error) {
+    console.error("Submit practice error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getPracticeSubmission = async (req, res) => {
+  try {
+    const examId = parseInt(req.params.examId);
+    const studentId = parseInt(req.params.studentId);
+    if (!examId || !studentId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing examId or studentId" });
+    }
+
+    const data = await examService.getPracticeSubmission(examId, studentId);
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error("Get practice submission error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const markPracticeExam = async (req, res) => {
+  try {
+    const { examId, userId, score, details } = req.body;
+    if (!examId || !userId) {
+      return res.status(400).json({ success: false, message: "Missing param" });
+    }
+
+    await examService.markPracticeExam(examId, userId, score, details);
+    return res.json({ success: true, message: "Marked successfully" });
+  } catch (error) {
+    console.error("Mark practice exam error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createExam,
   getExams,
@@ -503,4 +589,7 @@ module.exports = {
   getExamResults,
   getExamStatistics,
   getStudentExamAttempts,
+  submitPracticeExam,
+  getPracticeSubmission,
+  markPracticeExam,
 };

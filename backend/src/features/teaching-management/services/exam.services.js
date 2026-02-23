@@ -488,6 +488,143 @@ async function submitExam(examId, studentId, score, answers, timeSpent) {
   }
 }
 
+async function createPracticeAttempt(examId, studentId) {
+  const connection = await db.getConnection();
+  try {
+    const [existing] = await connection.execute(
+      "SELECT attempt_id FROM exam_attempt WHERE exam_id = ? AND user_id = ?",
+      [examId, studentId],
+    );
+    if (existing.length > 0) {
+      await connection.execute(
+        "UPDATE exam_attempt SET started_at = NOW() WHERE attempt_id = ?",
+        [existing[0].attempt_id],
+      );
+      return { attemptId: existing[0].attempt_id };
+    } else {
+      const [attemptResult] = await connection.execute(
+        "INSERT INTO exam_attempt (exam_id, user_id, score, started_at, finished_at) VALUES (?, ?, 0, NOW(), NOW())",
+        [examId, studentId],
+      );
+      return { attemptId: attemptResult.insertId };
+    }
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  } finally {
+    connection.release();
+  }
+}
+
+async function savePracticeQuestionVideo(
+  examId,
+  userId,
+  attemptId,
+  vocabularyId,
+  minioPath,
+) {
+  const connection = await db.getConnection();
+  try {
+    const [existing] = await connection.execute(
+      `SELECT question_exam_user_id FROM question_exam_user_mapping 
+       WHERE exam_id = ? AND user_id = ? AND question_id = ?`,
+      [examId, userId, vocabularyId],
+    );
+
+    if (existing.length > 0) {
+      await connection.execute(
+        `UPDATE question_exam_user_mapping SET minio_path = ?, attempt_id = ?
+         WHERE question_exam_user_id = ?`,
+        [minioPath, attemptId, existing[0].question_exam_user_id],
+      );
+    } else {
+      await connection.execute(
+        `INSERT INTO question_exam_user_mapping 
+         (exam_id, question_id, user_id, attempt_id, minio_path) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [examId, vocabularyId, userId, attemptId, minioPath],
+      );
+    }
+    return { success: true };
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  } finally {
+    connection.release();
+  }
+}
+
+async function getPracticeSubmission(examId, studentId) {
+  try {
+    const [rows] = await db.execute(
+      `SELECT 
+         q.question_exam_user_id as id,
+         v.content as contentFromVocabulary,
+         q.minio_path as studentVideoUrl,
+         q.ai_answer as aiAnswer,
+         q.is_correct as isCorrect,
+         q.score as score,
+         q.question_id as vocabularyId
+       FROM question_exam_user_mapping q
+       JOIN vocabulary v ON v.vocabulary_id = q.question_id
+       WHERE q.exam_id = ? AND q.user_id = ?
+       ORDER BY q.question_exam_user_id ASC`,
+      [examId, studentId],
+    );
+    return rows;
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+async function markPracticeExam(examId, userId, score, details) {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [existing] = await connection.execute(
+      "SELECT attempt_id FROM exam_attempt WHERE exam_id = ? AND user_id = ?",
+      [examId, userId],
+    );
+    let attemptId;
+    if (existing.length > 0) {
+      attemptId = existing[0].attempt_id;
+      await connection.execute(
+        "UPDATE exam_attempt SET score = ?, finished_at = NOW() WHERE attempt_id = ?",
+        [score, attemptId],
+      );
+    } else {
+      const [attempt] = await connection.execute(
+        "INSERT INTO exam_attempt (exam_id, user_id, score, started_at, finished_at) VALUES (?, ?, ?, NOW(), NOW())",
+        [examId, userId, score],
+      );
+      attemptId = attempt.insertId;
+    }
+
+    if (details && details.length > 0) {
+      const [mappings] = await connection.execute(
+        `SELECT question_exam_user_id FROM question_exam_user_mapping 
+         WHERE exam_id = ? AND user_id = ? ORDER BY question_exam_user_id ASC`,
+        [examId, userId],
+      );
+      for (let i = 0; i < Math.min(details.length, mappings.length); i++) {
+        if (details[i] && typeof details[i].isCorrect === "boolean") {
+          await connection.execute(
+            "UPDATE question_exam_user_mapping SET is_correct = ? WHERE question_exam_user_id = ?",
+            [details[i].isCorrect ? 1 : 0, mappings[i].question_exam_user_id],
+          );
+        }
+      }
+    }
+
+    await connection.commit();
+    return { success: true };
+  } catch (err) {
+    await connection.rollback();
+    throw { status: 500, message: err.message };
+  } finally {
+    connection.release();
+  }
+}
+
 module.exports = {
   createExam,
   getExams,
@@ -501,4 +638,8 @@ module.exports = {
   getExamResults,
   getExamStatistics,
   getStudentExamAttempts,
+  createPracticeAttempt,
+  savePracticeQuestionVideo,
+  getPracticeSubmission,
+  markPracticeExam,
 };

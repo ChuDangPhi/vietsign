@@ -36,7 +36,7 @@ export default function TakeExamList() {
 
   const columns = [
     {
-      title: "Tên bài kiểm tra",
+      title: "Làm bài kiểm tra - VietSignSchool",
       dataIndex: "title",
       key: "title",
     },

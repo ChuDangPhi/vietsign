@@ -13,9 +13,7 @@ export async function generateMetadata({
   const game = gamesList.find((g: { id: number }) => g.id === id);
 
   return {
-    title: `Chi tiết: ${
-      game?.name || "Trò chơi"
-    } - Quản lý trò chơi - VietSignSchool`,
+    title: "Chi tiết trò chơi - Quản lý trò chơi - VietSignSchool",
     description: `Chi tiết và chỉnh sửa trò chơi: ${game?.name}`,
   };
 }
