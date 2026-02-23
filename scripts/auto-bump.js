@@ -123,5 +123,6 @@ function main() {
 }
 
 main();
+// tự động sửa version khi push
 // git add . && node scripts/auto-bump.js && git commit -m "mô tả của bạn" && git push
 // chỉ tự động sửa số sau cùng của version
