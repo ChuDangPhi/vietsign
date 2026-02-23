@@ -12,13 +12,12 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { SelfLearnCourse, SelfLearnLesson } from "@/data/selfLearnData";
 import {
-  getSelfLearnCourseById,
-  getSelfLearnLessonById,
-  getSelfLearnStepsByLessonId,
-  SelfLearnCourse,
-  SelfLearnLesson,
-} from "@/data/selfLearnData";
+  fetchCourseById,
+  fetchLessonsByCourseId,
+  fetchStepsByLessonId,
+} from "@/services/learnService";
 import { BaseStepItem, stepTypeMeta } from "@/shared/components/common/step";
 import Link from "next/link";
 
@@ -37,14 +36,16 @@ export function LessonDetail() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const foundCourse = getSelfLearnCourseById(courseId);
+        const foundCourse = await fetchCourseById(courseId);
         setCourse(foundCourse || null);
 
-        const foundLesson = getSelfLearnLessonById(lessonId);
+        // Lấy danh sách lessons và tìm lesson cụ thể
+        const lessons = await fetchLessonsByCourseId(courseId);
+        const foundLesson = lessons.find((l: any) => l.id === lessonId);
         setLesson(foundLesson || null);
 
         if (foundLesson) {
-          const lessonSteps = getSelfLearnStepsByLessonId(lessonId);
+          const lessonSteps = await fetchStepsByLessonId(lessonId);
           setSteps(lessonSteps);
         }
       } catch (error) {

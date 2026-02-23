@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { DashboardLayout } from "@/shared/components/layout";
 import { DictionaryDetail } from "@/features/dictionary/components/detail";
-import { dictionaryItems } from "@/data";
+import { fetchWordById } from "@/services/dictionaryService";
 
 export async function generateMetadata({
   params,
@@ -10,7 +10,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id: idParam } = await params;
   const id = Number(idParam);
-  const item = dictionaryItems.find((i) => i.id === id);
+  const item = await fetchWordById(id);
 
   return {
     title: `${item?.word || "Chi tiết từ"} - VietSignSchool`,

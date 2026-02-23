@@ -40,12 +40,15 @@ import {
   Lesson,
   deleteLesson,
 } from "@/services/lessonService";
-import { mockOrganizations } from "@/data/organizationsData";
 import {
   fetchExamsByClassroom,
   ExamItem,
   deleteExam,
 } from "@/services/examService";
+import {
+  fetchAllOrganizations,
+  type OrganizationItem,
+} from "@/services/organizationService";
 import Link from "next/link";
 import { ConfirmModal } from "@/shared/components/common/ConfirmModal";
 import { toast } from "react-hot-toast";
@@ -78,6 +81,7 @@ export function StudyDetail() {
   const [lessonStats, setLessonStats] = useState<any>(null);
   const [exams, setExams] = useState<ExamItem[]>([]);
   const [classMembers, setClassMembers] = useState<ClassMember[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
 
   // Add Member State
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
@@ -149,11 +153,20 @@ export function StudyDetail() {
           }
         }
 
-        const lessonsData = await fetchLessonsByClassroom(id);
-        setLessons(lessonsData);
+        const [lessonsData, topicsData, examsData, membersData, orgsData] =
+          await Promise.all([
+            fetchLessonsByClassroom(id),
+            fetchTopicsByClassroom(id),
+            fetchExamsByClassroom(id),
+            fetchClassroomStudents(id),
+            fetchAllOrganizations(),
+          ]);
 
-        const topicsData = await fetchTopicsByClassroom(id);
+        setLessons(lessonsData);
         setTopics(topicsData);
+        setExams(examsData);
+        setClassMembers(membersData);
+        setOrganizations(orgsData);
 
         try {
           const stats = await fetchLessonStatistics(id);
@@ -161,12 +174,6 @@ export function StudyDetail() {
         } catch (e) {
           console.error("Failed to fetch lesson stats", e);
         }
-
-        const examsData = await fetchExamsByClassroom(id);
-        setExams(examsData);
-
-        const membersData = await fetchClassroomStudents(id);
-        setClassMembers(membersData);
       } else {
         setClassItem(null);
       }
@@ -286,7 +293,7 @@ export function StudyDetail() {
 
   const getFacilityName = (organizationId: number | null): string => {
     if (organizationId === null) return "Online";
-    const facility = mockOrganizations.find((f) => f.id === organizationId);
+    const facility = organizations.find((f) => f.id === organizationId);
     return facility?.name || "Không xác định";
   };
 

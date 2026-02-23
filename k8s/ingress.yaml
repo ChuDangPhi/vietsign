@@ -17,6 +17,13 @@ spec:
                 name: vietsign-backend-service
                 port:
                   number: 5000
+          - path: /user-service(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: vietsign-backend-service
+                port:
+                  number: 5000
           - path: /minio-api(/|$)(.*)
             pathType: ImplementationSpecific
             backend:

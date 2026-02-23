@@ -2,7 +2,6 @@
  * Organization Service
  *
  * Service để fetch và quản lý dữ liệu tổ chức từ API backend.
- * Fallback về mock data khi API không khả dụng.
  */
 
 import OrganizationModel, {

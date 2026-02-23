@@ -3,7 +3,10 @@ import { X, Search, Calendar, User, MapPin } from "lucide-react";
 import { ClassItem } from "@/data/classesData";
 import { fetchAllClasses } from "@/services/classService";
 import { fetchUsersByRole } from "@/services/userService";
-import { mockOrganizations } from "@/data/organizationsData";
+import {
+  fetchAllOrganizations,
+  type OrganizationItem,
+} from "@/services/organizationService";
 
 interface ClassRegistrationModalProps {
   isOpen: boolean;
@@ -17,6 +20,7 @@ export const ClassRegistrationModal: React.FC<ClassRegistrationModalProps> = ({
   onRegister,
 }) => {
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [teachersMap, setTeachersMap] = useState<Record<number, string>>({});
@@ -30,11 +34,13 @@ export const ClassRegistrationModal: React.FC<ClassRegistrationModalProps> = ({
   const loadData = async () => {
     setLoading(true);
     try {
-      const [allClasses, teachers] = await Promise.all([
+      const [allClasses, teachers, orgs] = await Promise.all([
         fetchAllClasses(),
         fetchUsersByRole("TEACHER"),
+        fetchAllOrganizations(),
       ]);
       setClasses(allClasses);
+      setOrganizations(orgs);
 
       const map: Record<number, string> = {};
       teachers.forEach((t: any) => {
@@ -50,7 +56,7 @@ export const ClassRegistrationModal: React.FC<ClassRegistrationModalProps> = ({
 
   const getFacilityName = (organizationId: number | null) => {
     if (organizationId === null) return "Online";
-    const facility = mockOrganizations.find((f) => f.id === organizationId);
+    const facility = organizations.find((f) => f.id === organizationId);
     return facility ? facility.name : "Không xác định";
   };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import {
   BookOpen,
@@ -12,59 +12,69 @@ import {
   GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
-import { selfLearnCourses } from "@/data/selfLearnData";
+import { fetchAllCourses } from "@/services/learnService";
+import { SelfLearnCourse } from "@/data/selfLearnData";
 
 export const Home: React.FC = () => {
   const user = useSelector((state: any) => state.admin.user);
+  const [coursesInProgress, setCoursesInProgress] = useState<any[]>([]);
 
-  // Get courses in progress (progress > 0 and < 100) from selfLearnData
-  const coursesWithProgress = selfLearnCourses.map((course, index) => {
-    // Map colors simply for demo consistency with the image
-    let themeColor = "bg-primary-600";
-    let lightColor = "bg-primary-50";
-    let textColor = "text-primary-600";
-    let badgeColor = "bg-primary-100 text-primary-600";
-    let progressColor = "bg-primary-500";
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const courses = await fetchAllCourses();
 
-    if (index === 0) {
-      // Red/Orange theme
-      themeColor = "bg-orange-500";
-      lightColor = "bg-orange-50";
-      textColor = "text-orange-600";
-      badgeColor = "bg-orange-100 text-orange-600";
-      progressColor = "bg-orange-500";
-    } else if (index === 1) {
-      // Blue theme
-      themeColor = "bg-blue-600";
-      lightColor = "bg-blue-50";
-      textColor = "text-blue-600";
-      badgeColor = "bg-blue-100 text-blue-600";
-      progressColor = "bg-blue-600";
-    }
+        // Get courses in progress (progress > 0 and < 100)
+        const coursesWithProgress = courses.map(
+          (course: SelfLearnCourse, index: number) => {
+            // Map colors simply for demo consistency with the image
+            let themeColor = "bg-primary-600";
+            let lightColor = "bg-primary-50";
+            let textColor = "text-primary-600";
+            let badgeColor = "bg-primary-100 text-primary-600";
+            let progressColor = "bg-primary-500";
 
-    return {
-      ...course,
-      progress:
-        index === 0
-          ? 45
-          : index === 1
-            ? 10
-            : index === 2
-              ? 10
-              : course.progress || 0,
-      themeColor,
-      lightColor,
-      textColor,
-      badgeColor,
-      progressColor,
-      lastUpdated: index === 0 ? "2 giờ trước" : "1 ngày trước",
+            if (index === 0) {
+              themeColor = "bg-orange-500";
+              lightColor = "bg-orange-50";
+              textColor = "text-orange-600";
+              badgeColor = "bg-orange-100 text-orange-600";
+              progressColor = "bg-orange-500";
+            } else if (index === 1) {
+              themeColor = "bg-blue-600";
+              lightColor = "bg-blue-50";
+              textColor = "text-blue-600";
+              badgeColor = "bg-blue-100 text-blue-600";
+              progressColor = "bg-blue-600";
+            }
+
+            return {
+              ...course,
+              themeColor,
+              lightColor,
+              textColor,
+              badgeColor,
+              progressColor,
+              lastUpdated: index === 0 ? "2 giờ trước" : "1 ngày trước",
+            };
+          },
+        );
+
+        const inProgress = coursesWithProgress
+          .filter(
+            (course: any) =>
+              course.progress !== undefined && course.progress > 0,
+          )
+          .sort((a: any, b: any) => (b.progress || 0) - (a.progress || 0))
+          .slice(0, 2);
+
+        setCoursesInProgress(inProgress);
+      } catch (error) {
+        console.error("Error loading courses for home:", error);
+      }
     };
-  });
-
-  const coursesInProgress = coursesWithProgress
-    .filter((course) => course.progress !== undefined && course.progress > 0)
-    .sort((a, b) => (b.progress || 0) - (a.progress || 0))
-    .slice(0, 2); // Show max 2 courses
+    loadCourses();
+  }, []);
 
   return (
     <div className="space-y-8 font-sans">

@@ -1,5 +1,3 @@
-"use client";
-
 import {
   BookOpen,
   Search,
@@ -13,11 +11,8 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  selfLearnCourses,
-  SelfLearnCourse,
-  getAllSelfLearnCourses,
-} from "@/data/selfLearnData";
+import { SelfLearnCourse } from "@/data/selfLearnData";
+import { fetchAllCourses } from "@/services/learnService";
 import { removeVietnameseTones } from "@/shared/utils/text";
 import {
   Pagination,
@@ -61,14 +56,16 @@ export function LearningManagement() {
 
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(false);
+      setIsLoading(true);
       try {
-        // Load learning items from selfLearnData
-        const allItems = getAllSelfLearnCourses();
+        // Load learning items from API
+        const allItems = await fetchAllCourses();
         setLearnings(allItems);
       } catch (error) {
         console.error("Failed to load learning data", error);
         setLearnings([]);
+      } finally {
+        setIsLoading(false);
       }
     };
     loadData();

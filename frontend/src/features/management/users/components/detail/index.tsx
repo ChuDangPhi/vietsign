@@ -17,7 +17,6 @@ import {
   Lock,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { getFacilityById, mockFacilities } from "@/data";
 import {
   UserItem,
   fetchUserById,
@@ -29,6 +28,11 @@ import {
   roleLabels,
   roleColors,
 } from "@/services/userService";
+import {
+  fetchOrganizationById,
+  fetchAllOrganizations,
+  type OrganizationItem,
+} from "@/services/organizationService";
 import { ConfirmModal } from "@/shared/components/common/ConfirmModal";
 import { Modal } from "@/shared/components/common/Modal";
 
@@ -38,6 +42,7 @@ export function UserManagementDetail() {
 
   const id = Number(params.id);
   const [user, setUser] = useState<UserItem | null>(null);
+  const [facilities, setFacilities] = useState<OrganizationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<UserItem>>({});
@@ -49,16 +54,21 @@ export function UserManagementDetail() {
     useState(false);
   const [newPassword, setNewPassword] = useState("");
 
-  const loadUser = async () => {
+  const loadData = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchUserById(id);
-      if (data) {
-        setUser(data);
-        setEditForm({ ...data });
+      const [userData, orgsData] = await Promise.all([
+        fetchUserById(id),
+        fetchAllOrganizations(),
+      ]);
+
+      if (userData) {
+        setUser(userData);
+        setEditForm({ ...userData });
       }
+      setFacilities(orgsData);
     } catch (error) {
-      console.error("Failed to load user", error);
+      console.error("Failed to load data", error);
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +76,7 @@ export function UserManagementDetail() {
 
   useEffect(() => {
     if (id) {
-      loadUser();
+      loadData();
     }
   }, [id]);
 
@@ -100,7 +110,7 @@ export function UserManagementDetail() {
             ? Number(editForm.organizationId)
             : null,
         });
-        await loadUser();
+        await loadData();
         setIsEditing(false);
       } catch (error) {
         console.error("Failed to update user", error);
@@ -131,7 +141,7 @@ export function UserManagementDetail() {
     if (user) {
       try {
         await restoreUser(user.id);
-        await loadUser();
+        await loadData();
         setIsRestoreModalOpen(false);
       } catch (error) {
         console.error("Failed to restore user", error);
@@ -337,7 +347,7 @@ export function UserManagementDetail() {
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white"
                   >
                     <option value="">Chọn cơ sở...</option>
-                    {mockFacilities.map((facility) => (
+                    {facilities.map((facility) => (
                       <option key={facility.id} value={facility.id}>
                         {facility.name}
                       </option>
@@ -356,8 +366,8 @@ export function UserManagementDetail() {
                       if (parts.length > 0) return parts.join(" > ");
 
                       return user.organizationId
-                        ? getFacilityById(user.organizationId)?.name ||
-                            `Cơ sở #${user.organizationId}`
+                        ? facilities.find((f) => f.id === user.organizationId)
+                            ?.name || `Cơ sở #${user.organizationId}`
                         : "";
                     })()}
                   </p>

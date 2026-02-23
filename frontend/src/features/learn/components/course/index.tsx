@@ -11,12 +11,11 @@ import {
   BarChart,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { SelfLearnCourse, SelfLearnLesson } from "@/data/selfLearnData";
 import {
-  getSelfLearnCourseById,
-  getLessonsByCourseId,
-  SelfLearnCourse,
-  SelfLearnLesson,
-} from "@/data/selfLearnData";
+  fetchCourseById,
+  fetchLessonsByCourseId,
+} from "@/services/learnService";
 import Link from "next/link";
 
 export function CourseDetail() {
@@ -32,11 +31,11 @@ export function CourseDetail() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const foundCourse = getSelfLearnCourseById(courseId);
+        const foundCourse = await fetchCourseById(courseId);
         setCourse(foundCourse || null);
 
         if (foundCourse) {
-          const courseLessons = getLessonsByCourseId(courseId);
+          const courseLessons = await fetchLessonsByCourseId(courseId);
           setLessons(courseLessons);
         }
       } catch (error) {

@@ -48,6 +48,17 @@ server_name vietsign.ibme.edu.vn *;
         proxy_set_header Connection "upgrade";
     }
 
+    # Fix: Route /user-service to Backend even if it hits port 3000
+    location /user-service/ {
+        # Dùng trailing slash để strip /user-service/
+        proxy_pass http://202.191.100.9:30080/;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
 }
 
 # --- 2. BACKEND / USER SERVICE (Máy .11 gọi vào cổng 8080) ---

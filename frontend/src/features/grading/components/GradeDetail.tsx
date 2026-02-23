@@ -44,11 +44,6 @@ const GradeDetail: React.FC = () => {
     setLoading(true);
     fetchPracticeSubmission(Number(examId), Number(userId))
       .then((data: any) => {
-        // Adapt data structure
-        // Assume data is array of questions with answers
-        // Or if mock data from ScoreList is used, we might simulate.
-        // Since Backend is missing, this will likely fail or return empty.
-        // I will handle empty.
         if (Array.isArray(data)) {
           const list = data.map((q: any) => ({
             contentFromVocabulary: q.contentFromVocabulary || q.content,
@@ -59,7 +54,6 @@ const GradeDetail: React.FC = () => {
           setPracticeQuestions(list);
           setGradingList(list.map(() => ({ isCorrect: null })));
         } else {
-          // Fallback mock if needed or just empty
           setPracticeQuestions([]);
         }
       })

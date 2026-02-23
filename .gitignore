@@ -53,3 +53,5 @@ Thumbs.db
 
 # Executables and temporary files
 *.exe
+
+node_modules

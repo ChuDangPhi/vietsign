@@ -10,9 +10,6 @@ import {
   roleLabels,
   roleColors,
   userStatusConfig,
-  mockUsers,
-  getUserById as getMockUserById,
-  getUsersByRole as getMockUsersByRole,
 } from "@/data/usersData";
 
 // Re-export types và constants
@@ -52,7 +49,7 @@ export interface UserListResponse {
 }
 
 /**
- * Lấy tất cả users từ API, nếu không thành công sử dụng mock data
+ * Lấy tất cả users từ API
  */
 export async function fetchAllUsers(query?: any): Promise<UserListResponse> {
   try {
@@ -109,7 +106,7 @@ export async function fetchAllUsers(query?: any): Promise<UserListResponse> {
 }
 
 /**
- * Lấy user theo ID từ API, nếu không thành công sử dụng mock data
+ * Lấy user theo ID từ API
  */
 export async function fetchUserById(id: number): Promise<UserItem | undefined> {
   try {
@@ -184,7 +181,7 @@ export async function fetchUsersByFacility(
 }
 
 /**
- * Lấy danh sách facility managers, nếu không thành công sử dụng mock data
+ * Lấy danh sách facility managers
  */
 export async function fetchFacilityManagers(): Promise<UserItem[]> {
   return fetchUsersByRole("FACILITY_MANAGER");

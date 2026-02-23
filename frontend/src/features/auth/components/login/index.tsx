@@ -69,37 +69,6 @@ const Login: React.FC = () => {
     loginMutation.mutate(values);
   };
 
-  const handleDemoFill = (demoEmail: string, demoPass: string) => {
-    form.setFieldsValue({
-      email: demoEmail,
-      password: demoPass,
-    });
-  };
-
-  const handleBypassLogin = () => {
-    setIsRedirecting(true);
-    // Mock user data for bypass
-    const mockUser = {
-      id: "9999",
-      email: "admin@demo.local",
-      name: "Admin Demo (Offline)",
-      code: "TEST",
-      role: mapRoleCode("TEST"),
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin",
-    };
-
-    // Set local storage
-    localStorage.setItem("access_token", "mock_token_bypass_api");
-    localStorage.setItem("user", JSON.stringify(mockUser));
-
-    // Dispatch login action
-    dispatch(login(mockUser));
-
-    // Notify and redirect
-    message.success("Đăng nhập chế độ Offline thành công!");
-    router.push("/home");
-  };
-
   if (loginMutation.isPending || isRedirecting) {
     return <Loading />;
   }

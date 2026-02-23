@@ -19,13 +19,12 @@ import {
   Layers,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { SelfLearnCourse, SelfLearnLesson } from "@/data/selfLearnData";
 import {
-  SelfLearnCourse,
-  SelfLearnLesson,
-  getSelfLearnCourseById,
-  getLessonsByCourseId,
-  getSelfLearnStepsByLessonId,
-} from "@/data/selfLearnData";
+  fetchCourseById,
+  fetchLessonsByCourseId,
+  fetchStepsByLessonId,
+} from "@/services/learnService";
 import {
   BaseStepItem,
   StepType,
@@ -81,20 +80,20 @@ export function LearningManagementDetail() {
   useEffect(() => {
     const initData = async () => {
       try {
-        const foundCourse = getSelfLearnCourseById(id);
+        const foundCourse = await fetchCourseById(id);
         if (foundCourse) {
           setCourse(foundCourse);
           setEditForm({ ...foundCourse });
 
           // Load lessons
-          const courseLessons = getLessonsByCourseId(id);
+          const courseLessons = await fetchLessonsByCourseId(id);
           setLessons(courseLessons);
 
           // Pre-load steps for all lessons
           const stepsData: Record<number, BaseStepItem[]> = {};
-          courseLessons.forEach((lesson) => {
-            stepsData[lesson.id] = getSelfLearnStepsByLessonId(lesson.id);
-          });
+          for (const lesson of courseLessons) {
+            stepsData[lesson.id] = await fetchStepsByLessonId(lesson.id);
+          }
           setStepsMap(stepsData);
         }
       } catch (error) {

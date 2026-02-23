@@ -3,15 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { SelfLearnCourse, SelfLearnLesson } from "@/data/selfLearnData";
 import {
-  getSelfLearnCourseById,
-  getSelfLearnLessonById,
-  getSelfLearnStepsByLessonId,
-  getSelfLearnStepById,
-  getLessonsByCourseId,
-  SelfLearnCourse,
-  SelfLearnLesson,
-} from "@/data/selfLearnData";
+  fetchCourseById,
+  fetchLessonsByCourseId,
+  fetchStepsByLessonId,
+} from "@/services/learnService";
 import {
   BaseStepItem,
   VocabularyStep,
@@ -36,22 +33,25 @@ export function StepDetail() {
   const [lesson, setLesson] = useState<SelfLearnLesson | null>(null);
   const [currentStep, setCurrentStep] = useState<BaseStepItem | null>(null);
   const [steps, setSteps] = useState<BaseStepItem[]>([]);
+  const [allLessons, setAllLessons] = useState<SelfLearnLesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const foundCourse = getSelfLearnCourseById(courseId);
+        const foundCourse = await fetchCourseById(courseId);
         setCourse(foundCourse || null);
 
-        const foundLesson = getSelfLearnLessonById(lessonId);
+        const lessons = await fetchLessonsByCourseId(courseId);
+        setAllLessons(lessons);
+        const foundLesson = lessons.find((l: any) => l.id === lessonId);
         setLesson(foundLesson || null);
 
-        const allSteps = getSelfLearnStepsByLessonId(lessonId);
+        const allSteps = await fetchStepsByLessonId(lessonId);
         setSteps(allSteps);
 
-        const step = getSelfLearnStepById(stepId);
+        const step = allSteps.find((s: any) => s.id === stepId);
         setCurrentStep(step || null);
       } catch (error) {
         console.error("Failed to load step", error);
@@ -155,21 +155,24 @@ export function StepDetail() {
   };
 
   // Get next lesson info
-  const allLessons = getLessonsByCourseId(courseId);
   const currentLessonIndex = allLessons.findIndex((l) => l.id === lessonId);
   const nextLesson =
     currentLessonIndex !== -1 && currentLessonIndex < allLessons.length - 1
       ? allLessons[currentLessonIndex + 1]
       : null;
 
-  const handleNextLesson = () => {
+  const handleNextLesson = async () => {
     if (nextLesson) {
-      const nextLessonSteps = getSelfLearnStepsByLessonId(nextLesson.id);
-      if (nextLessonSteps.length > 0) {
-        router.push(
-          `/learn/${courseId}/${nextLesson.id}/${nextLessonSteps[0].id}`,
-        );
-      } else {
+      try {
+        const nextLessonSteps = await fetchStepsByLessonId(nextLesson.id);
+        if (nextLessonSteps.length > 0) {
+          router.push(
+            `/learn/${courseId}/${nextLesson.id}/${nextLessonSteps[0].id}`,
+          );
+        } else {
+          router.push(`/learn/${courseId}/${nextLesson.id}`);
+        }
+      } catch {
         router.push(`/learn/${courseId}/${nextLesson.id}`);
       }
     }
