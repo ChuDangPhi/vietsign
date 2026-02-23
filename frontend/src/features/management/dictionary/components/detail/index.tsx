@@ -69,6 +69,12 @@ export function DictionaryManagementDetail() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (item?.word) {
+      document.title = `${item.word} - Từ điển - VietSignSchool`;
+    }
+  }, [item]);
+
   // Handle save
   const handleSave = async () => {
     if (item && editForm) {

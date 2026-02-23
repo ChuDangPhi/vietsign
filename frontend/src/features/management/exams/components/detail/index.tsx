@@ -93,6 +93,12 @@ export function ExamManagementDetail() {
   }, [id]);
 
   useEffect(() => {
+    if (exam?.title) {
+      document.title = `${exam.title} - Quản lý bài thi - VietSignSchool`;
+    }
+  }, [exam]);
+
+  useEffect(() => {
     if (isEditing && (editForm.classId || exam?.classId)) {
       loadTopics(Number(editForm.classId || exam?.classId));
     }

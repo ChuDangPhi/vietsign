@@ -141,6 +141,12 @@ export function ClassManagementDetail() {
     }
   }, [id]);
 
+  useEffect(() => {
+    if (classItem?.name) {
+      document.title = `${classItem.name} - Quản lý lớp học - VietSignSchool`;
+    }
+  }, [classItem]);
+
   const getFacilityName = (organizationId: number | null): string => {
     if (organizationId === null) return "Online";
     if (organizationId === undefined) return "Không xác định";

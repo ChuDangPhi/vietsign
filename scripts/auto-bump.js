@@ -123,3 +123,5 @@ function main() {
 }
 
 main();
+// git add . && node scripts/auto-bump.js && git commit -m "v1.1.x: Mo ta thay doi tai day" && git push
+// chỉ tự động sửa số sau cùng

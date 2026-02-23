@@ -583,6 +583,7 @@ export function OrganizationDetail() {
     if (organization) {
       setEditForm({ ...organization });
       loadLocationNames(organization.city, organization.ward);
+      document.title = `${organization.name} - Quản lý tổ chức - VietSignSchool`;
     }
   }, [organization]);
 

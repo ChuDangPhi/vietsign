@@ -80,6 +80,12 @@ export function UserManagementDetail() {
     }
   }, [id]);
 
+  useEffect(() => {
+    if (user?.name) {
+      document.title = `${user.name} - Quản lý người dùng - VietSignSchool`;
+    }
+  }, [user]);
+
   const handleSave = async () => {
     if (user && editForm) {
       try {

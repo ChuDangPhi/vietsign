@@ -60,6 +60,12 @@ export function DetailedStatistics({ userId }: { userId: string }) {
   const user = userData;
   const stats = statsData || { lessonViews: [], vocabularyViews: [] };
 
+  React.useEffect(() => {
+    if (user?.name) {
+      document.title = `Thống kê: ${user.name} - Thống kê - VietSignSchool`;
+    }
+  }, [user]);
+
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">

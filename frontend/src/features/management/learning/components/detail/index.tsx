@@ -105,6 +105,12 @@ export function LearningManagementDetail() {
     initData();
   }, [id]);
 
+  useEffect(() => {
+    if (course?.title) {
+      document.title = `${course.title} - Quản lý bài học - VietSignSchool`;
+    }
+  }, [course]);
+
   // Toggle lesson expansion
   const toggleLesson = (lessonId: number) => {
     setExpandedLessons((prev) =>

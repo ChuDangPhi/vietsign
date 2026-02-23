@@ -36,11 +36,11 @@ export function GameManagementDetail() {
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [isEditingQuestion, setIsEditingQuestion] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Partial<GameQuestion>>(
-    {}
+    {},
   );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [questionToDelete, setQuestionToDelete] = useState<GameQuestion | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -49,6 +49,12 @@ export function GameManagementDetail() {
       setGame(found);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (game?.name) {
+      document.title = `${game.name} - Quản lý trò chơi - VietSignSchool`;
+    }
+  }, [game]);
 
   const currentLevelData = game?.levels.find((l) => l.level === selectedLevel);
 
@@ -78,20 +84,20 @@ export function GameManagementDetail() {
 
     const updatedGame = { ...game };
     const levelIndex = updatedGame.levels.findIndex(
-      (l) => l.level === selectedLevel
+      (l) => l.level === selectedLevel,
     );
 
     if (isEditingQuestion) {
       // Update existing question
       const questionIndex = updatedGame.levels[levelIndex].questions.findIndex(
-        (q) => q.id === currentQuestion.id
+        (q) => q.id === currentQuestion.id,
       );
       updatedGame.levels[levelIndex].questions[questionIndex] =
         currentQuestion as GameQuestion;
     } else {
       // Add new question
       updatedGame.levels[levelIndex].questions.push(
-        currentQuestion as GameQuestion
+        currentQuestion as GameQuestion,
       );
     }
 
@@ -106,7 +112,7 @@ export function GameManagementDetail() {
 
     const updatedGame = { ...game };
     const levelIndex = updatedGame.levels.findIndex(
-      (l) => l.level === selectedLevel
+      (l) => l.level === selectedLevel,
     );
     updatedGame.levels[levelIndex].questions = updatedGame.levels[
       levelIndex
@@ -120,7 +126,7 @@ export function GameManagementDetail() {
   const updateOption = (
     optionId: string | number,
     field: "text" | "isCorrect",
-    value: any
+    value: any,
   ) => {
     setCurrentQuestion((prev) => ({
       ...prev,
@@ -128,8 +134,8 @@ export function GameManagementDetail() {
         opt.id === optionId
           ? { ...opt, [field]: value }
           : field === "isCorrect"
-          ? { ...opt, isCorrect: false }
-          : opt
+            ? { ...opt, isCorrect: false }
+            : opt,
       ),
     }));
   };

@@ -42,6 +42,16 @@ const GradeDetail: React.FC = () => {
   useEffect(() => {
     if (!examId || !userId) return;
     setLoading(true);
+
+    // Fetch user for title
+    import("@/services/userService").then(({ fetchUserById }) => {
+      fetchUserById(Number(userId)).then((user) => {
+        if (user?.name) {
+          document.title = `Chấm điểm: ${user.name} - Chấm điểm - VietSignSchool`;
+        }
+      });
+    });
+
     fetchPracticeSubmission(Number(examId), Number(userId))
       .then((response: any) => {
         // API returns { success, data: [...] }
