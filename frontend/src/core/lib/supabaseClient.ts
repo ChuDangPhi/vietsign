@@ -45,16 +45,16 @@ const createMockClient = () => {
   return {
     from: () => mockChain(),
     channel: () => ({
-      on: () => ({ subscribe: () => {} }),
-      subscribe: () => ({ unsubscribe: () => {} }),
-      unsubscribe: () => {},
+      on: () => ({ subscribe: () => { } }),
+      subscribe: () => ({ unsubscribe: () => { } }),
+      unsubscribe: () => { },
       send: () => Promise.resolve(),
       track: () => Promise.resolve(),
     }),
     auth: {
       getUser: () => Promise.resolve({ data: { user: null }, error: null }),
       onAuthStateChange: () => ({
-        data: { subscription: { unsubscribe: () => {} } },
+        data: { subscription: { unsubscribe: () => { } } },
       }),
       getSession: () =>
         Promise.resolve({ data: { session: null }, error: null }),
@@ -81,7 +81,7 @@ const createMockClient = () => {
       }),
     },
     realtime: {
-      setAuth: () => {},
+      setAuth: () => { },
     },
   } as any;
 };
@@ -101,6 +101,7 @@ export type Room = {
   is_group: boolean;
   created_at: string;
   pinned_message_id: string | null; // uuid
+  room_participants?: { user_id: string }[];
 };
 
 // Bảng room_participants - Thành viên trong phòng

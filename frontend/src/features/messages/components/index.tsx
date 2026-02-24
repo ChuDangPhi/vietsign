@@ -223,9 +223,25 @@ export const Messages: React.FC = () => {
   // ==================== ROOM DISPLAY LIST ====================
   const roomDisplayList = useMemo((): RoomDisplay[] => {
     return rooms.map((room) => {
-      let name = room.name || "Cuộc trò chuyện";
+      let name = room.name;
       let avatar: string | null = null;
       let role = room.is_group ? "Nhóm" : "Người dùng";
+
+      if (!room.is_group) {
+        const otherParticipant = room.room_participants?.find(
+          (p) => p.user_id !== currentUserId
+        );
+        if (otherParticipant) {
+          const user = usersMap[otherParticipant.user_id];
+          if (user) {
+            name = user.name || user.email || "Người dùng";
+            avatar = user.avatar || null;
+            role = user.role ? roleLabels[user.role] || user.role : role;
+          }
+        }
+      }
+
+      if (!name) name = "Cuộc trò chuyện";
 
       return {
         id: room.id,
@@ -239,7 +255,7 @@ export const Messages: React.FC = () => {
         isGroup: room.is_group,
       };
     });
-  }, [rooms]);
+  }, [rooms, usersMap, currentUserId]);
 
   const filteredRooms = roomDisplayList.filter((room) =>
     room.name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -683,14 +699,19 @@ export const Messages: React.FC = () => {
                 <div
                   key={room.id}
                   onClick={() => setSelectedRoom(room.id)}
-                  className={`flex items-center gap-3 p-4 cursor-pointer transition-colors border-b border-gray-50 ${
-                    selectedRoom === room.id
+                  className={`flex items-center gap-3 p-4 cursor-pointer transition-colors border-b border-gray-50 ${selectedRoom === room.id
                       ? "bg-primary-50 border-l-4 border-l-primary-600"
                       : "hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold">
-                    {room.isGroup ? <Users size={20} /> : room.name.charAt(0)}
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
+                    {room.avatar ? (
+                      <img src={room.avatar} alt={room.name} className="w-full h-full object-cover" />
+                    ) : room.isGroup ? (
+                      <Users size={20} />
+                    ) : (
+                      room.name.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-gray-900 truncate">
@@ -712,11 +733,13 @@ export const Messages: React.FC = () => {
             {/* Chat Header */}
             <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-sm">
-                  {selectedChat.isGroup ? (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0">
+                  {selectedChat.avatar ? (
+                    <img src={selectedChat.avatar} alt={selectedChat.name} className="w-full h-full object-cover" />
+                  ) : selectedChat.isGroup ? (
                     <Users size={18} />
                   ) : (
-                    selectedChat.name.charAt(0)
+                    selectedChat.name.charAt(0).toUpperCase()
                   )}
                 </div>
                 <div>
@@ -848,13 +871,12 @@ export const Messages: React.FC = () => {
                         )}
 
                         <div
-                          className={`px-4 py-2.5 rounded-2xl ${
-                            msg.is_deleted
+                          className={`px-4 py-2.5 rounded-2xl ${msg.is_deleted
                               ? "bg-gray-200 text-gray-500 italic border border-gray-300"
                               : isMe
                                 ? "bg-primary-600 text-white rounded-br-md"
                                 : "bg-white text-gray-900 shadow-sm border border-gray-100 rounded-bl-md"
-                          }`}
+                            }`}
                         >
                           {msg.is_deleted ? (
                             <p className="text-sm flex items-center gap-1">
@@ -866,9 +888,8 @@ export const Messages: React.FC = () => {
                           )}
                           {!msg.is_deleted && (
                             <div
-                              className={`flex items-center justify-end gap-1 mt-1 ${
-                                isMe ? "text-primary-200" : "text-gray-400"
-                              }`}
+                              className={`flex items-center justify-end gap-1 mt-1 ${isMe ? "text-primary-200" : "text-gray-400"
+                                }`}
                             >
                               <span className="text-xs">{time}</span>
                               {isMe && <CheckCheck size={14} />}

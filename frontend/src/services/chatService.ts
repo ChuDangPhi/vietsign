@@ -29,7 +29,7 @@ export const chatService = {
 
     const { data: rooms, error: rError } = await supabase
       .from("rooms")
-      .select("*")
+      .select("*, room_participants(user_id)")
       .in("id", roomIds)
       .order("created_at", { ascending: false });
 
