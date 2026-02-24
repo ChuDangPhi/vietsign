@@ -28,9 +28,9 @@ export default function DashboardLayout({ children, hideFooter = false }: Dashbo
   const handleResize = useCallback(() => {
     const width = window.innerWidth;
     const shouldCollapse = width < BREAKPOINT;
-    
+
     setIsSmallScreen(shouldCollapse);
-    
+
     // Auto update sidebar state based on screen size
     if (shouldCollapse) {
       setIsSidebarOpen(false);
@@ -106,7 +106,7 @@ export default function DashboardLayout({ children, hideFooter = false }: Dashbo
   const sidebarWidth = isSmallScreen ? 0 : (isSidebarOpen ? 240 : 96);
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-gray-50"
       style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
@@ -128,15 +128,15 @@ export default function DashboardLayout({ children, hideFooter = false }: Dashbo
       <main
         className={`
           pt-16 min-h-screen transition-all duration-300 ease-in-out
-          ${isSmallScreen 
-            ? "ml-0" 
-            : isSidebarOpen 
-              ? "ml-60" 
+          ${isSmallScreen
+            ? "ml-0"
+            : isSidebarOpen
+              ? "ml-60"
               : "ml-24"
           }
         `}
       >
-        <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">{children}</div>
+        <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto min-h-[1000px]">{children}</div>
         {!hideFooter && (
           <div className="mt-[200px]">
             <Footer />

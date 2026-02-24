@@ -94,6 +94,7 @@ export const Footer: React.FC = () => (
             <li>
               <Link
                 href="/about"
+                prefetch={false}
                 className="hover:text-primary-400 transition-colors"
               >
                 Giới thiệu
@@ -102,6 +103,7 @@ export const Footer: React.FC = () => (
             <li>
               <Link
                 href="/team"
+                prefetch={false}
                 className="hover:text-primary-400 transition-colors"
               >
                 Đội ngũ phát triển
@@ -110,6 +112,7 @@ export const Footer: React.FC = () => (
             <li>
               <Link
                 href="/contact"
+                prefetch={false}
                 className="hover:text-primary-400 transition-colors"
               >
                 Liên hệ
@@ -118,6 +121,7 @@ export const Footer: React.FC = () => (
             <li>
               <Link
                 href="/faq"
+                prefetch={false}
                 className="hover:text-primary-400 transition-colors"
               >
                 Câu hỏi thường gặp
@@ -174,12 +178,14 @@ export const Footer: React.FC = () => (
         <div className="flex gap-6 text-sm text-gray-500">
           <Link
             href="/privacy"
+            prefetch={false}
             className="hover:text-primary-400 transition-colors"
           >
             Chính sách bảo mật
           </Link>
           <Link
             href="/terms"
+            prefetch={false}
             className="hover:text-primary-400 transition-colors"
           >
             Điều khoản sử dụng
