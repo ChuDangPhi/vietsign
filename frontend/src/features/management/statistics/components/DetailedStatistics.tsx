@@ -35,7 +35,7 @@ export function DetailedStatistics({ userId }: { userId: string }) {
 
   const { data: userData, isFetching: isFetchingUser } = useQuery({
     queryKey: ["user", userId],
-    queryFn: () => fetchUserById(Number(userId)),
+    queryFn: () => fetchUserById(Number(userId), { includeDeleted: true }),
     enabled: !!userId,
   });
 

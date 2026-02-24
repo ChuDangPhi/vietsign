@@ -66,7 +66,7 @@ export async function fetchAllUsers(query?: any): Promise<UserListResponse> {
     } else if (query?.role === "STUDENT") {
       response = await UserModel.getStudents(apiQuery);
     } else {
-      // Use generic /users endpoint which now exists in backend
+      // Use generic /users endpoint - pass role for filtering
       response = await UserModel.getAllUsers(apiQuery);
     }
 
@@ -86,12 +86,14 @@ export async function fetchAllUsers(query?: any): Promise<UserListResponse> {
       users = response.map(convertApiUserToUserItem);
     }
 
+    const meta = response.meta || {};
+
     return {
       users,
-      total: response.total || users.length,
-      page: response.page || 1,
-      limit: response.limit || users.length,
-      totalPages: response.totalPages || 1,
+      total: meta.total || response.total || users.length,
+      page: meta.page || response.page || 1,
+      limit: meta.limit || response.limit || users.length,
+      totalPages: meta.totalPages || response.totalPages || 1,
     };
   } catch (error) {
     console.error("Error fetching users from API", error);
@@ -108,9 +110,9 @@ export async function fetchAllUsers(query?: any): Promise<UserListResponse> {
 /**
  * Lấy user theo ID từ API
  */
-export async function fetchUserById(id: number): Promise<UserItem | undefined> {
+export async function fetchUserById(id: number, options?: { includeDeleted?: boolean }): Promise<UserItem | undefined> {
   try {
-    const response = await UserModel.getUserById(id);
+    const response = await UserModel.getUserById(id, options);
     if (response.user) {
       return convertApiUserToUserItem(response.user);
     }

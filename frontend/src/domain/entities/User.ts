@@ -110,8 +110,9 @@ class UserModelClass extends Base {
   };
 
   // GET /user/:userId - Lấy thông tin user theo ID (Admin only)
-  getUserById = async (userId: number): Promise<any> => {
-    const res = await this.apiGet(`/${userId}`);
+  getUserById = async (userId: number, options?: { includeDeleted?: boolean }): Promise<any> => {
+    const params = options?.includeDeleted ? { includeDeleted: "true" } : undefined;
+    const res = await this.apiGet(`/${userId}`, params);
     return res.data;
   };
 

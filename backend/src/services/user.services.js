@@ -236,7 +236,7 @@ async function getTeacherById(teacherId) {
     const teacher = rows[0];
     try {
       teacher.subjects = teacher.subjects ? JSON.parse(teacher.subjects) : null;
-    } catch (e) {}
+    } catch (e) { }
     return teacher;
   } catch (error) {
     throw error;
@@ -756,12 +756,18 @@ async function getUsers({
   limit = 20,
   q = "",
   organization_id,
+  role,
 } = {}) {
   try {
     const offset = (Number(page) - 1) * Number(limit);
 
     const where = ["u.is_deleted = 0"];
     const params = [];
+
+    if (role) {
+      where.push("u.code = ?");
+      params.push(role);
+    }
 
     if (q) {
       where.push("(u.name LIKE ? OR u.email LIKE ? OR u.phone_number LIKE ?)");
@@ -813,9 +819,10 @@ async function getUsers({
   }
 }
 
-async function getUserById(userId) {
+async function getUserById(userId, { includeDeleted = false } = {}) {
   try {
     // Fetch organization info for any user
+    const deletedCondition = includeDeleted ? "" : "AND u.is_deleted = 0";
     const query = `
       SELECT u.*, 
              o.name as organization_name, 
@@ -825,7 +832,7 @@ async function getUserById(userId) {
       LEFT JOIN organization_manager om ON u.user_id = om.user_id
       LEFT JOIN organization o ON om.organization_id = o.organization_id
       LEFT JOIN organization parent_o ON o.parent_id = parent_o.organization_id
-      WHERE u.user_id = ? AND u.is_deleted = 0
+      WHERE u.user_id = ? ${deletedCondition}
     `;
     const [rows] = await db.query(query, [userId]);
 

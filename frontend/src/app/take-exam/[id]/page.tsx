@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchExamById } from "@/services/examService";
 import { useParams } from "next/navigation";
 import { Spin, Alert } from "antd";
+import { DashboardLayout } from "@/shared/components/layout";
 
 export default function TakeExamDetail() {
   const params = useParams();
@@ -27,21 +28,41 @@ export default function TakeExamDetail() {
 
   if (isLoading)
     return (
-      <div className="p-10 flex justify-center">
-        <Spin size="large" />
-      </div>
+      <DashboardLayout>
+        <div className="p-10 flex justify-center">
+          <Spin size="large" />
+        </div>
+      </DashboardLayout>
     );
-  if (error) return <Alert message="Lỗi tải bài kiểm tra" type="error" />;
+  if (error)
+    return (
+      <DashboardLayout>
+        <Alert message="Lỗi tải bài kiểm tra" type="error" />
+      </DashboardLayout>
+    );
   if (!exam)
-    return <div className="p-10 text-center">Không tìm thấy bài kiểm tra</div>;
+    return (
+      <DashboardLayout>
+        <div className="p-10 text-center">Không tìm thấy bài kiểm tra</div>
+      </DashboardLayout>
+    );
 
   // Detect type. Backend might return "QUIZ" or "PRACTICE" or "practice" etc.
   // Normalized as examType.
   const type = String(exam.examType || "").toUpperCase();
 
   if (type === "PRACTICE" || type === "PRACTICAL") {
-    return <QuestionsPractice />;
+    return (
+      <DashboardLayout>
+        <QuestionsPractice />
+      </DashboardLayout>
+    );
   }
 
-  return <QuestionsPage />;
+  return (
+    <DashboardLayout>
+      <QuestionsPage />
+    </DashboardLayout>
+  );
 }
+

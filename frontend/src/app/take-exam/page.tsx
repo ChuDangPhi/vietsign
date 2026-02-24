@@ -5,6 +5,7 @@ import { Table, Button, Tag, Card, Typography } from "antd";
 import { useRouter } from "next/navigation";
 import { fetchAllExams } from "@/services/examService";
 import { ExamItem } from "@/data/examsData";
+import { DashboardLayout } from "@/shared/components/layout";
 
 const { Title } = Typography;
 
@@ -71,7 +72,7 @@ export default function TakeExamList() {
   ];
 
   return (
-    <div className="p-6 md:p-10 bg-gray-50 min-h-screen">
+    <DashboardLayout>
       <Title level={2} className="mb-6">
         Danh sách bài kiểm tra
       </Title>
@@ -83,6 +84,6 @@ export default function TakeExamList() {
           loading={loading}
         />
       </Card>
-    </div>
+    </DashboardLayout>
   );
 }

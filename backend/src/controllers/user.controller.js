@@ -306,7 +306,7 @@ async function deleteTeacher(req, res) {
 
 async function getUsers(req, res) {
   try {
-    const { page, limit, q, school_id, organization_id } = req.query || {};
+    const { page, limit, q, school_id, organization_id, role } = req.query || {};
     // Support both school_id and organization_id from frontend
     const orgId = organization_id || school_id;
     const data = await services.getUsers({
@@ -314,6 +314,7 @@ async function getUsers(req, res) {
       limit,
       q,
       organization_id: orgId,
+      role,
     });
     return res.json(data);
   } catch (err) {
@@ -323,7 +324,8 @@ async function getUsers(req, res) {
 }
 async function getUserById(req, res) {
   try {
-    const data = await services.getUserById(req.params.id);
+    const includeDeleted = req.query.includeDeleted === "true";
+    const data = await services.getUserById(req.params.id, { includeDeleted });
     return res.json(data);
   } catch (err) {
     const status = err.status || 500;
