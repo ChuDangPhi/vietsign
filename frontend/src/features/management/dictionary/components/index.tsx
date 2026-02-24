@@ -90,7 +90,7 @@ export function DictionaryManagementComponent() {
     setIsLoading(true);
     try {
       const [wordsData, topicsData] = await Promise.all([
-        fetchAllWords({ content: searchQuery }),
+        fetchAllWords({ content: searchQuery, limit: 10000 }),
         fetchAllTopics(), // Fetch global topics
       ]);
 

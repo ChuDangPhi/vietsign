@@ -14,7 +14,9 @@ export class Base {
   }
 
   protected async apiGet(path: string = "", params?: any) {
-    const response = await http.get(this.getUrl(path), { params });
+    const defaultParams = { limit: 10000 };
+    const mergedParams = { ...defaultParams, ...(params || {}) };
+    const response = await http.get(this.getUrl(path), { params: mergedParams });
     return response;
   }
 

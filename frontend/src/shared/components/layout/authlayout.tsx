@@ -136,7 +136,7 @@ export default function DashboardLayout({ children, hideFooter = false }: Dashbo
           }
         `}
       >
-        <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto min-h-[1000px]">{children}</div>
+        <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">{children}</div>
         {!hideFooter && (
           <div className="mt-[200px]">
             <Footer />
