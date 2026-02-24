@@ -7,14 +7,15 @@ export const metadata: Metadata = {
   description: "Chi tiết Thống kê Học viên VietSignSchool",
 };
 
-export default function DetailedStatisticsPage({
+export default async function DetailedStatisticsPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   return (
     <DashboardLayout>
-      <DetailedStatistics userId={params.id} />
+      <DetailedStatistics userId={id} />
     </DashboardLayout>
   );
 }
