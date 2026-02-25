@@ -84,17 +84,20 @@ export default function QuestionsPage() {
   const isCompleted = submitted || isReview;
 
   const showMediaModal = (answer: any) => {
-    const videoUrl = getFullUrl(answer.videoLocation);
-    const imageUrl = getFullUrl(answer.imageLocation);
+    const vLoc = answer.videoLocation || answer.video_location || answer.video || answer.videoUrl;
+    const iLoc = answer.imageLocation || answer.image_location || answer.image || answer.imageUrl;
 
-    if (answer.videoLocation) {
+    const videoUrl = getFullUrl(vLoc);
+    const imageUrl = getFullUrl(iLoc);
+
+    if (vLoc) {
       setMediaModal({
         visible: true,
         type: "video",
         url: videoUrl,
         title: `Đáp án`,
       });
-    } else if (answer.imageLocation) {
+    } else if (iLoc) {
       setMediaModal({
         visible: true,
         type: "image",
@@ -105,20 +108,16 @@ export default function QuestionsPage() {
   };
 
   const renderAnswerContent = (answer: any) => {
-    const hasMedia = answer.videoLocation || answer.imageLocation;
+    const vLoc = answer.videoLocation || answer.video_location || answer.video || answer.videoUrl;
+    const iLoc = answer.imageLocation || answer.image_location || answer.image || answer.imageUrl;
+    const hasMedia = vLoc || iLoc;
 
     if (!answer.content && hasMedia) {
       return (
         <div className="flex items-center gap-2">
           <Button
             type="link"
-            icon={
-              answer.videoLocation ? (
-                <PlayCircleOutlined />
-              ) : (
-                <PictureOutlined />
-              )
-            }
+            icon={vLoc ? <PlayCircleOutlined /> : <PictureOutlined />}
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -126,7 +125,7 @@ export default function QuestionsPage() {
             }}
             className="p-0"
           >
-            {answer.videoLocation ? `Xem video` : `Xem hình ảnh`}
+            {vLoc ? `Xem video` : `Xem hình ảnh`}
           </Button>
           {showResults && answer.correct && (
             <span className="ml-2 text-green-600 font-bold">(Đáp án đúng)</span>
@@ -142,13 +141,7 @@ export default function QuestionsPage() {
           <Button
             type="link"
             size="small"
-            icon={
-              answer.videoLocation ? (
-                <PlayCircleOutlined />
-              ) : (
-                <PictureOutlined />
-              )
-            }
+            icon={vLoc ? <PlayCircleOutlined /> : <PictureOutlined />}
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -156,7 +149,7 @@ export default function QuestionsPage() {
             }}
             className="ml-2"
           >
-            {answer.videoLocation ? "Video" : "Hình ảnh"}
+            {vLoc ? "Video" : "Hình ảnh"}
           </Button>
         )}
         {showResults && answer.correct && (
@@ -213,13 +206,16 @@ export default function QuestionsPage() {
       const s1 = [...correctAnswers].sort().toString();
       const s2 = [...selectedArr].sort().toString();
 
+      let isCorrect = false;
       if (s1 === s2 && s1 !== "") {
         correctCount++;
+        isCorrect = true;
       }
 
       answerPayload.push({
         questionId: q.questionId,
         selectedAnswers: selectedArr,
+        isCorrect: isCorrect,
       });
     });
 
@@ -234,7 +230,7 @@ export default function QuestionsPage() {
     }
 
     const payload = {
-      student_id: user.id,
+      student_id: user.id || user.user_id,
       score: score,
       answers: answerPayload,
       time_spent: "00:00:00", // Implement timer if needed
@@ -300,35 +296,35 @@ export default function QuestionsPage() {
             }
           >
             {/* Media Display */}
-            {(currentQuestion.videoLocation ||
-              currentQuestion.imageLocation) && (
-              <div className="flex justify-center mb-6 bg-gray-100 p-4 rounded-lg">
-                {currentQuestion.videoLocation && (
-                  <video
-                    width="100%"
-                    style={{ maxWidth: 500, maxHeight: 300 }}
-                    controls
-                  >
-                    <source
-                      src={getFullUrl(currentQuestion.videoLocation)}
-                      type="video/mp4"
+            {(currentQuestion.videoLocation || currentQuestion.video_location || currentQuestion.video || currentQuestion.videoUrl ||
+              currentQuestion.imageLocation || currentQuestion.image_location || currentQuestion.image || currentQuestion.imageUrl) && (
+                <div className="flex justify-center mb-6 bg-gray-100 p-4 rounded-lg">
+                  {(currentQuestion.videoLocation || currentQuestion.video_location || currentQuestion.video || currentQuestion.videoUrl) && (
+                    <video
+                      width="100%"
+                      style={{ maxWidth: 500, maxHeight: 300 }}
+                      controls
+                    >
+                      <source
+                        src={getFullUrl(currentQuestion.videoLocation || currentQuestion.video_location || currentQuestion.video || currentQuestion.videoUrl)}
+                        type="video/mp4"
+                      />
+                    </video>
+                  )}
+                  {(currentQuestion.imageLocation || currentQuestion.image_location || currentQuestion.image || currentQuestion.imageUrl) && (
+                    <img
+                      src={getFullUrl(currentQuestion.imageLocation || currentQuestion.image_location || currentQuestion.image || currentQuestion.imageUrl)}
+                      alt="Question Media"
+                      style={{
+                        maxWidth: 400,
+                        width: "100%",
+                        maxHeight: 300,
+                        objectFit: "contain",
+                      }}
                     />
-                  </video>
-                )}
-                {currentQuestion.imageLocation && (
-                  <img
-                    src={getFullUrl(currentQuestion.imageLocation)}
-                    alt="Question Media"
-                    style={{
-                      maxWidth: 400,
-                      width: "100%",
-                      maxHeight: 300,
-                      objectFit: "contain",
-                    }}
-                  />
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
 
             <Form.Item name={["answerList", currentPage - 1]} className="mb-0">
               {currentQuestion.questionType === "MULTIPLE_ANSWERS" ? (
@@ -347,11 +343,10 @@ export default function QuestionsPage() {
                     {currentQuestion.answerResList?.map((answer: any) => (
                       <div
                         key={answer.answerId}
-                        className={`p-4 rounded-lg border transition-colors ${
-                          showResults && answer.correct
-                            ? "bg-green-50 border-green-300"
-                            : "bg-white border-gray-200 hover:border-blue-300"
-                        }`}
+                        className={`p-4 rounded-lg border transition-colors ${showResults && answer.correct
+                          ? "bg-green-50 border-green-300"
+                          : "bg-white border-gray-200 hover:border-blue-300"
+                          }`}
                       >
                         <Checkbox value={answer.answerId} className="w-full">
                           {renderAnswerContent(answer)}
@@ -376,11 +371,10 @@ export default function QuestionsPage() {
                     {currentQuestion.answerResList?.map((answer: any) => (
                       <div
                         key={answer.answerId}
-                        className={`p-4 rounded-lg border transition-colors ${
-                          showResults && answer.correct
-                            ? "bg-green-50 border-green-300"
-                            : "bg-white border-gray-200 hover:border-blue-300"
-                        }`}
+                        className={`p-4 rounded-lg border transition-colors ${showResults && answer.correct
+                          ? "bg-green-50 border-green-300"
+                          : "bg-white border-gray-200 hover:border-blue-300"
+                          }`}
                       >
                         <Radio value={answer.answerId} className="w-full">
                           {renderAnswerContent(answer)}

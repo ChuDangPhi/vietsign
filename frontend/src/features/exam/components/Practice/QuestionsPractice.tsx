@@ -131,7 +131,7 @@ const QuestionsPractice: React.FC = () => {
     const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
     const previewUrl = URL.createObjectURL(blob);
     // Use user.id instead of user.userId
-    const userId = user?.id || "unknown";
+    const userId = user?.id || user?.user_id || "unknown";
     const filename = `${examId}-${userId}-${currentWordIndex + 1}.webm`;
     const file = new File([blob], filename, { type: "video/webm" });
 
@@ -167,7 +167,7 @@ const QuestionsPractice: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append("examId", String(examId));
-      formData.append("userId", String(user.id));
+      formData.append("userId", String(user.id || user.user_id));
 
       videoList.forEach((item, index) => {
         if (item?.file) {
@@ -185,7 +185,7 @@ const QuestionsPractice: React.FC = () => {
 
           const timestamp = `${isoPart}_${msPart}`; // full timestamp
 
-          const fileName = `${examId}-${user.id}-${index + 1}-${practiceQuestions[index]?.vocabularyId}-${timestamp}.webm`;
+          const fileName = `${examId}-${user.id || user.user_id}-${index + 1}-${practiceQuestions[index]?.vocabularyId}-${timestamp}.webm`;
 
           const file = new File([item.file], fileName, {
             type: item.file.type,

@@ -41,9 +41,8 @@ export class ExamModel extends Base {
   };
 
   getDetailPracticeExam = async (examId: number) => {
-    // Assuming backend route /practice/:id exists or will exist
-    const res = await this.apiGet(`/practice/${examId}`);
-    return res.data;
+    const res = await this.apiGet(`/${examId}`);
+    return res.data.practiceQuestions || res.data;
   };
 
   submitPracticeVideos = async (body: FormData) => {

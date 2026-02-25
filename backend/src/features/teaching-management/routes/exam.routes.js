@@ -48,7 +48,6 @@ router.post("/mark-practice", authRequired, examController.markPracticeExam);
 router.post(
   "/:exam_id/submit",
   authRequired,
-  checkOrgRole(["STUDENT"]),
   examController.submitExam,
 );
 router.get("/:exam_id/results", authRequired, examController.getExamResults);

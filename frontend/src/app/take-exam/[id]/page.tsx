@@ -54,14 +54,18 @@ export default function TakeExamDetail() {
   if (type === "PRACTICE" || type === "PRACTICAL") {
     return (
       <DashboardLayout>
-        <QuestionsPractice />
+        <React.Suspense fallback={<Spin />}>
+          <QuestionsPractice />
+        </React.Suspense>
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <QuestionsPage />
+      <React.Suspense fallback={<Spin />}>
+        <QuestionsPage />
+      </React.Suspense>
     </DashboardLayout>
   );
 }
