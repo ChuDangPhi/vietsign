@@ -43,6 +43,22 @@ class LearnModelClass extends Base {
   };
 
   /**
+   * PUT /learn/items/:itemId - Update an existing learn item
+   */
+  updateItem = async (itemId: number, data: any) => {
+    const res = await this.apiPut(`/items/${itemId}`, data);
+    return res.data;
+  };
+
+  /**
+   * DELETE /learn/items/:itemId - Delete a learn item
+   */
+  deleteItem = async (itemId: number) => {
+    const res = await this.apiDelete(`/items/${itemId}`);
+    return res.data;
+  };
+
+  /**
    * GET /learn/items/:itemId/lessons - Lấy danh sách bài học của item
    */
   getLessonsByItemId = async (itemId: number) => {

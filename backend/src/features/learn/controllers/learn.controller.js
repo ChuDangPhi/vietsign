@@ -132,6 +132,78 @@ const createItem = async (req, res) => {
   }
 };
 
+// PUT /learn/items/:itemId - Update a learn item
+const updateItem = async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.itemId);
+    if (!itemId || isNaN(itemId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid item ID",
+        message: "ID không hợp lệ",
+      });
+    }
+
+    const data = req.body;
+    const updatedItem = await learnService.updateItem(itemId, data);
+
+    return res.status(200).json({
+      success: true,
+      data: updatedItem,
+      message: "Cập nhật khóa học thành công",
+    });
+  } catch (error) {
+    if (error.status === 404) {
+      return res.status(404).json({
+        success: false,
+        error: "Item not found",
+        message: "Không tìm thấy khóa học",
+      });
+    }
+    console.error("Update item error:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      message: "Lỗi khi cập nhật khóa học",
+    });
+  }
+};
+
+// DELETE /learn/items/:itemId - Delete a learn item
+const deleteItem = async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.itemId);
+    if (!itemId || isNaN(itemId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid item ID",
+        message: "ID không hợp lệ",
+      });
+    }
+
+    await learnService.deleteItem(itemId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Xóa khóa học thành công",
+    });
+  } catch (error) {
+    if (error.status === 404) {
+      return res.status(404).json({
+        success: false,
+        error: "Item not found",
+        message: "Không tìm thấy khóa học",
+      });
+    }
+    console.error("Delete item error:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      message: "Lỗi khi xóa khóa học",
+    });
+  }
+};
+
 // GET /learn/items/:itemId/lessons - Get lessons for a learn item
 const getLessonsByItemId = async (req, res) => {
   try {
@@ -545,6 +617,8 @@ module.exports = {
   // Items
   getItemById,
   createItem,
+  updateItem,
+  deleteItem,
   getLessonsByItemId,
   // Lessons
   getLessonById,

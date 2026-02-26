@@ -19,6 +19,8 @@ router.get(
 // Learn Items
 router.get("/items/:itemId", authRequired, learnController.getItemById);
 router.post("/items", authRequired, learnController.createItem);
+router.put("/items/:itemId", authRequired, learnController.updateItem);
+router.delete("/items/:itemId", authRequired, learnController.deleteItem);
 router.get(
   "/items/:itemId/lessons",
   authRequired,

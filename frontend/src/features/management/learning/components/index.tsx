@@ -14,7 +14,11 @@ import {
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SelfLearnCourse } from "@/data/selfLearnData";
-import { fetchAllCourses, createCourse } from "@/services/learnService";
+import {
+  fetchAllCourses,
+  createCourse,
+  deleteCourse,
+} from "@/services/learnService";
 import { toast } from "react-hot-toast";
 import { removeVietnameseTones } from "@/shared/utils/text";
 import {
@@ -133,11 +137,20 @@ export function LearningManagement() {
   };
 
   // Handle delete
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (learningToDelete) {
-      setLearnings((prev) => prev.filter((l) => l.id !== learningToDelete.id));
-      setIsDeleteModalOpen(false);
-      setLearningToDelete(null);
+      try {
+        await deleteCourse(learningToDelete.id);
+        toast.success("Xóa khóa học thành công");
+        setLearnings((prev) =>
+          prev.filter((l) => l.id !== learningToDelete.id),
+        );
+      } catch (error) {
+        toast.error("Khoá học đang được sử dụng, không thể xoá!");
+      } finally {
+        setIsDeleteModalOpen(false);
+        setLearningToDelete(null);
+      }
     }
   };
 

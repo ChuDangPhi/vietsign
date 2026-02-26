@@ -151,6 +151,96 @@ async function createItem(data) {
   return { id: result.insertId, ...data };
 }
 
+async function updateItem(itemId, data) {
+  const {
+    title,
+    subtitle,
+    description,
+    category_id,
+    total_lessons,
+    duration,
+    level,
+    video_url,
+    image_url,
+    display_order,
+  } = data;
+
+  const [result] = await db.execute(
+    `UPDATE learn_item 
+     SET title = COALESCE(?, title),
+         subtitle = COALESCE(?, subtitle),
+         description = COALESCE(?, description),
+         category_id = COALESCE(?, category_id),
+         total_lessons = COALESCE(?, total_lessons),
+         duration = COALESCE(?, duration),
+         level = COALESCE(?, level),
+         video_url = COALESCE(?, video_url),
+         image_url = COALESCE(?, image_url),
+         display_order = COALESCE(?, display_order)
+     WHERE item_id = ?`,
+    [
+      title || null,
+      subtitle || null,
+      description || null,
+      category_id || null,
+      total_lessons || null,
+      duration || null,
+      level || null,
+      video_url || null,
+      image_url || null,
+      display_order || null,
+      itemId,
+    ],
+  );
+
+  if (result.affectedRows === 0) {
+    throw { status: 404, message: "Learn item not found" };
+  }
+
+  return { id: itemId, ...data };
+}
+
+async function deleteItem(itemId) {
+  // First, get all lessons for this item to delete lesson-specific data
+  const [lessons] = await db.execute(
+    "SELECT lesson_id FROM learn_item_lesson WHERE item_id = ?",
+    [itemId],
+  );
+
+  if (lessons.length > 0) {
+    const lessonIds = lessons.map((l) => l.lesson_id);
+
+    // Create a comma-separated list of place holders
+    const placeholders = lessonIds.map(() => "?").join(",");
+
+    // 1. Delete vocabulary relationships for these lessons
+    await db.execute(
+      `DELETE FROM learn_item_vocabulary WHERE lesson_id IN (${placeholders})`,
+      lessonIds,
+    );
+  }
+
+  // 2. Delete lessons
+  await db.execute("DELETE FROM learn_item_lesson WHERE item_id = ?", [itemId]);
+
+  // 3. Delete user progress for this item
+  await db.execute("DELETE FROM user_learn_progress WHERE item_id = ?", [
+    itemId,
+  ]);
+
+  // 4. Finally, delete the item itself
+  const [result] = await db.execute(
+    "DELETE FROM learn_item WHERE item_id = ?",
+    [itemId],
+  );
+
+  if (result.affectedRows === 0) {
+    throw { status: 404, message: "Learn item not found" };
+  }
+
+  return { success: true };
+}
+
 async function getItemById(itemId, userId) {
   const [rows] = await db.execute(
     `SELECT
@@ -966,4 +1056,8 @@ module.exports = {
   getTopicsForLearning,
   getTopicWithVocabularies,
   getTopicLearningSteps,
+
+  // Admin extensions
+  updateItem,
+  deleteItem,
 };

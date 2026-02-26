@@ -24,7 +24,10 @@ import {
   fetchCourseById,
   fetchLessonsByCourseId,
   fetchStepsByLessonId,
+  updateCourse,
+  deleteCourse,
 } from "@/services/learnService";
+import { toast } from "react-hot-toast";
 import {
   BaseStepItem,
   StepType,
@@ -254,11 +257,20 @@ export function LearningManagementDetail() {
   const handleSave = async () => {
     if (course && editForm) {
       try {
+        await updateCourse(course.id, {
+          title: editForm.title,
+          subtitle: editForm.subtitle,
+          description: editForm.description,
+          level: editForm.level,
+          duration: editForm.duration,
+        });
         const updatedCourse = { ...course, ...editForm } as SelfLearnCourse;
         setCourse(updatedCourse);
         setIsEditing(false);
+        toast.success("Cập nhật khóa học thành công");
       } catch (error) {
         console.error("Failed to update course", error);
+        toast.error("Cập nhật khóa học thất bại");
       }
     }
   };
@@ -267,9 +279,12 @@ export function LearningManagementDetail() {
   const handleDelete = async () => {
     if (course) {
       try {
+        await deleteCourse(course.id);
+        toast.success("Xóa khóa học thành công");
         router.push("/learning-management");
       } catch (error) {
         console.error("Failed to delete course", error);
+        toast.error("Khoá học đang được sử dụng, không thể xoá!");
       }
     }
   };

@@ -134,6 +134,34 @@ export async function createCourse(data: any): Promise<any> {
 }
 
 /**
+ * Cập nhật khóa học
+ * API: PUT /learn/items/:itemId
+ */
+export async function updateCourse(id: number, data: any): Promise<any> {
+  try {
+    const response = await LearnModel.updateItem(id, data);
+    return response;
+  } catch (error) {
+    console.error("[learnService] Error updating course:", error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa khóa học
+ * API: DELETE /learn/items/:itemId
+ */
+export async function deleteCourse(id: number): Promise<boolean> {
+  try {
+    await LearnModel.deleteItem(id);
+    return true;
+  } catch (error) {
+    console.error("[learnService] Error deleting course:", error);
+    throw error;
+  }
+}
+
+/**
  * Lấy lessons theo courseId (itemId)
  * API: GET /learn/items/:itemId/lessons
  */
