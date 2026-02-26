@@ -161,6 +161,62 @@ export async function deleteCourse(id: number): Promise<boolean> {
   }
 }
 
+export async function createLesson(itemId: number, data: any): Promise<any> {
+  try {
+    return await LearnModel.createLesson(itemId, data);
+  } catch (error) {
+    console.error("[learnService] Error creating lesson:", error);
+    throw error;
+  }
+}
+
+export async function updateLesson(lessonId: number, data: any): Promise<any> {
+  try {
+    return await LearnModel.updateLesson(lessonId, data);
+  } catch (error) {
+    console.error("[learnService] Error updating lesson:", error);
+    throw error;
+  }
+}
+
+export async function deleteLesson(lessonId: number): Promise<boolean> {
+  try {
+    await LearnModel.deleteLesson(lessonId);
+    return true;
+  } catch (error) {
+    console.error("[learnService] Error deleting lesson:", error);
+    throw error;
+  }
+}
+
+export async function createStep(lessonId: number, data: any): Promise<any> {
+  try {
+    return await LearnModel.createStep(lessonId, data);
+  } catch (error) {
+    console.error("[learnService] Error creating step:", error);
+    throw error;
+  }
+}
+
+export async function updateStep(stepId: number, data: any): Promise<any> {
+  try {
+    return await LearnModel.updateStep(stepId, data);
+  } catch (error) {
+    console.error("[learnService] Error updating step:", error);
+    throw error;
+  }
+}
+
+export async function deleteStep(stepId: number): Promise<boolean> {
+  try {
+    await LearnModel.deleteStep(stepId);
+    return true;
+  } catch (error) {
+    console.error("[learnService] Error deleting step:", error);
+    throw error;
+  }
+}
+
 /**
  * Lấy lessons theo courseId (itemId)
  * API: GET /learn/items/:itemId/lessons

@@ -428,6 +428,195 @@ async function getLessonById(lessonId) {
 }
 
 // ============================================================================
+// ADMIN LESSON & STEP CRUD
+// ============================================================================
+
+async function createLesson(itemId, data) {
+  const { title, description, duration, videoUrl, order } = data;
+  const [result] = await db.execute(
+    `INSERT INTO learn_item_lesson 
+      (item_id, title, description, duration, video_url, display_order, is_active) 
+     VALUES (?, ?, ?, ?, ?, ?, 1)`,
+    [
+      itemId,
+      title || "Bài học mới",
+      description || "",
+      duration || "15 phút",
+      videoUrl || null,
+      order || 1,
+    ],
+  );
+  return { id: result.insertId, ...data };
+}
+
+async function updateLesson(lessonId, data) {
+  const { title, description, duration, videoUrl, order } = data;
+  const [result] = await db.execute(
+    `UPDATE learn_item_lesson 
+     SET title = COALESCE(?, title),
+         description = COALESCE(?, description),
+         duration = COALESCE(?, duration),
+         video_url = COALESCE(?, video_url),
+         display_order = COALESCE(?, display_order)
+     WHERE lesson_id = ?`,
+    [
+      title || null,
+      description || null,
+      duration || null,
+      videoUrl || null,
+      order || null,
+      lessonId,
+    ],
+  );
+  if (result.affectedRows === 0) {
+    throw { status: 404, message: "Lesson not found" };
+  }
+  return { id: lessonId, ...data };
+}
+
+async function deleteLesson(lessonId) {
+  await db.execute("DELETE FROM learn_item_vocabulary WHERE lesson_id = ?", [
+    lessonId,
+  ]);
+
+  try {
+    await db.execute("DELETE FROM learn_item_step WHERE lesson_id = ?", [
+      lessonId,
+    ]);
+  } catch (e) {}
+
+  const [result] = await db.execute(
+    `DELETE FROM learn_item_lesson WHERE lesson_id = ?`,
+    [lessonId],
+  );
+  if (result.affectedRows === 0) {
+    throw { status: 404, message: "Lesson not found" };
+  }
+  return true;
+}
+
+async function ensureStepTable() {
+  try {
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS learn_item_step (
+        step_id bigint PRIMARY KEY AUTO_INCREMENT,
+        lesson_id bigint NOT NULL,
+        title varchar(255),
+        type varchar(50) NOT NULL,
+        display_order int,
+        content_json json,
+        is_active tinyint default 1,
+        KEY idx_lesson_id (lesson_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+  } catch (e) {
+    console.warn("Could not ensure learn_item_step table:", e.message);
+  }
+}
+
+async function getCustomStepsForLesson(lessonId) {
+  await ensureStepTable();
+  try {
+    const [steps] = await db.execute(
+      `SELECT * FROM learn_item_step WHERE lesson_id = ? AND is_active = 1 ORDER BY display_order ASC`,
+      [lessonId],
+    );
+    return steps.map((s) => ({
+      id: s.step_id,
+      lessonId: s.lesson_id,
+      title: s.title,
+      type: s.type,
+      order: s.display_order,
+      ...s.content_json,
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
+async function migrateGeneratedStepsIfNeeded(lessonId) {
+  const customSteps = await getCustomStepsForLesson(lessonId);
+  if (customSteps && customSteps.length > 0) return; // already migrated or has custom ones
+
+  const lesson = await getLessonById(lessonId);
+  let allVocabularies = [];
+  if (lesson.topicVocabularies && lesson.topicVocabularies.length > 0) {
+    allVocabularies = lesson.topicVocabularies;
+  } else if (lesson.vocabularyList && lesson.vocabularyList.length > 0) {
+    allVocabularies = lesson.vocabularyList;
+  }
+
+  if (allVocabularies.length === 0) return; // nothing to migrate
+
+  const generated = generateStepsFromVocabulary(allVocabularies, lessonId);
+  for (const step of generated) {
+    const {
+      title,
+      type,
+      order,
+      id,
+      completed,
+      lessonId: lid,
+      ...content
+    } = step;
+    await db.execute(
+      `INSERT INTO learn_item_step (lesson_id, title, type, display_order, content_json, step_id) VALUES (?, ?, ?, ?, ?, ?)`,
+      [lessonId, title, type, order, JSON.stringify(content), id],
+    );
+  }
+}
+
+async function createStep(lessonId, data) {
+  await ensureStepTable();
+  await migrateGeneratedStepsIfNeeded(lessonId);
+  const { title, type, order, ...content } = data;
+  const [result] = await db.execute(
+    `INSERT INTO learn_item_step (lesson_id, title, type, display_order, content_json) VALUES (?, ?, ?, ?, ?)`,
+    [
+      lessonId,
+      title || "Bước học mới",
+      type || "vocabulary",
+      order || 1,
+      JSON.stringify(content),
+    ],
+  );
+  return { id: result.insertId, lessonId, ...data };
+}
+
+async function updateStep(stepId, data) {
+  await ensureStepTable();
+  if (data.lessonId) await migrateGeneratedStepsIfNeeded(data.lessonId);
+
+  const { title, type, order, lessonId, id, completed, ...content } = data;
+
+  const [result] = await db.execute(
+    `UPDATE learn_item_step SET title = COALESCE(?, title), type = COALESCE(?, type), display_order = COALESCE(?, display_order), content_json = ? WHERE step_id = ?`,
+    [
+      title || null,
+      type || null,
+      order || null,
+      JSON.stringify(content),
+      stepId,
+    ],
+  );
+  if (result.affectedRows === 0) {
+    if (data.lessonId || lessonId) {
+      return await createStep(data.lessonId || lessonId, data);
+    }
+  }
+  return { id: stepId, ...data };
+}
+
+async function deleteStep(stepId) {
+  await ensureStepTable();
+  const [result] = await db.execute(
+    `DELETE FROM learn_item_step WHERE step_id = ?`,
+    [stepId],
+  );
+  return true;
+}
+
+// ============================================================================
 // LEARNING STEPS (generate interactive steps from vocabulary)
 // Matches frontend lessonsData.ts generateStepsForLesson() exactly
 // Step types: vocabulary, sentence, quiz-text-to-video, quiz-video-to-text,
@@ -637,6 +826,64 @@ function generateStepsFromVocabulary(vocabularies, lessonId) {
   });
   stepOrder++;
 
+  // ---- Step 9.1: true-false (Đúng hay Sai) ----
+  if (vocabularies.length > 0) {
+    const isTrue = Math.random() > 0.5;
+    const trueVocab = vocabularies[0];
+    const falseVocab = vocabularies.length > 1 ? vocabularies[1] : trueVocab;
+
+    steps.push({
+      id: lessonId * 100 + stepOrder,
+      lessonId,
+      title: "Kiểm tra: Đúng hay Sai?",
+      type: "true-false",
+      order: stepOrder,
+      completed: false,
+      videoUrl: getVideo(trueVocab),
+      word: isTrue ? getWord(trueVocab) : getWord(falseVocab),
+      isTrue: isTrue,
+    });
+    stepOrder++;
+  }
+
+  // ---- Step 9.2: flip-card (Lật thẻ) ----
+  const flipCardPairs = vocabSlice.slice(0, 4).map((v, idx) => ({
+    id: idx + 1,
+    videoUrl: getVideo(v),
+    targetText: getWord(v),
+  }));
+  steps.push({
+    id: lessonId * 100 + stepOrder,
+    lessonId,
+    title: "Lật thẻ từ vựng",
+    type: "flip-card",
+    order: stepOrder,
+    completed: false,
+    matchPairs: flipCardPairs,
+  });
+  stepOrder++;
+
+  // ---- Step 9.3: quiz-video-to-image (Video -> Ảnh) ----
+  steps.push({
+    id: lessonId * 100 + stepOrder,
+    lessonId,
+    title: "Kiểm tra: Video -> Hình ảnh",
+    type: "quiz-video-to-image",
+    order: stepOrder,
+    completed: false,
+    questionVideoUrl: getVideo(quizVocab),
+    correctAnswer: getImage(quizVocab),
+    options: [
+      { id: 1, targetUrl: getImage(quizVocab), isCorrect: true },
+      {
+        id: 2,
+        targetUrl: getImage(wrongOptions[0] || quizVocab),
+        isCorrect: false,
+      },
+    ],
+  });
+  stepOrder++;
+
   // ---- Step 10: drag-drop-video-word (Kéo thả từ vào ô video, 6 items) ----
   const dragDropItems = vocabularies
     .slice(0, Math.min(6, vocabularies.length))
@@ -708,6 +955,11 @@ function generateStepsFromVocabulary(vocabularies, lessonId) {
 }
 
 async function getStepsForLesson(lessonId) {
+  const customSteps = await getCustomStepsForLesson(lessonId);
+  if (customSteps && customSteps.length > 0) {
+    return customSteps;
+  }
+
   const lesson = await getLessonById(lessonId);
 
   // Combine vocabulary from learn_item_vocabulary and topic vocabularies
@@ -1060,4 +1312,10 @@ module.exports = {
   // Admin extensions
   updateItem,
   deleteItem,
+  createLesson,
+  updateLesson,
+  deleteLesson,
+  createStep,
+  updateStep,
+  deleteStep,
 };

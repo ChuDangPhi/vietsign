@@ -26,6 +26,12 @@ import {
   fetchStepsByLessonId,
   updateCourse,
   deleteCourse,
+  createLesson,
+  updateLesson,
+  deleteLesson,
+  createStep,
+  updateStep,
+  deleteStep,
 } from "@/services/learnService";
 import { toast } from "react-hot-toast";
 import {
@@ -36,16 +42,23 @@ import {
 import { ConfirmModal } from "@/shared/components/common/ConfirmModal";
 import { Modal } from "@/shared/components/common/Modal";
 
-// Step type options for creating/editing steps
 const stepTypeOptions: { value: StepType; label: string }[] = [
   { value: "vocabulary", label: "Từ vựng" },
   { value: "sentence", label: "Câu mẫu" },
   { value: "quiz-video-to-text", label: "Quiz: Video → Chữ" },
   { value: "quiz-text-to-video", label: "Quiz: Chữ → Video" },
+  { value: "quiz-video-to-image", label: "Quiz: Video → Ảnh" },
   { value: "quiz-input", label: "Quiz: Nhập đáp án" },
-  { value: "match-video-to-text", label: "Nối video với chữ" },
+  { value: "match-video-to-text", label: "Nối: Video - Chữ" },
   { value: "flip-card", label: "Lật thẻ" },
   { value: "true-false", label: "Đúng/Sai" },
+  { value: "practice-video", label: "Thực hành: Quay video" },
+  { value: "practice-matrix", label: "Ma trận ký hiệu" },
+  { value: "match-video-image", label: "Nối: Video - Hình ảnh" },
+  { value: "match-video-word", label: "Nối: Video - Từ vựng" },
+  { value: "drag-drop-video-word", label: "Kéo thả: Từ vào video" },
+  { value: "match-horizontal", label: "Nối ngang" },
+  { value: "quiz-choice", label: "Quiz: Chọn đáp án" },
 ];
 
 export function LearningManagementDetail() {
@@ -146,37 +159,44 @@ export function LearningManagementDetail() {
   };
 
   // Save step changes
-  const handleSaveStep = () => {
+  const handleSaveStep = async () => {
     if (!currentLessonId) return;
 
-    setStepsMap((prev) => {
-      const lessonSteps = [...(prev[currentLessonId] || [])];
-
+    try {
       if (editingStep) {
         // Update existing step
-        const idx = lessonSteps.findIndex((s) => s.id === editingStep.id);
-        if (idx !== -1) {
-          lessonSteps[idx] = {
-            ...lessonSteps[idx],
-            ...stepFormData,
-          } as BaseStepItem;
-        }
+        const updated = await updateStep(editingStep.id, {
+          lessonId: currentLessonId,
+          ...stepFormData,
+        });
+        setStepsMap((prev) => {
+          const lessonSteps = [...(prev[currentLessonId] || [])];
+          const idx = lessonSteps.findIndex((s) => s.id === editingStep.id);
+          if (idx !== -1) {
+            lessonSteps[idx] = {
+              ...lessonSteps[idx],
+              ...updated,
+            } as BaseStepItem;
+          }
+          return { ...prev, [currentLessonId]: lessonSteps };
+        });
+        toast.success("Cập nhật bước học thành công");
       } else {
         // Create new step
-        const newId = currentLessonId * 100 + (lessonSteps.length + 1);
-        const newStep: BaseStepItem = {
-          id: newId,
-          title: stepFormData.title || "Bước mới",
-          type: stepFormData.type || "vocabulary",
-          order: lessonSteps.length + 1,
-          completed: false,
+        const newStepRes = await createStep(currentLessonId, {
+          order: (stepsMap[currentLessonId]?.length || 0) + 1,
           ...stepFormData,
-        };
-        lessonSteps.push(newStep);
+        });
+        setStepsMap((prev) => {
+          const lessonSteps = [...(prev[currentLessonId] || [])];
+          lessonSteps.push(newStepRes);
+          return { ...prev, [currentLessonId]: lessonSteps };
+        });
+        toast.success("Tạo bước học thành công");
       }
-
-      return { ...prev, [currentLessonId]: lessonSteps };
-    });
+    } catch (e) {
+      toast.error("Lỗi lưu bước học");
+    }
 
     setIsStepModalOpen(false);
     setEditingStep(null);
@@ -184,11 +204,19 @@ export function LearningManagementDetail() {
   };
 
   // Delete step
-  const handleDeleteStep = (stepId: number, lessonId: number) => {
-    setStepsMap((prev) => {
-      const lessonSteps = (prev[lessonId] || []).filter((s) => s.id !== stepId);
-      return { ...prev, [lessonId]: lessonSteps };
-    });
+  const handleDeleteStep = async (stepId: number, lessonId: number) => {
+    try {
+      await deleteStep(stepId);
+      setStepsMap((prev) => {
+        const lessonSteps = (prev[lessonId] || []).filter(
+          (s) => s.id !== stepId,
+        );
+        return { ...prev, [lessonId]: lessonSteps };
+      });
+      toast.success("Xóa bước học thành công");
+    } catch (e) {
+      toast.error("Lỗi xóa bước học");
+    }
   };
 
   // Open lesson create modal
@@ -210,32 +238,31 @@ export function LearningManagementDetail() {
   };
 
   // Save lesson changes
-  const handleSaveLesson = () => {
-    if (editingLesson) {
-      // Update existing lesson
-      setLessons((prev) =>
-        prev.map((l) =>
-          l.id === editingLesson.id
-            ? ({ ...l, ...lessonFormData } as SelfLearnLesson)
-            : l,
-        ),
-      );
-    } else {
-      // Create new lesson
-      const newId = id * 100 + lessons.length + 1;
-      const newLesson: SelfLearnLesson = {
-        id: newId,
-        courseId: id,
-        title: lessonFormData.title || "Bài học mới",
-        description: lessonFormData.description || "",
-        duration: lessonFormData.duration || "15 phút",
-        order: lessons.length + 1,
-        completed: false,
-        stepsCount: 0,
-      };
-      setLessons((prev) => [...prev, newLesson]);
-      // Initialize empty steps for new lesson
-      setStepsMap((prev) => ({ ...prev, [newId]: [] }));
+  const handleSaveLesson = async () => {
+    try {
+      if (editingLesson) {
+        // Update existing lesson
+        const updated = await updateLesson(editingLesson.id, lessonFormData);
+        setLessons((prev) =>
+          prev.map((l) =>
+            l.id === editingLesson.id
+              ? ({ ...l, ...updated } as SelfLearnLesson)
+              : l,
+          ),
+        );
+        toast.success("Cập nhật bài học thành công");
+      } else {
+        // Create new lesson
+        const newRes = await createLesson(id, {
+          order: lessons.length + 1,
+          ...lessonFormData,
+        });
+        setLessons((prev) => [...prev, newRes]);
+        setStepsMap((prev) => ({ ...prev, [newRes.id]: [] }));
+        toast.success("Tạo bài học thành công");
+      }
+    } catch (e) {
+      toast.error("Lỗi lưu bài học");
     }
 
     setIsLessonModalOpen(false);
@@ -244,13 +271,19 @@ export function LearningManagementDetail() {
   };
 
   // Delete lesson
-  const handleDeleteLesson = (lessonId: number) => {
-    setLessons((prev) => prev.filter((l) => l.id !== lessonId));
-    setStepsMap((prev) => {
-      const newMap = { ...prev };
-      delete newMap[lessonId];
-      return newMap;
-    });
+  const handleDeleteLesson = async (lessonId: number) => {
+    try {
+      await deleteLesson(lessonId);
+      setLessons((prev) => prev.filter((l) => l.id !== lessonId));
+      setStepsMap((prev) => {
+        const newMap = { ...prev };
+        delete newMap[lessonId];
+        return newMap;
+      });
+      toast.success("Xóa bài học thành công");
+    } catch (e) {
+      toast.error("Lỗi xóa bài học");
+    }
   };
 
   // Save course changes
@@ -783,7 +816,9 @@ export function LearningManagementDetail() {
           )}
 
           {(stepFormData.type === "quiz-video-to-text" ||
-            stepFormData.type === "quiz-input") && (
+            stepFormData.type === "quiz-input" ||
+            stepFormData.type === "quiz-video-to-image" ||
+            stepFormData.type === "quiz-text-to-video") && (
             <>
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-gray-700">
@@ -791,11 +826,14 @@ export function LearningManagementDetail() {
                 </label>
                 <input
                   type="text"
-                  value={stepFormData.questionVideoUrl || ""}
+                  value={
+                    stepFormData.questionVideoUrl || stepFormData.videoUrl || ""
+                  }
                   onChange={(e) =>
                     setStepFormData({
                       ...stepFormData,
                       questionVideoUrl: e.target.value,
+                      videoUrl: e.target.value,
                     })
                   }
                   placeholder="https://..."
@@ -803,31 +841,159 @@ export function LearningManagementDetail() {
                 />
               </div>
 
-              {stepFormData.type === "quiz-input" && (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Đáp án đúng
-                  </label>
-                  <input
-                    type="text"
-                    value={stepFormData.correctAnswer || ""}
-                    onChange={(e) =>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">
+                  Câu hỏi / Mục tiêu (tùy điền)
+                </label>
+                <input
+                  type="text"
+                  value={stepFormData.question || stepFormData.word || ""}
+                  onChange={(e) =>
+                    setStepFormData({
+                      ...stepFormData,
+                      question: e.target.value,
+                      word: e.target.value,
+                    })
+                  }
+                  placeholder="VD: Đây là số mấy?"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">
+                  Đáp án đúng
+                </label>
+                <input
+                  type="text"
+                  value={stepFormData.correctAnswer || ""}
+                  onChange={(e) =>
+                    setStepFormData({
+                      ...stepFormData,
+                      correctAnswer: e.target.value,
+                    })
+                  }
+                  placeholder="Nhập đáp án đúng"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </>
+          )}
+
+          {stepFormData.type === "true-false" && (
+            <>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">
+                  URL Video
+                </label>
+                <input
+                  type="text"
+                  value={stepFormData.videoUrl || ""}
+                  onChange={(e) =>
+                    setStepFormData({
+                      ...stepFormData,
+                      videoUrl: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">
+                  Mô tả (để phán đoán)
+                </label>
+                <input
+                  type="text"
+                  value={stepFormData.word || stepFormData.description || ""}
+                  onChange={(e) =>
+                    setStepFormData({
+                      ...stepFormData,
+                      word: e.target.value,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  id="isTrue"
+                  checked={stepFormData.isTrue || false}
+                  onChange={(e) =>
+                    setStepFormData({
+                      ...stepFormData,
+                      isTrue: e.target.checked,
+                    })
+                  }
+                  className="w-5 h-5 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <label
+                  htmlFor="isTrue"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Đáp án là ĐÚNG (True)
+                </label>
+              </div>
+            </>
+          )}
+
+          {(stepFormData.type === "match-video-image" ||
+            stepFormData.type === "match-video-word" ||
+            stepFormData.type === "drag-drop-video-word" ||
+            stepFormData.type === "match-horizontal" ||
+            stepFormData.type === "flip-card" ||
+            stepFormData.type === "quiz-choice" ||
+            stepFormData.type === "practice-matrix") && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-700 flex items-center justify-between">
+                Dữ liệu JSON (Cặp nói / Tuỳ chọn / Ma trận)
+                <span className="text-xs font-normal text-gray-500">
+                  Mảng JSON hợp lệ
+                </span>
+              </label>
+              <textarea
+                value={
+                  stepFormData.matchPairs
+                    ? JSON.stringify(stepFormData.matchPairs, null, 2)
+                    : stepFormData.options
+                      ? JSON.stringify(stepFormData.options, null, 2)
+                      : stepFormData.dragDropItems
+                        ? JSON.stringify(stepFormData.dragDropItems, null, 2)
+                        : stepFormData.matrixItems
+                          ? JSON.stringify(stepFormData.matrixItems, null, 2)
+                          : "[\n  \n]"
+                }
+                onChange={(e) => {
+                  try {
+                    const parsed = JSON.parse(e.target.value);
+                    if (stepFormData.type === "practice-matrix") {
+                      setStepFormData({ ...stepFormData, matrixItems: parsed });
+                    } else if (stepFormData.type === "drag-drop-video-word") {
                       setStepFormData({
                         ...stepFormData,
-                        correctAnswer: e.target.value,
-                      })
+                        dragDropItems: parsed,
+                        availableWords: parsed.map((p: any) => p.correctWord),
+                      });
+                    } else if (stepFormData.type === "quiz-choice") {
+                      setStepFormData({ ...stepFormData, options: parsed });
+                    } else {
+                      setStepFormData({ ...stepFormData, matchPairs: parsed });
                     }
-                    placeholder="Nhập đáp án đúng"
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-              )}
-            </>
+                  } catch (err) {
+                    // Ignore on partial type
+                  }
+                }}
+                rows={6}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm leading-relaxed"
+                placeholder='Ví dụ: [{"id": 1, "videoUrl": "...", "targetText": "..."}]'
+              />
+            </div>
           )}
 
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-gray-700">
-              Mô tả (tùy chọn)
+              Ghi chú bổ sung (tùy chọn)
             </label>
             <textarea
               value={stepFormData.description || ""}
@@ -837,7 +1003,7 @@ export function LearningManagementDetail() {
                   description: e.target.value,
                 })
               }
-              placeholder="Nhập mô tả cho bước học"
+              placeholder="Nhập ghi chú cho bước học"
               rows={2}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 resize-none"
             />

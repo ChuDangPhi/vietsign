@@ -53,8 +53,41 @@ class LearnModelClass extends Base {
   /**
    * DELETE /learn/items/:itemId - Delete a learn item
    */
+  // Learn Items
   deleteItem = async (itemId: number) => {
     const res = await this.apiDelete(`/items/${itemId}`);
+    return res.data;
+  };
+
+  // Lessons
+  createLesson = async (itemId: number, data: any) => {
+    const res = await this.apiPost(`/items/${itemId}/lessons`, data);
+    return res.data;
+  };
+
+  updateLesson = async (lessonId: number, data: any) => {
+    const res = await this.apiPut(`/lessons/${lessonId}`, data);
+    return res.data;
+  };
+
+  deleteLesson = async (lessonId: number) => {
+    const res = await this.apiDelete(`/lessons/${lessonId}`);
+    return res.data;
+  };
+
+  // Steps
+  createStep = async (lessonId: number, data: any) => {
+    const res = await this.apiPost(`/lessons/${lessonId}/steps`, data);
+    return res.data;
+  };
+
+  updateStep = async (stepId: number, data: any) => {
+    const res = await this.apiPut(`/steps/${stepId}`, data);
+    return res.data;
+  };
+
+  deleteStep = async (stepId: number) => {
+    const res = await this.apiDelete(`/steps/${stepId}`);
     return res.data;
   };
 

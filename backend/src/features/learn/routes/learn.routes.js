@@ -26,14 +26,28 @@ router.get(
   authRequired,
   learnController.getLessonsByItemId,
 );
+router.post(
+  "/items/:itemId/lessons",
+  authRequired,
+  learnController.createLesson,
+);
 
 // Lessons & Steps
 router.get("/lessons/:lessonId", authRequired, learnController.getLessonById);
+router.put("/lessons/:lessonId", authRequired, learnController.updateLesson);
+router.delete("/lessons/:lessonId", authRequired, learnController.deleteLesson);
 router.get(
   "/lessons/:lessonId/steps",
   authRequired,
   learnController.getStepsForLesson,
 );
+router.post(
+  "/lessons/:lessonId/steps",
+  authRequired,
+  learnController.createStep,
+);
+router.put("/steps/:stepId", authRequired, learnController.updateStep);
+router.delete("/steps/:stepId", authRequired, learnController.deleteStep);
 
 // Search
 router.get("/search", authRequired, learnController.searchItems);

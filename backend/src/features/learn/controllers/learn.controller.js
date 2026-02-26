@@ -269,6 +269,128 @@ const getLessonById = async (req, res) => {
   }
 };
 
+const createLesson = async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.itemId);
+    if (!itemId || isNaN(itemId))
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid item ID" });
+    const result = await learnService.createLesson(itemId, req.body);
+    return res
+      .status(201)
+      .json({ success: true, data: result, message: "Tạo bài học thành công" });
+  } catch (error) {
+    console.error("Create lesson error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const updateLesson = async (req, res) => {
+  try {
+    const lessonId = parseInt(req.params.lessonId);
+    if (!lessonId || isNaN(lessonId))
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid lesson ID" });
+    const result = await learnService.updateLesson(lessonId, req.body);
+    return res
+      .status(200)
+      .json({
+        success: true,
+        data: result,
+        message: "Cập nhật bài học thành công",
+      });
+  } catch (error) {
+    console.error("Update lesson error:", error);
+    return res
+      .status(error.status || 500)
+      .json({ success: false, error: error.message });
+  }
+};
+
+const deleteLesson = async (req, res) => {
+  try {
+    const lessonId = parseInt(req.params.lessonId);
+    if (!lessonId || isNaN(lessonId))
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid lesson ID" });
+    await learnService.deleteLesson(lessonId);
+    return res
+      .status(200)
+      .json({ success: true, message: "Xóa bài học thành công" });
+  } catch (error) {
+    console.error("Delete lesson error:", error);
+    return res
+      .status(error.status || 500)
+      .json({ success: false, error: error.message });
+  }
+};
+
+const createStep = async (req, res) => {
+  try {
+    const lessonId = parseInt(req.params.lessonId);
+    if (!lessonId || isNaN(lessonId))
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid lesson ID" });
+    const result = await learnService.createStep(lessonId, req.body);
+    return res
+      .status(201)
+      .json({
+        success: true,
+        data: result,
+        message: "Tạo bước học thành công",
+      });
+  } catch (error) {
+    console.error("Create step error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const updateStep = async (req, res) => {
+  try {
+    const stepId = parseInt(req.params.stepId);
+    if (!stepId || isNaN(stepId))
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid step ID" });
+    const result = await learnService.updateStep(stepId, req.body);
+    return res
+      .status(200)
+      .json({
+        success: true,
+        data: result,
+        message: "Cập nhật bước học thành công",
+      });
+  } catch (error) {
+    console.error("Update step error:", error);
+    return res
+      .status(error.status || 500)
+      .json({ success: false, error: error.message });
+  }
+};
+
+const deleteStep = async (req, res) => {
+  try {
+    const stepId = parseInt(req.params.stepId);
+    if (!stepId || isNaN(stepId))
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid step ID" });
+    await learnService.deleteStep(stepId);
+    return res
+      .status(200)
+      .json({ success: true, message: "Xóa bước học thành công" });
+  } catch (error) {
+    console.error("Delete step error:", error);
+    return res
+      .status(error.status || 500)
+      .json({ success: false, error: error.message });
+  }
+};
+
 // GET /learn/lessons/:lessonId/steps - Get interactive learning steps for a lesson
 const getStepsForLesson = async (req, res) => {
   try {
@@ -636,4 +758,12 @@ module.exports = {
   getTopicsForLearning,
   getTopicWithVocabularies,
   getTopicLearningSteps,
+
+  // Admin lessons and steps
+  createLesson,
+  updateLesson,
+  deleteLesson,
+  createStep,
+  updateStep,
+  deleteStep,
 };
