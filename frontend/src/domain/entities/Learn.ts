@@ -35,6 +35,14 @@ class LearnModelClass extends Base {
   };
 
   /**
+   * POST /learn/items - Create a new learn item
+   */
+  createItem = async (data: any) => {
+    const res = await this.apiPost("/items", data);
+    return res.data;
+  };
+
+  /**
    * GET /learn/items/:itemId/lessons - Lấy danh sách bài học của item
    */
   getLessonsByItemId = async (itemId: number) => {

@@ -34,7 +34,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     // but browser needs 'localhost' or external domain.
     const publicUrl = process.env.MINIO_PUBLIC_URL
       ? `${process.env.MINIO_PUBLIC_URL}/${bucketName}/${filename}`
-      : `http://localhost:9000/${bucketName}/${filename}`;
+      : `${req.protocol}://${req.get("host")}/upload/${bucketName}/${filename}`;
 
     res.json({
       message: "File uploaded successfully to MinIO",
@@ -44,12 +44,10 @@ router.post("/", upload.single("file"), async (req, res) => {
     });
   } catch (error) {
     console.error("MinIO upload error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error uploading file to storage",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error uploading file to storage",
+      error: error.message,
+    });
   }
 });
 

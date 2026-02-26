@@ -14,7 +14,8 @@ import {
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SelfLearnCourse } from "@/data/selfLearnData";
-import { fetchAllCourses } from "@/services/learnService";
+import { fetchAllCourses, createCourse } from "@/services/learnService";
+import { toast } from "react-hot-toast";
 import { removeVietnameseTones } from "@/shared/utils/text";
 import {
   Pagination,
@@ -55,6 +56,14 @@ export function LearningManagement() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [learningToDelete, setLearningToDelete] =
     useState<SelfLearnCourse | null>(null);
+
+  // Form state
+  const [newTitle, setNewTitle] = useState("");
+  const [newSubtitle, setNewSubtitle] = useState("");
+  const [newLevel, setNewLevel] = useState("");
+  const [newTotalLessons, setNewTotalLessons] = useState("");
+  const [newDuration, setNewDuration] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -129,6 +138,41 @@ export function LearningManagement() {
       setLearnings((prev) => prev.filter((l) => l.id !== learningToDelete.id));
       setIsDeleteModalOpen(false);
       setLearningToDelete(null);
+    }
+  };
+
+  const handleCreateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle) return;
+
+    setIsSubmitting(true);
+    try {
+      await createCourse({
+        title: newTitle,
+        subtitle: newSubtitle,
+        description: newSubtitle,
+        level: newLevel,
+        total_lessons: parseInt(newTotalLessons) || 0,
+        duration: newDuration,
+      });
+      toast.success("Tạo khóa học thành công!");
+      setIsModalOpen(false);
+
+      // Reload data
+      const allItems = await fetchAllCourses();
+      setLearnings(allItems);
+
+      // Reset form
+      setNewTitle("");
+      setNewSubtitle("");
+      setNewLevel("");
+      setNewTotalLessons("");
+      setNewDuration("");
+    } catch (error) {
+      console.error(error);
+      toast.error("Tạo khóa học thất bại!");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -336,16 +380,10 @@ export function LearningManagement() {
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => !isSubmitting && setIsModalOpen(false)}
         title="Tạo khóa học mới"
       >
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setIsModalOpen(false);
-          }}
-        >
+        <form className="space-y-4" onSubmit={handleCreateCourse}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5 md:col-span-2">
               <label className="text-sm font-semibold text-gray-700">
@@ -355,6 +393,8 @@ export function LearningManagement() {
                 type="text"
                 placeholder="Nhập tên khóa học"
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
                 required
               />
             </div>
@@ -366,6 +406,8 @@ export function LearningManagement() {
                 placeholder="Nhập mô tả khóa học"
                 rows={3}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all resize-none"
+                value={newSubtitle}
+                onChange={(e) => setNewSubtitle(e.target.value)}
                 required
               />
             </div>
@@ -376,6 +418,8 @@ export function LearningManagement() {
               </label>
               <select
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white"
+                value={newLevel}
+                onChange={(e) => setNewLevel(e.target.value)}
                 required
               >
                 <option value="">Chọn cấp độ</option>
@@ -392,6 +436,8 @@ export function LearningManagement() {
                 type="number"
                 placeholder="10"
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                value={newTotalLessons}
+                onChange={(e) => setNewTotalLessons(e.target.value)}
                 required
               />
             </div>
@@ -403,6 +449,8 @@ export function LearningManagement() {
                 type="text"
                 placeholder="Ví dụ: 4 giờ"
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                value={newDuration}
+                onChange={(e) => setNewDuration(e.target.value)}
                 required
               />
             </div>
@@ -411,15 +459,17 @@ export function LearningManagement() {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-sm"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-sm flex justify-center items-center gap-2 disabled:opacity-50"
             >
-              Tạo khóa học
+              {isSubmitting ? "Đang tạo..." : "Tạo khóa học"}
             </button>
           </div>
         </form>

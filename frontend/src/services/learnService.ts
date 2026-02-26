@@ -120,6 +120,20 @@ export async function fetchCourseById(
 }
 
 /**
+ * Tạo khóa học mới
+ * API: POST /learn/items
+ */
+export async function createCourse(data: any): Promise<any> {
+  try {
+    const response = await LearnModel.createItem(data);
+    return response;
+  } catch (error) {
+    console.error("[learnService] Error creating course:", error);
+    throw error;
+  }
+}
+
+/**
  * Lấy lessons theo courseId (itemId)
  * API: GET /learn/items/:itemId/lessons
  */

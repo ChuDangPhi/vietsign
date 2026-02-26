@@ -7,7 +7,7 @@ export const Footer: React.FC = () => (
   <footer className="bg-gradient-to-br from-gray-900 to-gray-800 text-gray-300">
     {/* Main Footer */}
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
         {/* Brand */}
         <div className="lg:col-span-1">
           <div className="flex items-center gap-3 mb-6">
@@ -84,48 +84,6 @@ export const Footer: React.FC = () => (
           </ul>
         </div>
 
-        {/* About */}
-        <div>
-          <h4 className="text-white font-semibold text-lg mb-6 flex items-center gap-2">
-            <span className="w-8 h-0.5 bg-primary-500 rounded"></span>
-            Về chúng tôi
-          </h4>
-          <ul className="space-y-3">
-            <li>
-              <Link
-                href="/about"
-                className="hover:text-primary-400 transition-colors"
-              >
-                Giới thiệu
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/team"
-                className="hover:text-primary-400 transition-colors"
-              >
-                Đội ngũ phát triển
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/contact"
-                className="hover:text-primary-400 transition-colors"
-              >
-                Liên hệ
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/faq"
-                className="hover:text-primary-400 transition-colors"
-              >
-                Câu hỏi thường gặp
-              </Link>
-            </li>
-          </ul>
-        </div>
-
         {/* Contact */}
         <div>
           <h4 className="text-white font-semibold text-lg mb-6 flex items-center gap-2">
@@ -171,20 +129,7 @@ export const Footer: React.FC = () => (
         <p className="text-sm text-gray-500">
           © {new Date().getFullYear()} VietSignSchool. Đã đăng ký bản quyền.
         </p>
-        <div className="flex gap-6 text-sm text-gray-500">
-          <Link
-            href="/privacy"
-            className="hover:text-primary-400 transition-colors"
-          >
-            Chính sách bảo mật
-          </Link>
-          <Link
-            href="/terms"
-            className="hover:text-primary-400 transition-colors"
-          >
-            Điều khoản sử dụng
-          </Link>
-        </div>
+        <div className="flex gap-6 text-sm text-gray-500"></div>
       </div>
     </div>
   </footer>

@@ -104,6 +104,34 @@ const getItemById = async (req, res) => {
   }
 };
 
+// POST /learn/items - Create a new learn item
+const createItem = async (req, res) => {
+  try {
+    const data = req.body;
+    if (!data.title) {
+      return res.status(400).json({
+        success: false,
+        error: "Title is required",
+        message: "Tên khóa học là bắt buộc",
+      });
+    }
+
+    const newItem = await learnService.createItem(data);
+    return res.status(201).json({
+      success: true,
+      data: newItem,
+      message: "Tạo khóa học thành công",
+    });
+  } catch (error) {
+    console.error("Create item error:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      message: "Lỗi khi tạo khóa học",
+    });
+  }
+};
+
 // GET /learn/items/:itemId/lessons - Get lessons for a learn item
 const getLessonsByItemId = async (req, res) => {
   try {
@@ -315,7 +343,10 @@ const markVocabularyLearned = async (req, res) => {
       });
     }
 
-    const result = await learnService.markVocabularyLearned(userId, vocabularyId);
+    const result = await learnService.markVocabularyLearned(
+      userId,
+      vocabularyId,
+    );
 
     return res.status(200).json({
       success: true,
@@ -338,7 +369,10 @@ const getVocabularyProgress = async (req, res) => {
     const userId = req.user.user_id;
     const topicId = req.query.topic_id ? parseInt(req.query.topic_id) : null;
 
-    const progress = await learnService.getUserVocabularyProgress(userId, topicId);
+    const progress = await learnService.getUserVocabularyProgress(
+      userId,
+      topicId,
+    );
 
     return res.status(200).json({
       success: true,
@@ -401,11 +435,17 @@ const searchItems = async (req, res) => {
 // GET /learn/topics - Get topics available for learning
 const getTopicsForLearning = async (req, res) => {
   try {
-    const classroomId = req.query.classroom_id ? parseInt(req.query.classroom_id) : null;
+    const classroomId = req.query.classroom_id
+      ? parseInt(req.query.classroom_id)
+      : null;
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
 
-    const result = await learnService.getTopicsForLearning(classroomId, limit, offset);
+    const result = await learnService.getTopicsForLearning(
+      classroomId,
+      limit,
+      offset,
+    );
 
     return res.status(200).json({
       success: true,
@@ -504,6 +544,7 @@ module.exports = {
   getCategoryBySlug,
   // Items
   getItemById,
+  createItem,
   getLessonsByItemId,
   // Lessons
   getLessonById,

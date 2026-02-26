@@ -2,14 +2,19 @@ apiVersion: v1
 kind: Service
 metadata:
   name: minio
+  labels:
+    app: minio
 spec:
+  type: NodePort
   ports:
     - name: api
       port: 9000
       targetPort: 9000
+      nodePort: 32000
     - name: console
       port: 9001
       targetPort: 9001
+      nodePort: 32001
   selector:
     app: minio
 ---
@@ -17,6 +22,8 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: minio
+  labels:
+    app: minio
 spec:
   serviceName: "minio"
   replicas: 1
@@ -30,6 +37,7 @@ spec:
     spec:
       containers:
         - name: minio
+          # Dùng latest để dev ok, nhưng lên Production cần cố định version cụ thể (VD: quay.io/minio/minio:RELEASE.2024-...)
           image: minio/minio:latest
           args:
             - server
@@ -49,7 +57,35 @@ spec:
                   key: rootPassword
           ports:
             - containerPort: 9000
+              name: api
             - containerPort: 9001
+              name: console
+
+          # -- HEALTH CHECKS --
+          # Giúp K8s tự động khởi động lại nếu MinIO bị treo
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+            initialDelaySeconds: 30 # Đợi 30s trước khi check lần đầu
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+
+          # -- QUẢN LÝ TÀI NGUYÊN --
+          # Tham số quan trọng ở Server để tránh Container chiếm hết RAM của node
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 250m
+            limits:
+              memory: 2Gi # Giới hạn tối đa RAM, tùy vào Server
+              cpu: 1000m
+
           volumeMounts:
             - name: minio-data
               mountPath: /data
@@ -58,7 +94,7 @@ spec:
         name: minio-data
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: "local-path" # Sử dụng StorageClass bạn đã cài
+        storageClassName: "local-path" # Hãy chắc chắn server hỗ trợ local-path
         resources:
           requests:
-            storage: 50Gi # Tùy chỉnh dung lượng lưu trữ video/ảnh
+            storage: 50Gi # Tùy chỉnh dung lượng lưu trữ

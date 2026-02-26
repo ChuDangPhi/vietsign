@@ -12,3 +12,4 @@ data:
   MINIO_PORT: "9000"
   MINIO_BUCKET_NAME: "vietsign"
   MINIO_USE_SSL: "false"
+  MINIO_PUBLIC_URL: "https://vietsign.ibme.edu.vn"

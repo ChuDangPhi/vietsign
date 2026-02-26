@@ -14,7 +14,7 @@ async function getCategories() {
     `SELECT category_id as id, slug, title, color_class as colorClass, text_class as textClass, display_order
      FROM learn_category
      WHERE is_active = 1
-     ORDER BY display_order ASC`
+     ORDER BY display_order ASC`,
   );
   return categories;
 }
@@ -24,7 +24,7 @@ async function getCategoryBySlug(slug) {
     `SELECT category_id as id, slug, title, color_class as colorClass, text_class as textClass
      FROM learn_category
      WHERE slug = ? AND is_active = 1`,
-    [slug]
+    [slug],
   );
   if (rows.length === 0) {
     throw { status: 404, message: "Category not found" };
@@ -54,7 +54,7 @@ async function getCategoriesWithItems(userId) {
        FROM learn_item li
        WHERE li.category_id = ? AND li.is_active = 1
        ORDER BY li.display_order ASC`,
-      [category.id]
+      [category.id],
     );
 
     // Attach user progress if userId is provided
@@ -64,10 +64,11 @@ async function getCategoriesWithItems(userId) {
           `SELECT progress_percent as progress, completed_lessons, last_activity_at
            FROM user_learn_progress
            WHERE user_id = ? AND item_id = ?`,
-          [userId, item.id]
+          [userId, item.id],
         );
         item.progress = progress.length > 0 ? progress[0].progress : 0;
-        item.completedLessons = progress.length > 0 ? progress[0].completed_lessons : 0;
+        item.completedLessons =
+          progress.length > 0 ? progress[0].completed_lessons : 0;
       }
     } else {
       items.forEach((item) => {
@@ -89,7 +90,7 @@ async function getCategoriesWithItems(userId) {
 async function getItemsByCategory(categoryId, limit = 20, offset = 0) {
   const [countResult] = await db.execute(
     "SELECT COUNT(*) as total FROM learn_item WHERE category_id = ? AND is_active = 1",
-    [categoryId]
+    [categoryId],
   );
   const total = countResult[0].total;
 
@@ -109,10 +110,45 @@ async function getItemsByCategory(categoryId, limit = 20, offset = 0) {
      WHERE li.category_id = ? AND li.is_active = 1
      ORDER BY li.display_order ASC
      LIMIT ? OFFSET ?`,
-    [categoryId, limit, offset]
+    [categoryId, limit, offset],
   );
 
   return { data: items, total, limit, offset };
+}
+
+async function createItem(data) {
+  const {
+    title,
+    subtitle,
+    description,
+    category_id,
+    total_lessons,
+    duration,
+    level,
+    video_url,
+    image_url,
+    display_order,
+  } = data;
+
+  const [result] = await db.execute(
+    `INSERT INTO learn_item 
+      (title, subtitle, description, category_id, total_lessons, duration, level, video_url, image_url, display_order, is_active) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+    [
+      title || "Khóa học mới",
+      subtitle || "",
+      description || "",
+      category_id || 1, // Default to a general category
+      total_lessons || 10,
+      duration || "0 giờ",
+      level || "Cơ bản",
+      video_url || null,
+      image_url || null,
+      display_order || 1,
+    ],
+  );
+
+  return { id: result.insertId, ...data };
 }
 
 async function getItemById(itemId, userId) {
@@ -133,7 +169,7 @@ async function getItemById(itemId, userId) {
      FROM learn_item li
      LEFT JOIN learn_category lc ON li.category_id = lc.category_id
      WHERE li.item_id = ? AND li.is_active = 1`,
-    [itemId]
+    [itemId],
   );
 
   if (rows.length === 0) {
@@ -155,14 +191,14 @@ async function getItemById(itemId, userId) {
      FROM learn_item_lesson lil
      WHERE lil.item_id = ? AND lil.is_active = 1
      ORDER BY lil.display_order ASC`,
-    [itemId]
+    [itemId],
   );
 
   // Get vocabulary list for each lesson
   for (const lesson of lessons) {
     const [vocabs] = await db.execute(
       `SELECT word FROM learn_item_vocabulary WHERE lesson_id = ? ORDER BY display_order ASC`,
-      [lesson.id]
+      [lesson.id],
     );
     lesson.vocabularyList = vocabs.map((v) => v.word);
   }
@@ -182,10 +218,11 @@ async function getItemById(itemId, userId) {
       `SELECT progress_percent as progress, completed_lessons, last_activity_at
        FROM user_learn_progress
        WHERE user_id = ? AND item_id = ?`,
-      [userId, itemId]
+      [userId, itemId],
     );
     item.progress = progress.length > 0 ? progress[0].progress : 0;
-    item.completedLessons = progress.length > 0 ? progress[0].completed_lessons : 0;
+    item.completedLessons =
+      progress.length > 0 ? progress[0].completed_lessons : 0;
   }
 
   return item;
@@ -208,13 +245,13 @@ async function getLessonsByItemId(itemId) {
      FROM learn_item_lesson lil
      WHERE lil.item_id = ? AND lil.is_active = 1
      ORDER BY lil.display_order ASC`,
-    [itemId]
+    [itemId],
   );
 
   for (const lesson of lessons) {
     const [vocabs] = await db.execute(
       `SELECT word FROM learn_item_vocabulary WHERE lesson_id = ? ORDER BY display_order ASC`,
-      [lesson.id]
+      [lesson.id],
     );
     lesson.vocabularyList = vocabs.map((v) => v.word);
   }
@@ -235,7 +272,7 @@ async function getLessonById(lessonId) {
       lil.topic_id as topicId
      FROM learn_item_lesson lil
      WHERE lil.lesson_id = ? AND lil.is_active = 1`,
-    [lessonId]
+    [lessonId],
   );
 
   if (rows.length === 0) {
@@ -254,7 +291,7 @@ async function getLessonById(lessonId) {
      FROM learn_item_vocabulary liv
      WHERE liv.lesson_id = ?
      ORDER BY liv.display_order ASC`,
-    [lessonId]
+    [lessonId],
   );
 
   // If vocabulary has linked vocabulary_id, get video/image from vocabulary table
@@ -268,7 +305,7 @@ async function getLessonById(lessonId) {
           (SELECT vv.video_location FROM vocabulary_video vv WHERE vv.vocabulary_id = v.vocabulary_id ORDER BY vv.is_primary DESC LIMIT 1) as videoUrl
          FROM vocabulary v
          WHERE v.vocabulary_id = ?`,
-        [vocab.vocabularyId]
+        [vocab.vocabularyId],
       );
       if (vocabData.length > 0) {
         vocab.description = vocabData[0].description;
@@ -292,7 +329,7 @@ async function getLessonById(lessonId) {
        FROM vocabulary v
        WHERE v.topic_id = ? AND v.status = 'APPROVED'
        ORDER BY v.vocabulary_id ASC`,
-      [lesson.topicId]
+      [lesson.topicId],
     );
     lesson.topicVocabularies = topicVocabs;
   }
@@ -327,7 +364,10 @@ function generateStepsFromVocabulary(vocabularies, lessonId) {
   if (!vocabularies || vocabularies.length === 0) return steps;
 
   // Get 3-5 vocabulary words for this lesson (matching FE: 3 + lessonOrder % 3)
-  const vocabCount = Math.min(vocabularies.length, Math.max(3, vocabularies.length));
+  const vocabCount = Math.min(
+    vocabularies.length,
+    Math.max(3, vocabularies.length),
+  );
   const vocabSlice = vocabularies.slice(0, vocabCount);
 
   // ---- Step 1: Vocabulary steps (learn each word) ----
@@ -342,7 +382,8 @@ function generateStepsFromVocabulary(vocabularies, lessonId) {
       word: getWord(vocab),
       videoUrl: getVideo(vocab),
       imageUrl: getImage(vocab),
-      description: vocab.description || `Học ký hiệu cho từ "${getWord(vocab)}"`,
+      description:
+        vocab.description || `Học ký hiệu cho từ "${getWord(vocab)}"`,
     });
     stepOrder++;
   }
@@ -382,9 +423,21 @@ function generateStepsFromVocabulary(vocabularies, lessonId) {
     question: getWord(quizVocab),
     options: [
       { id: 1, videoUrl: getVideo(quizVocab), isCorrect: true },
-      { id: 2, videoUrl: getVideo(wrongOptions[0]) || getVideo(quizVocab), isCorrect: false },
-      { id: 3, videoUrl: getVideo(wrongOptions[1]) || getVideo(quizVocab), isCorrect: false },
-      { id: 4, videoUrl: getVideo(wrongOptions[2]) || getVideo(quizVocab), isCorrect: false },
+      {
+        id: 2,
+        videoUrl: getVideo(wrongOptions[0]) || getVideo(quizVocab),
+        isCorrect: false,
+      },
+      {
+        id: 3,
+        videoUrl: getVideo(wrongOptions[1]) || getVideo(quizVocab),
+        isCorrect: false,
+      },
+      {
+        id: 4,
+        videoUrl: getVideo(wrongOptions[2]) || getVideo(quizVocab),
+        isCorrect: false,
+      },
     ],
   });
   stepOrder++;
@@ -436,13 +489,15 @@ function generateStepsFromVocabulary(vocabularies, lessonId) {
   stepOrder++;
 
   // ---- Step 7: practice-matrix (Ma trận thẻ 6-8 items) ----
-  const matrixItems = vocabularies.slice(0, Math.min(8, vocabularies.length)).map((v, idx) => ({
-    id: idx + 1,
-    label: getWord(v),
-    videoUrl: getVideo(v),
-    word: getWord(v),
-    imageUrl: getImage(v),
-  }));
+  const matrixItems = vocabularies
+    .slice(0, Math.min(8, vocabularies.length))
+    .map((v, idx) => ({
+      id: idx + 1,
+      label: getWord(v),
+      videoUrl: getVideo(v),
+      word: getWord(v),
+      imageUrl: getImage(v),
+    }));
   steps.push({
     id: lessonId * 100 + stepOrder,
     lessonId,
@@ -474,11 +529,13 @@ function generateStepsFromVocabulary(vocabularies, lessonId) {
   stepOrder++;
 
   // ---- Step 9: match-video-word (Nối video - từ vựng) ----
-  const matchPairsWord = vocabSlice.slice(0, Math.min(4, vocabSlice.length)).map((v, idx) => ({
-    id: idx + 1,
-    videoUrl: getVideo(v),
-    targetText: getWord(v),
-  }));
+  const matchPairsWord = vocabSlice
+    .slice(0, Math.min(4, vocabSlice.length))
+    .map((v, idx) => ({
+      id: idx + 1,
+      videoUrl: getVideo(v),
+      targetText: getWord(v),
+    }));
   steps.push({
     id: lessonId * 100 + stepOrder,
     lessonId,
@@ -491,11 +548,13 @@ function generateStepsFromVocabulary(vocabularies, lessonId) {
   stepOrder++;
 
   // ---- Step 10: drag-drop-video-word (Kéo thả từ vào ô video, 6 items) ----
-  const dragDropItems = vocabularies.slice(0, Math.min(6, vocabularies.length)).map((v, idx) => ({
-    id: idx + 1,
-    videoUrl: getVideo(v),
-    correctWord: getWord(v),
-  }));
+  const dragDropItems = vocabularies
+    .slice(0, Math.min(6, vocabularies.length))
+    .map((v, idx) => ({
+      id: idx + 1,
+      videoUrl: getVideo(v),
+      correctWord: getWord(v),
+    }));
   steps.push({
     id: lessonId * 100 + stepOrder,
     lessonId,
@@ -536,9 +595,21 @@ function generateStepsFromVocabulary(vocabularies, lessonId) {
     question: getWord(quizVocab),
     options: [
       { id: 1, videoUrl: getVideo(quizVocab), isCorrect: true },
-      { id: 2, videoUrl: getVideo(wrongOptions[0]) || getVideo(quizVocab), isCorrect: false },
-      { id: 3, videoUrl: getVideo(wrongOptions[1]) || getVideo(quizVocab), isCorrect: false },
-      { id: 4, videoUrl: getVideo(wrongOptions[2]) || getVideo(quizVocab), isCorrect: false },
+      {
+        id: 2,
+        videoUrl: getVideo(wrongOptions[0]) || getVideo(quizVocab),
+        isCorrect: false,
+      },
+      {
+        id: 3,
+        videoUrl: getVideo(wrongOptions[1]) || getVideo(quizVocab),
+        isCorrect: false,
+      },
+      {
+        id: 4,
+        videoUrl: getVideo(wrongOptions[2]) || getVideo(quizVocab),
+        isCorrect: false,
+      },
     ],
   });
   stepOrder++;
@@ -573,7 +644,7 @@ async function updateProgress(userId, itemId, data) {
 
   const [existing] = await db.execute(
     "SELECT progress_id FROM user_learn_progress WHERE user_id = ? AND item_id = ?",
-    [userId, itemId]
+    [userId, itemId],
   );
 
   if (existing.length > 0) {
@@ -582,14 +653,28 @@ async function updateProgress(userId, itemId, data) {
        SET progress_percent = ?, completed_lessons = ?, total_lessons = ?,
            last_lesson_id = ?, last_activity_at = NOW(), modified_date = NOW()
        WHERE user_id = ? AND item_id = ?`,
-      [progressPercent, completedLessons, totalLessons, lastLessonId || null, userId, itemId]
+      [
+        progressPercent,
+        completedLessons,
+        totalLessons,
+        lastLessonId || null,
+        userId,
+        itemId,
+      ],
     );
   } else {
     await db.execute(
       `INSERT INTO user_learn_progress
        (user_id, item_id, progress_percent, completed_lessons, total_lessons, last_lesson_id, last_activity_at)
        VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-      [userId, itemId, progressPercent, completedLessons, totalLessons, lastLessonId || null]
+      [
+        userId,
+        itemId,
+        progressPercent,
+        completedLessons,
+        totalLessons,
+        lastLessonId || null,
+      ],
     );
   }
 
@@ -618,7 +703,7 @@ async function getUserProgress(userId) {
      LEFT JOIN learn_category lc ON li.category_id = lc.category_id
      WHERE ulp.user_id = ?
      ORDER BY ulp.last_activity_at DESC`,
-    [userId]
+    [userId],
   );
 
   // Calculate overall stats
@@ -626,7 +711,9 @@ async function getUserProgress(userId) {
   const completedItems = progress.filter((p) => p.progress >= 100).length;
   const averageProgress =
     totalItems > 0
-      ? Math.round(progress.reduce((sum, p) => sum + p.progress, 0) / totalItems)
+      ? Math.round(
+          progress.reduce((sum, p) => sum + p.progress, 0) / totalItems,
+        )
       : 0;
 
   return {
@@ -650,7 +737,7 @@ async function getItemProgress(userId, itemId) {
       ulp.last_activity_at as lastActivityAt
      FROM user_learn_progress ulp
      WHERE ulp.user_id = ? AND ulp.item_id = ?`,
-    [userId, itemId]
+    [userId, itemId],
   );
 
   if (rows.length === 0) {
@@ -673,7 +760,7 @@ async function getItemProgress(userId, itemId) {
 async function markVocabularyLearned(userId, vocabularyId) {
   const [existing] = await db.execute(
     "SELECT id FROM user_vocabulary_progress WHERE user_id = ? AND vocabulary_id = ?",
-    [userId, vocabularyId]
+    [userId, vocabularyId],
   );
 
   if (existing.length > 0) {
@@ -681,13 +768,13 @@ async function markVocabularyLearned(userId, vocabularyId) {
       `UPDATE user_vocabulary_progress
        SET is_learned = 1, learned_at = NOW(), review_count = review_count + 1, last_review_at = NOW()
        WHERE user_id = ? AND vocabulary_id = ?`,
-      [userId, vocabularyId]
+      [userId, vocabularyId],
     );
   } else {
     await db.execute(
       `INSERT INTO user_vocabulary_progress (user_id, vocabulary_id, is_learned, learned_at, review_count, last_review_at)
        VALUES (?, ?, 1, NOW(), 1, NOW())`,
-      [userId, vocabularyId]
+      [userId, vocabularyId],
     );
   }
 
@@ -739,7 +826,7 @@ async function searchItems(query, limit = 20, offset = 0) {
   const [countResult] = await db.execute(
     `SELECT COUNT(*) as total FROM learn_item
      WHERE is_active = 1 AND (title LIKE ? OR subtitle LIKE ? OR description LIKE ?)`,
-    [searchTerm, searchTerm, searchTerm]
+    [searchTerm, searchTerm, searchTerm],
   );
   const total = countResult[0].total;
 
@@ -761,7 +848,7 @@ async function searchItems(query, limit = 20, offset = 0) {
      WHERE li.is_active = 1 AND (li.title LIKE ? OR li.subtitle LIKE ? OR li.description LIKE ?)
      ORDER BY li.display_order ASC
      LIMIT ? OFFSET ?`,
-    [searchTerm, searchTerm, searchTerm, limit, offset]
+    [searchTerm, searchTerm, searchTerm, limit, offset],
   );
 
   return { data: items, total, limit, offset };
@@ -782,7 +869,7 @@ async function getTopicsForLearning(classroomId, limit = 20, offset = 0) {
 
   const [countResult] = await db.execute(
     `SELECT COUNT(*) as total FROM topic t ${whereClause}`,
-    params
+    params,
   );
   const total = countResult[0].total;
 
@@ -801,7 +888,7 @@ async function getTopicsForLearning(classroomId, limit = 20, offset = 0) {
      ${whereClause}
      ORDER BY t.topic_id ASC
      LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
+    [...params, limit, offset],
   );
 
   return { data: topics, total, limit, offset };
@@ -818,7 +905,7 @@ async function getTopicWithVocabularies(topicId) {
       t.class_room_id as classroomId
      FROM topic t
      WHERE t.topic_id = ? AND t.is_active = 1`,
-    [topicId]
+    [topicId],
   );
 
   if (topicRows.length === 0) {
@@ -839,7 +926,7 @@ async function getTopicWithVocabularies(topicId) {
      FROM vocabulary v
      WHERE v.topic_id = ? AND v.status = 'APPROVED'
      ORDER BY v.vocabulary_id ASC`,
-    [topicId]
+    [topicId],
   );
 
   topic.vocabularies = vocabularies;
@@ -861,6 +948,7 @@ module.exports = {
   // Items
   getItemsByCategory,
   getItemById,
+  createItem,
   // Lessons
   getLessonsByItemId,
   getLessonById,
@@ -874,7 +962,7 @@ module.exports = {
   getUserVocabularyProgress,
   // Search
   searchItems,
-  // Topics-based Learning
+  // Topics
   getTopicsForLearning,
   getTopicWithVocabularies,
   getTopicLearningSteps,
