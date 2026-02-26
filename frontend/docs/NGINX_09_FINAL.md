@@ -78,24 +78,45 @@ server {
 }
 
 # ------------------------------------------------------------------
-# 4. UPLOAD / MINIO - Máy .11 Proxy_pass vào cổng 9001
+# 4. MINIO S3 TỪ K8S (.11 Proxy_pass API:9000 và Console:9001)
 # ------------------------------------------------------------------
 server {
-    listen 9001;
+    listen 9000; # Đón API S3 (Upload/Tải file trực tiếp) từ máy .11
+    server_name vietsign.ibme.edu.vn _;
+
+    client_max_body_size 500M; # Quan trọng: Cho phép tải video nặng
+
+    # Không check Origin
+    ignore_invalid_headers off;
+
+    location / {
+        # Trỏ vào NodePort API của MinIO K8s
+        proxy_pass http://127.0.0.1:32000;
+
+        proxy_set_header Host $http_host; # MUST BE http_host cho S3 Signature
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 9001; # Đón truy cập Web Console quản trị từ máy .11
     server_name vietsign.ibme.edu.vn _;
 
     client_max_body_size 500M;
-
-    location /upload/ {
-        proxy_pass http://127.0.0.1:9001/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
+    ignore_invalid_headers off;
 
     location / {
-        proxy_pass http://127.0.0.1:9001;
-        proxy_set_header Host $host;
+        # Trỏ vào NodePort Console của MinIO K8s
+        proxy_pass http://127.0.0.1:32001;
+
+        proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Support WebSocket cho MinIO Web Console
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
