@@ -28,6 +28,8 @@ function normalizeExam(exam: any): any {
       exam.is_private === 1 ||
       exam.is_private === true ||
       exam.isPrivate === true,
+    isSubmitted: exam.is_submitted === 1 || exam.isSubmitted === true,
+    userScore: exam.user_score !== undefined ? exam.user_score : exam.userScore,
   };
 }
 

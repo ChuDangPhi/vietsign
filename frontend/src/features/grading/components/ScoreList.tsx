@@ -25,7 +25,7 @@ export default function ScoreList() {
       // Current compromise: List Exams.
       // Future improvement: List submissions.
       const exams = await fetchAllExams({
-        exam_type: "PRACTICE",
+        exam_type: "PRACTICAL",
         // teacherId: user?.id
       });
 

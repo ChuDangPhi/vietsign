@@ -99,6 +99,7 @@ async function getExams(filters) {
       class_room_id,
       class_room_ids,
       exam_type,
+      studentId, // Added studentId parameter support
     } = filters;
     const offset = (page - 1) * limit;
 
@@ -107,8 +108,14 @@ async function getExams(filters) {
 
     // Filter by single class_room_id
     if (class_room_id) {
-      whereClause += " AND class_room_id = ?";
+      whereClause += " AND e.class_room_id = ?";
       params.push(class_room_id);
+    }
+
+    // Filter by exam_type
+    if (exam_type) {
+      whereClause += " AND e.exam_type = ?";
+      params.push(exam_type);
     }
 
     // Filter by multiple class_room_ids (comma-separated or array)
@@ -119,25 +126,35 @@ async function getExams(filters) {
 
       if (classIdsArray.length > 0) {
         const placeholders = classIdsArray.map(() => "?").join(",");
-        whereClause += ` AND class_room_id IN (${placeholders})`;
+        whereClause += ` AND e.class_room_id IN (${placeholders})`;
         params.push(...classIdsArray);
       }
     }
 
-    // if (exam_type) {
-    //   whereClause += " AND exam_type = ?";
-    //   params.push(exam_type);
-    // }
-
     // Get total count
     const [countRows] = await db.execute(
-      "SELECT COUNT(*) as total FROM exam" + whereClause,
+      "SELECT COUNT(*) as total FROM exam e" + whereClause,
       params,
     );
     const total = countRows[0].total;
 
-    // Get paginated data
-    const query = `SELECT * FROM exam ${whereClause} ORDER BY exam_id DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
+    let query = "";
+    if (studentId) {
+      query = `
+        SELECT e.*, 
+               CASE WHEN ea.attempt_id IS NOT NULL THEN 1 ELSE 0 END as is_submitted,
+               ea.score as user_score
+        FROM exam e 
+        LEFT JOIN exam_attempt ea ON e.exam_id = ea.exam_id AND ea.user_id = ?
+        ${whereClause} 
+        ORDER BY e.exam_id DESC 
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+      `;
+      params.unshift(studentId); // Add studentId at the beginning of params for the LEFT JOIN
+    } else {
+      query = `SELECT e.* FROM exam e ${whereClause} ORDER BY e.exam_id DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
+    }
+
     const [exams] = await db.execute(query, params);
 
     return {
@@ -448,6 +465,18 @@ async function getStudentExamAttempts(studentId, limit, offset) {
 async function submitExam(examId, studentId, score, answers, timeSpent) {
   const connection = await db.getConnection();
   try {
+    const [existing] = await connection.execute(
+      "SELECT attempt_id FROM exam_attempt WHERE exam_id = ? AND user_id = ?",
+      [examId, studentId],
+    );
+
+    if (existing.length > 0) {
+      throw {
+        status: 400,
+        message: "Bạn đã hoàn thành bài kiểm tra này rồi, không thể nộp lại.",
+      };
+    }
+
     await connection.beginTransaction();
 
     // Insert into exam_attempt

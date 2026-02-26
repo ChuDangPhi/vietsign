@@ -57,17 +57,43 @@ export default function TakeExamList() {
       key: "duration",
     },
     {
+      title: "Trạng thái / Điểm",
+      key: "status_score",
+      render: (_: any, record: ExamItem) => {
+        if (!record.isSubmitted) return <Tag>Chưa làm</Tag>;
+        const scoreDisplay =
+          record.userScore !== undefined && record.userScore !== null
+            ? `${record.userScore} điểm`
+            : "Đã nộp";
+        return <Tag color="green">{scoreDisplay}</Tag>;
+      },
+    },
+    {
       title: "Hành động",
       key: "action",
-      render: (_: any, record: ExamItem) => (
-        <Button
-          type="primary"
-          onClick={() => router.push(`/take-exam/${record.id}`)}
-          className="bg-blue-600"
-        >
-          Làm bài
-        </Button>
-      ),
+      render: (_: any, record: ExamItem) => {
+        const isQuiz =
+          record.examType === "QUIZ" ||
+          (record.examType as string) === "MULTIPLE_CHOICE";
+
+        if (isQuiz && record.isSubmitted) {
+          return (
+            <Button disabled className="bg-gray-200">
+              Đã làm
+            </Button>
+          );
+        }
+
+        return (
+          <Button
+            type="primary"
+            onClick={() => router.push(`/take-exam/${record.id}`)}
+            className="bg-blue-600"
+          >
+            Làm bài
+          </Button>
+        );
+      },
     },
   ];
 

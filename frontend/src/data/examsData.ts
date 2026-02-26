@@ -3,7 +3,12 @@
 
 import { getClassById } from "./classesData";
 
-export type ExamType = "practice" | "multiple_choice" | "QUIZ" | "PRACTICE";
+export type ExamType =
+  | "practice"
+  | "multiple_choice"
+  | "QUIZ"
+  | "PRACTICE"
+  | "MULTIPLE_CHOICE";
 
 export interface ExamItem {
   id: number;
@@ -25,9 +30,10 @@ export interface ExamItem {
   practiceQuestions?: any[];
   questionsList?: any[];
   createdAt?: string;
-  is_active?: boolean;
   isPrivate?: boolean;
   name?: string;
+  isSubmitted?: boolean;
+  userScore?: number;
 }
 
 export const mockExams: ExamItem[] = [];
