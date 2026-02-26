@@ -239,10 +239,18 @@ async function getExamById(examId) {
             ...q,
             questionId: q.question_id,
             questionType: q.question_type,
-            answerResList: answers.map((a) => ({
-              ...a,
-              correct: a.correct === 1, // Ensure boolean
-            })),
+            answerResList: answers.map((a) => {
+              let isCorrect = a.correct;
+              if (Buffer.isBuffer(isCorrect)) isCorrect = isCorrect[0] === 1;
+              else if (typeof isCorrect === "number")
+                isCorrect = isCorrect === 1;
+              else isCorrect = !!isCorrect;
+
+              return {
+                ...a,
+                correct: isCorrect,
+              };
+            }),
           };
         }),
       );

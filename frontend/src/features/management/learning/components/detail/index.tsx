@@ -41,6 +41,8 @@ import {
 } from "@/shared/components/common/step";
 import { ConfirmModal } from "@/shared/components/common/ConfirmModal";
 import { Modal } from "@/shared/components/common/Modal";
+import { DictionaryItem } from "@/data/dictionaryData";
+import { fetchAllWords } from "@/services/dictionaryService";
 
 const stepTypeOptions: { value: StepType; label: string }[] = [
   { value: "vocabulary", label: "Từ vựng" },
@@ -93,10 +95,18 @@ export function LearningManagementDetail() {
     Partial<SelfLearnLesson>
   >({});
 
+  const [vocabularies, setVocabularies] = useState<DictionaryItem[]>([]);
+
   useEffect(() => {
     const initData = async () => {
       try {
-        const foundCourse = await fetchCourseById(id);
+        const [foundCourse, vocabList] = await Promise.all([
+          fetchCourseById(id),
+          fetchAllWords(),
+        ]);
+
+        setVocabularies(vocabList || []);
+
         if (foundCourse) {
           setCourse(foundCourse);
           setEditForm({ ...foundCourse });
@@ -782,17 +792,29 @@ export function LearningManagementDetail() {
                 </label>
                 <input
                   type="text"
+                  list="vocabularies-list"
                   value={stepFormData.word || stepFormData.sentence || ""}
-                  onChange={(e) =>
-                    setStepFormData({
-                      ...stepFormData,
-                      word: e.target.value,
-                      sentence: e.target.value,
-                    })
-                  }
-                  placeholder="Nhập từ vựng hoặc câu"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const match = vocabularies.find((v) => v.word === val);
+                    setStepFormData((prev) => ({
+                      ...prev,
+                      word: val,
+                      sentence: val,
+                      // Auto-fill video URL if a matching vocabulary is selected
+                      ...(match && match.videoUrl
+                        ? { videoUrl: match.videoUrl }
+                        : {}),
+                    }));
+                  }}
+                  placeholder="Nhập hoặc chọn từ vựng..."
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
                 />
+                <datalist id="vocabularies-list">
+                  {vocabularies.map((v) => (
+                    <option key={v.id} value={v.word} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="space-y-1.5">
@@ -847,15 +869,24 @@ export function LearningManagementDetail() {
                 </label>
                 <input
                   type="text"
+                  list="vocabularies-list"
                   value={stepFormData.question || stepFormData.word || ""}
-                  onChange={(e) =>
-                    setStepFormData({
-                      ...stepFormData,
-                      question: e.target.value,
-                      word: e.target.value,
-                    })
-                  }
-                  placeholder="VD: Đây là số mấy?"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const match = vocabularies.find((v) => v.word === val);
+                    setStepFormData((prev) => ({
+                      ...prev,
+                      question: val,
+                      word: val,
+                      ...(match && match.videoUrl
+                        ? {
+                            questionVideoUrl: match.videoUrl,
+                            videoUrl: match.videoUrl,
+                          }
+                        : {}),
+                    }));
+                  }}
+                  placeholder="Nhập hoặc chọn từ vựng..."
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -904,14 +935,20 @@ export function LearningManagementDetail() {
                 </label>
                 <input
                   type="text"
+                  list="vocabularies-list"
                   value={stepFormData.word || stepFormData.description || ""}
-                  onChange={(e) =>
-                    setStepFormData({
-                      ...stepFormData,
-                      word: e.target.value,
-                      description: e.target.value,
-                    })
-                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const match = vocabularies.find((v) => v.word === val);
+                    setStepFormData((prev) => ({
+                      ...prev,
+                      word: val,
+                      description: val,
+                      ...(match && match.videoUrl
+                        ? { videoUrl: match.videoUrl }
+                        : {}),
+                    }));
+                  }}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
