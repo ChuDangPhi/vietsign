@@ -55,3 +55,8 @@ Thumbs.db
 *.exe
 
 node_modules
+
+# scripts and temp files
+backend/scripts/
+topics.json
+*topics.json

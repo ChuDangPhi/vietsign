@@ -365,6 +365,18 @@ async function updateVocabulary(vocabularyId, data, userId) {
 
 async function deleteVocabulary(vocabularyId) {
   try {
+    // Delete child dependencies manually to circumvent foreign key constraint failures
+    await db.execute("DELETE FROM vocabulary_image WHERE vocabulary_id = ?", [
+      vocabularyId,
+    ]);
+    await db.execute("DELETE FROM vocabulary_video WHERE vocabulary_id = ?", [
+      vocabularyId,
+    ]);
+    await db.execute("DELETE FROM vocabulary_view WHERE vocabulary_id = ?", [
+      vocabularyId,
+    ]);
+
+    // Some other tables might have references, but the main ones are above.
     const [result] = await db.execute(
       "DELETE FROM vocabulary WHERE vocabulary_id = ?",
       [vocabularyId],
@@ -379,6 +391,34 @@ async function deleteVocabulary(vocabularyId) {
 
 async function deleteVocabulariesByTopicId(topicId) {
   try {
+    // Delete all child data related to vocabularies of this topic first
+    // Note: We need a subquery for MySQL DELETE, wrapped in a double SELECT to avoid the 'target table is specified for update' error OR just use JOIN deletes, but this is simpler.
+
+    // Quick approach: select all vocabulary_ids for this topic first
+    const [vocabularies] = await db.execute(
+      "SELECT vocabulary_id FROM vocabulary WHERE topic_id = ?",
+      [topicId],
+    );
+
+    if (vocabularies.length > 0) {
+      const vocabIds = vocabularies.map((v) => v.vocabulary_id);
+
+      // We can chunk them safely if there are many, but since IN clause works for 3000
+      // It's safer to just do a JOIN delete:
+      await db.execute(
+        "DELETE vi FROM vocabulary_image vi INNER JOIN vocabulary v ON vi.vocabulary_id = v.vocabulary_id WHERE v.topic_id = ?",
+        [topicId],
+      );
+      await db.execute(
+        "DELETE vv FROM vocabulary_video vv INNER JOIN vocabulary v ON vv.vocabulary_id = v.vocabulary_id WHERE v.topic_id = ?",
+        [topicId],
+      );
+      await db.execute(
+        "DELETE vw FROM vocabulary_view vw INNER JOIN vocabulary v ON vw.vocabulary_id = v.vocabulary_id WHERE v.topic_id = ?",
+        [topicId],
+      );
+    }
+
     await db.execute("DELETE FROM vocabulary WHERE topic_id = ?", [topicId]);
     return { success: true };
   } catch (err) {
