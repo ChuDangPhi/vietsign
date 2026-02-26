@@ -57,6 +57,20 @@ async function createVocabulary(data, userId) {
       userId || 0,
     ]);
 
+    if (images_path) {
+      await db.execute(
+        "INSERT INTO vocabulary_image (vocabulary_id, image_location, is_primary) VALUES (?, ?, 1)",
+        [result.insertId, images_path],
+      );
+    }
+
+    if (videos_path) {
+      await db.execute(
+        "INSERT INTO vocabulary_video (vocabulary_id, video_location, is_primary) VALUES (?, ?, 1)",
+        [result.insertId, videos_path],
+      );
+    }
+
     return {
       id: result.insertId,
       content,
@@ -356,6 +370,30 @@ async function updateVocabulary(vocabularyId, data, userId) {
     const [result] = await db.execute(updateQuery, params);
     if (result.affectedRows === 0)
       throw { status: 404, message: "Vocabulary not found" };
+
+    if (images_path !== undefined) {
+      await db.execute("DELETE FROM vocabulary_image WHERE vocabulary_id = ?", [
+        vocabularyId,
+      ]);
+      if (images_path) {
+        await db.execute(
+          "INSERT INTO vocabulary_image (vocabulary_id, image_location, is_primary) VALUES (?, ?, 1)",
+          [vocabularyId, images_path],
+        );
+      }
+    }
+
+    if (videos_path !== undefined) {
+      await db.execute("DELETE FROM vocabulary_video WHERE vocabulary_id = ?", [
+        vocabularyId,
+      ]);
+      if (videos_path) {
+        await db.execute(
+          "INSERT INTO vocabulary_video (vocabulary_id, video_location, is_primary) VALUES (?, ?, 1)",
+          [vocabularyId, videos_path],
+        );
+      }
+    }
 
     return { id: vocabularyId, ...data };
   } catch (err) {
