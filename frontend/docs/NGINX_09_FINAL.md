@@ -22,6 +22,14 @@ server {
         proxy_set_header Connection "upgrade";
     }
 
+    # BẮT BUỘC: Proxy ảnh/video từ thư mục bucket MinIO
+    # (Fix lỗi 404 Not Found do Frontend tự xử lý URL của backend)
+    location /vietsign/ {
+        proxy_pass http://127.0.0.1:32000/vietsign/; # Trỏ vào K8s MinIO NodePort API
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
     # Bắt dự phòng do Frontend gọi API mà URL chưa bị Nginx .11 strip
     location /user-service/ {
         proxy_pass http://127.0.0.1:30080/;

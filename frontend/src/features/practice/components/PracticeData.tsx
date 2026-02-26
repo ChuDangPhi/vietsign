@@ -264,6 +264,7 @@ const PracticeData: React.FC = () => {
     const metadata = { type: blob.type, lastModified: blob.lastModified };
     const file = new File([blob], `volunteer_${Date.now()}.mp4`, metadata);
     formData.append("file", file);
+    formData.append("folder", "exam");
     return await UploadModel.uploadFile(formData);
   };
 
@@ -396,6 +397,7 @@ const PracticeData: React.FC = () => {
       setUploadLoading(true); // Set loading state
       const formData = new FormData();
       formData.append("file", uploadedVideo);
+      formData.append("folder", "exam");
       const response = await UploadModel.uploadFile(formData);
 
       console.log("Phản hồi từ API upload:", response);

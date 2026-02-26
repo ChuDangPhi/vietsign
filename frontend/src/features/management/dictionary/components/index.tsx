@@ -592,7 +592,10 @@ export function DictionaryManagementComponent() {
                           setIsUploading(true);
                           const { uploadFile } =
                             await import("@/services/uploadService");
-                          const path = await uploadFile(e.target.files[0]);
+                          const path = await uploadFile(
+                            e.target.files[0],
+                            "Data_FSL",
+                          );
                           setFormData({
                             ...formData,
                             imageUrl: `${API_BASE_URL}${path}`,
@@ -642,7 +645,10 @@ export function DictionaryManagementComponent() {
                           setIsUploading(true);
                           const { uploadFile } =
                             await import("@/services/uploadService");
-                          const path = await uploadFile(e.target.files[0]);
+                          const path = await uploadFile(
+                            e.target.files[0],
+                            "Data_FSL",
+                          );
                           setFormData({
                             ...formData,
                             videoUrl: `${API_BASE_URL}${path}`,

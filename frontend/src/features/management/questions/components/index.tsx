@@ -645,10 +645,10 @@ function CreateQuestionForm({
       let videoLocation = "";
 
       if (imageFile) {
-        imageLocation = await uploadFile(imageFile);
+        imageLocation = await uploadFile(imageFile, "question");
       }
       if (videoFile) {
-        videoLocation = await uploadFile(videoFile);
+        videoLocation = await uploadFile(videoFile, "question");
       }
 
       // Process answers
@@ -656,7 +656,7 @@ function CreateQuestionForm({
         answers.map(async (ans) => {
           let loc = "";
           if (ans.file instanceof File) {
-            loc = await uploadFile(ans.file);
+            loc = await uploadFile(ans.file, "question");
           }
           return {
             content: ans.content,
@@ -991,10 +991,10 @@ function EditQuestionForm({
       let videoLocation = initialData.video;
 
       if (imageFile) {
-        imageLocation = await uploadFile(imageFile);
+        imageLocation = await uploadFile(imageFile, "question");
       }
       if (videoFile) {
-        videoLocation = await uploadFile(videoFile);
+        videoLocation = await uploadFile(videoFile, "question");
       }
 
       // Process answers
@@ -1002,7 +1002,7 @@ function EditQuestionForm({
         answers.map(async (ans) => {
           let loc = ans.imageLocation || ans.videoLocation || "";
           if (ans.file instanceof File) {
-            loc = await uploadFile(ans.file);
+            loc = await uploadFile(ans.file, "question");
           }
           return {
             id: ans.id,

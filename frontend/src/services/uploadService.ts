@@ -1,8 +1,14 @@
 import http from "@/core/services/api/http";
 
-export const uploadFile = async (file: File): Promise<string> => {
+export const uploadFile = async (
+  file: File,
+  folder?: "exam" | "question" | "avatar" | "Data_FSL" | "others",
+): Promise<string> => {
   const formData = new FormData();
   formData.append("file", file);
+  if (folder) {
+    formData.append("folder", folder);
+  }
 
   const response = await http.post("/upload", formData);
 

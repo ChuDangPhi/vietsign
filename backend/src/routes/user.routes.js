@@ -59,7 +59,7 @@ router.post(
     try {
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
       const filename =
-        "avatars/" + uniqueSuffix + path.extname(req.file.originalname);
+        "avatar/" + uniqueSuffix + path.extname(req.file.originalname);
 
       // Upload to MinIO
       await minioClient.putObject(

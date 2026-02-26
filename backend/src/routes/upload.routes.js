@@ -13,33 +13,40 @@ router.post("/", upload.single("file"), async (req, res) => {
   }
 
   try {
+    // Lấy tên folder từ body (hoặc mặc định là others nếu không có)
+    let folder = req.body.folder || req.query.folder || "others";
+
+    // Danh sách các folder hợp lệ theo yêu cầu
+    const validFolders = ["exam", "question", "avatar", "Data_FSL", "others"];
+    if (!validFolders.includes(folder)) {
+      folder = "others";
+    }
+
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const filename = uniqueSuffix + path.extname(req.file.originalname);
+    // Tạo object name bao gồm cả folder (VD: avatar/16234...jpg)
+    const objectName = `${folder}/${uniqueSuffix}${path.extname(req.file.originalname)}`;
 
     // Upload to MinIO
     await minioClient.putObject(
       bucketName,
-      filename,
+      objectName,
       req.file.buffer,
       req.file.size,
       { "Content-Type": req.file.mimetype },
     );
 
     // Return the relative path and information
-    // For MinIO, the path usually prefix with bucket
-    const relativePath = `/uploads/${filename}`;
+    const relativePath = `/uploads/${objectName}`;
 
-    // Full external URL (optional, can be constructed by FE)
-    // Note: In docker environment, internal endpoint is 'minio',
-    // but browser needs 'localhost' or external domain.
+    // Full external URL
     const publicUrl = process.env.MINIO_PUBLIC_URL
-      ? `${process.env.MINIO_PUBLIC_URL}/${bucketName}/${filename}`
-      : `${req.protocol}://${req.get("host")}/upload/${bucketName}/${filename}`;
+      ? `${process.env.MINIO_PUBLIC_URL}/${bucketName}/${objectName}`
+      : `${req.protocol}://${req.get("host")}/upload/${bucketName}/${objectName}`;
 
     res.json({
       message: "File uploaded successfully to MinIO",
       path: relativePath,
-      filename: filename,
+      filename: objectName,
       url: publicUrl,
     });
   } catch (error) {
