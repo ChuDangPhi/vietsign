@@ -875,7 +875,7 @@ DROP TABLE IF EXISTS `question_exam_user_mapping`;
 CREATE TABLE `question_exam_user_mapping` (
   `question_exam_user_id` bigint NOT NULL AUTO_INCREMENT,
   `exam_id` bigint NOT NULL,
-  `question_id` bigint NOT NULL,
+  `question_id` bigint DEFAULT NULL,
   `selected_answers` varbinary(255) DEFAULT NULL,
   `minio_path` varchar(500) DEFAULT NULL COMMENT 'Đường dẫn file trong MinIO',
   `ai_answer` varchar(255) DEFAULT NULL,
@@ -1833,7 +1833,7 @@ DROP TABLE IF EXISTS `vocabulary_exam_mapping`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `vocabulary_exam_mapping` (
   `vocabulary_exam_id` bigint NOT NULL AUTO_INCREMENT,
-  `vocabulary_id` bigint NOT NULL,
+  `vocabulary_id` bigint DEFAULT NULL,
   `exam_id` bigint NOT NULL,
   `content` varchar(256) DEFAULT NULL,
   `created_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,

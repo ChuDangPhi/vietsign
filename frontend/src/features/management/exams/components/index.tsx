@@ -289,14 +289,11 @@ export function ExamsManagement() {
           <table className="w-full table-fixed">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 w-[45%]">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 w-[55%]">
                   Bài kiểm tra
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 w-[30%]">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 w-[35%]">
                   Lớp học
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 w-[15%]">
-                  Số câu hỏi
                 </th>
                 <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900 w-[10%]">
                   Thao tác
@@ -307,7 +304,7 @@ export function ExamsManagement() {
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={3}
                     className="px-6 py-12 text-center text-gray-500"
                   >
                     Đang tải dữ liệu...
@@ -343,12 +340,6 @@ export function ExamsManagement() {
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <BookOpen size={14} className="text-gray-400" />
                           <span className="truncate">{className}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <ClipboardCheck size={14} className="text-gray-400" />
-                          <span>{exam.questions} câu hỏi</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -511,6 +502,16 @@ function CreateExamForm({
   const updatePracticeQuestion = (index: number, field: string, value: any) => {
     const list = [...practiceQuestions];
     list[index][field] = value;
+
+    if (field === "vocabularyId" && value) {
+      const vId = Number(value);
+      const tid = Number(list[index].topicId);
+      const vocab = vocabMap[tid]?.find((v) => v.id === vId);
+      if (vocab && !list[index].content) {
+        list[index].content = `Em hãy biểu diễn - ${vocab.content}`;
+      }
+    }
+
     setPracticeQuestions(list);
 
     if (field === "topicId" && value) {
@@ -727,7 +728,43 @@ function CreateExamForm({
                   key={idx}
                   className="p-4 border border-gray-100 rounded-2xl bg-gray-50/50 relative group"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <select
+                        value={q.topicId}
+                        onChange={(e) =>
+                          updatePracticeQuestion(idx, "topicId", e.target.value)
+                        }
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                      >
+                        <option value="">Chọn chủ đề (tùy chọn)</option>
+                        {topics.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={q.vocabularyId}
+                        onChange={(e) =>
+                          updatePracticeQuestion(
+                            idx,
+                            "vocabularyId",
+                            e.target.value,
+                          )
+                        }
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary-500 bg-white disabled:bg-gray-100"
+                        disabled={!q.topicId}
+                      >
+                        <option value="">Chọn từ vựng (tùy chọn)</option>
+                        {q.topicId &&
+                          vocabMap[Number(q.topicId)]?.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.content}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
                     <input
                       placeholder="Nhập nội dung câu hỏi thực hành (VD: Xin chào, Tôi là học sinh...)"
                       value={q.content}
