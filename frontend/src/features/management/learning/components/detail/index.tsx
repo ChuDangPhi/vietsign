@@ -17,6 +17,8 @@ import {
   FileText,
   HelpCircle,
   Layers,
+  PlayCircle,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { SelfLearnCourse, SelfLearnLesson } from "@/data/selfLearnData";
@@ -801,9 +803,11 @@ export function LearningManagementDetail() {
                       ...prev,
                       word: val,
                       sentence: val,
-                      // Auto-fill video URL if a matching vocabulary is selected
                       ...(match && match.videoUrl
                         ? { videoUrl: match.videoUrl }
+                        : {}),
+                      ...(match && match.imageUrl
+                        ? { imageUrl: match.imageUrl }
                         : {}),
                     }));
                   }}
@@ -815,24 +819,87 @@ export function LearningManagementDetail() {
                     <option key={v.id} value={v.word} />
                   ))}
                 </datalist>
+
+                {/* Media availability indicators */}
+                {(() => {
+                  const val = stepFormData.word || stepFormData.sentence || "";
+                  const v = vocabularies.find((item) => item.word === val);
+                  if (!v) return null;
+                  return (
+                    <div className="flex flex-wrap gap-2 items-center mt-1.5">
+                      {v.videoUrl ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 rounded-md text-[10px] font-bold border border-red-100 animate-pulse">
+                          <PlayCircle size={10} />
+                          Video mẫu có sẵn
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px] font-medium border border-gray-100 italic">
+                          <PlayCircle size={10} />
+                          Chưa có video
+                        </span>
+                      )}
+                      {v.imageUrl ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md text-[10px] font-bold border border-purple-100 animate-pulse">
+                          <ImageIcon size={10} />
+                          Hình ảnh có sẵn
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px] font-medium border border-gray-100 italic">
+                          <ImageIcon size={10} />
+                          Chưa có hình ảnh
+                        </span>
+                      )}
+                      {v.word && stepFormData.title !== v.word && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setStepFormData({ ...stepFormData, title: v.word })
+                          }
+                          className="text-[10px] text-primary-600 hover:text-primary-700 font-bold underline ml-auto"
+                        >
+                          Lấy "{v.word}" làm tiêu đề?
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-gray-700">
-                  URL Video
-                </label>
-                <input
-                  type="text"
-                  value={stepFormData.videoUrl || ""}
-                  onChange={(e) =>
-                    setStepFormData({
-                      ...stepFormData,
-                      videoUrl: e.target.value,
-                    })
-                  }
-                  placeholder="https://..."
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    URL Video
+                  </label>
+                  <input
+                    type="text"
+                    value={stepFormData.videoUrl || ""}
+                    onChange={(e) =>
+                      setStepFormData({
+                        ...stepFormData,
+                        videoUrl: e.target.value,
+                      })
+                    }
+                    placeholder="https://..."
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    URL Hình ảnh
+                  </label>
+                  <input
+                    type="text"
+                    value={stepFormData.imageUrl || ""}
+                    onChange={(e) =>
+                      setStepFormData({
+                        ...stepFormData,
+                        imageUrl: e.target.value,
+                      })
+                    }
+                    placeholder="https://..."
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
               </div>
             </>
           )}
@@ -844,28 +911,7 @@ export function LearningManagementDetail() {
             <>
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-gray-700">
-                  URL Video câu hỏi
-                </label>
-                <input
-                  type="text"
-                  value={
-                    stepFormData.questionVideoUrl || stepFormData.videoUrl || ""
-                  }
-                  onChange={(e) =>
-                    setStepFormData({
-                      ...stepFormData,
-                      questionVideoUrl: e.target.value,
-                      videoUrl: e.target.value,
-                    })
-                  }
-                  placeholder="https://..."
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-gray-700">
-                  Câu hỏi / Mục tiêu (tùy điền)
+                  Câu hỏi / Mục tiêu (Chọn từ điển)
                 </label>
                 <input
                   type="text"
@@ -884,11 +930,100 @@ export function LearningManagementDetail() {
                             videoUrl: match.videoUrl,
                           }
                         : {}),
+                      ...(match && match.imageUrl
+                        ? { imageUrl: match.imageUrl }
+                        : {}),
                     }));
                   }}
                   placeholder="Nhập hoặc chọn từ vựng..."
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
                 />
+
+                {/* Media availability indicators for Quiz */}
+                {(() => {
+                  const val = stepFormData.question || stepFormData.word || "";
+                  const v = vocabularies.find((item) => item.word === val);
+                  if (!v) return null;
+                  return (
+                    <div className="flex flex-wrap gap-2 items-center mt-1.5">
+                      {v.videoUrl ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 rounded-md text-[10px] font-bold border border-red-100 animate-pulse">
+                          <PlayCircle size={10} />
+                          Video mẫu có sẵn
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px] font-medium border border-gray-100 italic">
+                          <PlayCircle size={10} />
+                          Chưa có video
+                        </span>
+                      )}
+                      {v.imageUrl ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md text-[10px] font-bold border border-purple-100 animate-pulse">
+                          <ImageIcon size={10} />
+                          Hình ảnh có sẵn
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px] font-medium border border-gray-100 italic">
+                          <ImageIcon size={10} />
+                          Chưa có hình ảnh
+                        </span>
+                      )}
+                      {v.word && stepFormData.title !== v.word && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setStepFormData({ ...stepFormData, title: v.word })
+                          }
+                          className="text-[10px] text-primary-600 hover:text-primary-700 font-bold underline ml-auto"
+                        >
+                          Lấy "{v.word}" làm tiêu đề?
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    URL Video câu hỏi
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      stepFormData.questionVideoUrl ||
+                      stepFormData.videoUrl ||
+                      ""
+                    }
+                    onChange={(e) =>
+                      setStepFormData({
+                        ...stepFormData,
+                        questionVideoUrl: e.target.value,
+                        videoUrl: e.target.value,
+                      })
+                    }
+                    placeholder="https://..."
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    URL Hình ảnh (nếu cần)
+                  </label>
+                  <input
+                    type="text"
+                    value={stepFormData.imageUrl || ""}
+                    onChange={(e) =>
+                      setStepFormData({
+                        ...stepFormData,
+                        imageUrl: e.target.value,
+                      })
+                    }
+                    placeholder="https://..."
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -931,7 +1066,7 @@ export function LearningManagementDetail() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-gray-700">
-                  Mô tả (để phán đoán)
+                  Mô tả (để phán đoán - Chọn từ điển)
                 </label>
                 <input
                   type="text"
@@ -947,10 +1082,47 @@ export function LearningManagementDetail() {
                       ...(match && match.videoUrl
                         ? { videoUrl: match.videoUrl }
                         : {}),
+                      ...(match && match.imageUrl
+                        ? { imageUrl: match.imageUrl }
+                        : {}),
                     }));
                   }}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
                 />
+
+                {/* Media availability indicators for True/False */}
+                {(() => {
+                  const val =
+                    stepFormData.word || stepFormData.description || "";
+                  const v = vocabularies.find((item) => item.word === val);
+                  if (!v) return null;
+                  return (
+                    <div className="flex flex-wrap gap-2 items-center mt-1.5">
+                      {v.videoUrl ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 rounded-md text-[10px] font-bold border border-red-100 animate-pulse">
+                          <PlayCircle size={10} />
+                          Video mẫu có sẵn
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px] font-medium border border-gray-100 italic">
+                          <PlayCircle size={10} />
+                          Chưa có video
+                        </span>
+                      )}
+                      {v.imageUrl ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md text-[10px] font-bold border border-purple-100 animate-pulse">
+                          <ImageIcon size={10} />
+                          Hình ảnh có sẵn
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px] font-medium border border-gray-100 italic">
+                          <ImageIcon size={10} />
+                          Chưa có hình ảnh
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2 mt-2">
                 <input
