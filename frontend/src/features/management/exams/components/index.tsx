@@ -580,12 +580,16 @@ function CreateExamForm({
       refresh();
       onClose();
     } catch (error: any) {
-      console.error(error);
-      const msg =
-        error?.response?.data?.message ||
+      console.error("Exam creation failed:", error);
+      const responseData = error?.response?.data;
+      console.log("Error response data:", responseData);
+
+      const detailedError =
+        responseData?.error ||
+        responseData?.message ||
         error?.message ||
         "Tạo bài kiểm tra thất bại";
-      alert(`Lỗi: ${msg}`);
+      alert(`Lỗi hệ thống: ${detailedError}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -723,65 +727,16 @@ function CreateExamForm({
                   key={idx}
                   className="p-4 border border-gray-100 rounded-2xl bg-gray-50/50 relative group"
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex items-center gap-3">
                     <input
-                      placeholder="Nội dung câu hỏi..."
+                      placeholder="Nhập nội dung câu hỏi thực hành (VD: Xin chào, Tôi là học sinh...)"
                       value={q.content}
                       onChange={(e) =>
                         updatePracticeQuestion(idx, "content", e.target.value)
                       }
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 md:col-span-2"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                       required
                     />
-                    <select
-                      value={q.topicId}
-                      onChange={(e) =>
-                        updatePracticeQuestion(idx, "topicId", e.target.value)
-                      }
-                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none bg-white"
-                    >
-                      <option value="">
-                        {topics.length === 0
-                          ? "Chưa có chủ đề (cần tạo trong Quản lý từ điển)"
-                          : "Gắn với chủ đề (Tùy chọn)"}
-                      </option>
-                      {topics.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={q.vocabularyId}
-                      onChange={(e) => {
-                        const vocabId = e.target.value;
-                        updatePracticeQuestion(idx, "vocabularyId", vocabId);
-                        // Auto-fill content if it's empty and a vocab is selected
-                        if (vocabId && !q.content) {
-                          const vocab = (
-                            vocabMap[Number(q.topicId)] || []
-                          ).find((v) => String(v.id) === String(vocabId));
-                          if (vocab) {
-                            updatePracticeQuestion(idx, "content", vocab.word);
-                          }
-                        }
-                      }}
-                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none bg-white font-medium italic"
-                      disabled={!q.topicId}
-                    >
-                      <option value="">
-                        {!q.topicId
-                          ? "Chọn chủ đề trước"
-                          : (vocabMap[Number(q.topicId)] || []).length === 0
-                            ? "Chưa có từ vựng trong chủ đề này"
-                            : "Chọn từ vựng (Tùy chọn)"}
-                      </option>
-                      {(vocabMap[Number(q.topicId)] || []).map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.word}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                   {practiceQuestions.length > 1 && (
                     <button

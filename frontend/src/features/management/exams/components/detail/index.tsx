@@ -589,70 +589,17 @@ export function ExamManagementDetail() {
                   className={`p-4 rounded-2xl border transition-all ${isEditing ? "bg-gray-50/50 border-gray-100 relative group" : "bg-white border-gray-100 shadow-sm"}`}
                 >
                   {isEditing ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3">
                       <input
-                        placeholder="Nội dung câu hỏi..."
+                        placeholder="Nhập nội dung câu hỏi thực hành..."
                         value={q.content}
                         onChange={(e) => {
                           const list = [...(editForm.practiceQuestions || [])];
                           list[idx].content = e.target.value;
                           setEditForm({ ...editForm, practiceQuestions: list });
                         }}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 md:col-span-2"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                       />
-                      <select
-                        value={q.topicId}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const list = [...(editForm.practiceQuestions || [])];
-                          list[idx].topicId = val;
-                          setEditForm({ ...editForm, practiceQuestions: list });
-                          if (val) loadVocabs(Number(val));
-                        }}
-                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
-                      >
-                        <option value="">Gắn với chủ đề (Tùy chọn)</option>
-                        {topics.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={q.vocabularyId}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const list = [...(editForm.practiceQuestions || [])];
-                          list[idx].vocabularyId = val;
-
-                          // Auto-fill content if it's empty
-                          if (val && !list[idx].content) {
-                            const vocab = (
-                              vocabMap[Number(q.topicId)] || []
-                            ).find((v) => String(v.id) === String(val));
-                            if (vocab) {
-                              list[idx].content = vocab.word;
-                            }
-                          }
-
-                          setEditForm({ ...editForm, practiceQuestions: list });
-                        }}
-                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white font-medium italic"
-                        disabled={!q.topicId}
-                      >
-                        <option value="">
-                          {!q.topicId
-                            ? "Chọn chủ đề trước"
-                            : (vocabMap[Number(q.topicId)] || []).length === 0
-                              ? "Chưa có từ vựng"
-                              : "Chọn từ vựng (Tùy chọn)"}
-                        </option>
-                        {(vocabMap[Number(q.topicId)] || []).map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.word}
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between">
