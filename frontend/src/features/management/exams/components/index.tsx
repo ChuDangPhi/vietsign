@@ -481,31 +481,33 @@ function CreateExamForm({
   }, []);
 
   useEffect(() => {
-    // If classId changes, specifically try to load topics for that classroom
-    // but we'll also keep the general topics
+    // If classId changes, refresh general topics
     if (formData.classId) {
-      loadTopics(Number(formData.classId));
+      loadTopics();
     }
   }, [formData.classId]);
 
-  const loadTopics = async (cid?: number) => {
+  const loadTopics = async () => {
     try {
-      console.log("Loading topics for classroom:", cid);
-      // 1. Try to get all topics first (broadest search)
-      let data = await fetchAllTopics();
-      
-      // 2. If empty and we have a classroom ID, try classroom-specific topics
-      if ((!data || data.length === 0) && cid) {
-        data = await fetchTopicsByClassroom(cid);
-      }
+      console.log("Loading general topics only...");
+      let data: any[] = [];
 
-      // 3. One more fallback: Try to get topics from the learning service model
-      // this ensures we hit the old system if the new management system is empty
+      // 1. Fetch all general topics (ignoring classroom)
+      data = await fetchAllTopics();
+
+      // 2. Fallback to learning service if empty
       if (!data || data.length === 0) {
         try {
-          const learningTopics = await (await import("@/model/Learning")).default.getAllTopics();
-          if (learningTopics && (Array.isArray(learningTopics) || learningTopics.data)) {
-            const rawItems = Array.isArray(learningTopics) ? learningTopics : learningTopics.data || [];
+          const learningTopics = await (
+            await import("@/model/Learning")
+          ).default.getAllTopics();
+          if (
+            learningTopics &&
+            (Array.isArray(learningTopics) || learningTopics.data)
+          ) {
+            const rawItems = Array.isArray(learningTopics)
+              ? learningTopics
+              : learningTopics.data || [];
             data = rawItems.map((t: any) => ({
               id: t.topic_id || t.id,
               name: t.name || t.content || t.title,
@@ -515,8 +517,8 @@ function CreateExamForm({
           console.error("Learning service fallback failed:", e);
         }
       }
-      
-      console.log("Loaded topics count:", data?.length || 0);
+
+      console.log("Loaded general topics count:", data?.length || 0);
       setTopics(data || []);
     } catch (error) {
       console.error("Failed to load topics:", error);
@@ -603,13 +605,17 @@ function CreateExamForm({
       return;
     }
 
-    if (
-      formData.examType === "PRACTICE" &&
-      practiceQuestions.some((pq) => !pq.content?.trim())
-    ) {
-      alert("Vui lòng nhập nội dung cho tất cả các câu hỏi thực hành!");
-      setIsSubmitting(false);
-      return;
+    if (formData.examType === "PRACTICE") {
+      if (practiceQuestions.some((pq) => !pq.topicId || !pq.vocabularyId)) {
+        alert("Vui lòng chọn chủ đề và từ vựng cho tất cả các câu hỏi thực hành!");
+        setIsSubmitting(false);
+        return;
+      }
+      if (practiceQuestions.some((pq) => !pq.content?.trim())) {
+        alert("Vui lòng nhập nội dung cho tất cả các câu hỏi thực hành!");
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     try {
@@ -796,8 +802,9 @@ function CreateExamForm({
                           updatePracticeQuestion(idx, "topicId", e.target.value)
                         }
                         className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                        required
                       >
-                        <option value="">Chọn chủ đề (tùy chọn)</option>
+                        <option value="">Chọn chủ đề *</option>
                         {topics.map((t) => (
                           <option key={t.id} value={t.id}>
                             {t.name}
@@ -815,8 +822,9 @@ function CreateExamForm({
                         }
                         className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary-500 bg-white disabled:bg-gray-100"
                         disabled={!q.topicId}
+                        required
                       >
-                        <option value="">Chọn từ vựng (tùy chọn)</option>
+                        <option value="">Chọn từ vựng *</option>
                         {q.topicId &&
                           vocabMap[Number(q.topicId)]?.map((v) => (
                             <option key={v.id} value={v.id}>
