@@ -688,30 +688,34 @@ export function ExamManagementDetail() {
                           </span>
                           <span className="flex items-center gap-2 border-l border-gray-200 pl-3 ml-1">
                             {q.images_path ? (
-                              <ImageIcon
-                                size={14}
-                                className="text-purple-500"
-                                title="Có hình ảnh"
-                              />
+                              <span title="Có hình ảnh">
+                                <ImageIcon
+                                  size={14}
+                                  className="text-purple-500"
+                                />
+                              </span>
                             ) : (
-                              <ImageIcon
-                                size={14}
-                                className="text-gray-300 opacity-50"
-                                title="Không có hình ảnh"
-                              />
+                              <span title="Không có hình ảnh">
+                                <ImageIcon
+                                  size={14}
+                                  className="text-gray-300 opacity-50"
+                                />
+                              </span>
                             )}
                             {q.videos_path ? (
-                              <PlayCircle
-                                size={14}
-                                className="text-red-500"
-                                title="Có video"
-                              />
+                              <span title="Có video">
+                                <PlayCircle
+                                  size={14}
+                                  className="text-red-500"
+                                />
+                              </span>
                             ) : (
-                              <PlayCircle
-                                size={14}
-                                className="text-gray-300 opacity-50"
-                                title="Không có video"
-                              />
+                              <span title="Không có video">
+                                <PlayCircle
+                                  size={14}
+                                  className="text-gray-300 opacity-50"
+                                />
+                              </span>
                             )}
                           </span>
                         </p>
