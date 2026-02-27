@@ -23,6 +23,7 @@ import { fetchAllClasses } from "@/services/classService";
 import { fetchAllOrganizations } from "@/services/organizationService";
 import { OrganizationItem } from "@/data";
 import {
+  fetchAllTopics,
   fetchTopicsByClassroom,
   fetchVocabulariesByTopic,
   TopicItem,
@@ -475,21 +476,80 @@ function CreateExamForm({
   }, [isTeacher, filteredClasses, formData.classId]);
 
   useEffect(() => {
-    // If classId changes, fetch relevant topics
+    // Load topics immediately when the form opens
+    loadTopics();
+  }, []);
+
+  useEffect(() => {
+    // If classId changes, specifically try to load topics for that classroom
+    // but we'll also keep the general topics
     if (formData.classId) {
       loadTopics(Number(formData.classId));
     }
   }, [formData.classId]);
 
-  const loadTopics = async (cid: number) => {
-    const data = await fetchTopicsByClassroom(cid);
-    setTopics(data);
+  const loadTopics = async (cid?: number) => {
+    try {
+      console.log("Loading topics for classroom:", cid);
+      // 1. Try to get all topics first (broadest search)
+      let data = await fetchAllTopics();
+      
+      // 2. If empty and we have a classroom ID, try classroom-specific topics
+      if ((!data || data.length === 0) && cid) {
+        data = await fetchTopicsByClassroom(cid);
+      }
+
+      // 3. One more fallback: Try to get topics from the learning service model
+      // this ensures we hit the old system if the new management system is empty
+      if (!data || data.length === 0) {
+        try {
+          const learningTopics = await (await import("@/model/Learning")).default.getAllTopics();
+          if (learningTopics && (Array.isArray(learningTopics) || learningTopics.data)) {
+            const rawItems = Array.isArray(learningTopics) ? learningTopics : learningTopics.data || [];
+            data = rawItems.map((t: any) => ({
+              id: t.topic_id || t.id,
+              name: t.name || t.content || t.title,
+            }));
+          }
+        } catch (e) {
+          console.error("Learning service fallback failed:", e);
+        }
+      }
+      
+      console.log("Loaded topics count:", data?.length || 0);
+      setTopics(data || []);
+    } catch (error) {
+      console.error("Failed to load topics:", error);
+    }
   };
 
   const loadVocabs = async (tid: number) => {
     if (vocabMap[tid]) return;
-    const data = await fetchVocabulariesByTopic(tid);
-    setVocMap((prev) => ({ ...prev, [tid]: data }));
+    try {
+      let data = await fetchVocabulariesByTopic(tid);
+
+      // Fallback to learning service for vocabularies if empty
+      if (!data || data.length === 0) {
+        try {
+          const learningModel = (await import("@/model/Learning")).default;
+          // Note: getVocabularyTopic returns data for a specific topic
+          const res = await learningModel.getVocabularyTopic(tid);
+          if (res && (Array.isArray(res) || res.data)) {
+            const rawItems = Array.isArray(res) ? res : res.data || [];
+            data = rawItems.map((v: any) => ({
+              id: v.vocabulary_id || v.id,
+              word: v.word || v.content,
+            }));
+          }
+        } catch (e) {
+          console.error("Learning service vocab fallback failed:", e);
+        }
+      }
+
+      setVocMap((prev) => ({ ...prev, [tid]: data || [] }));
+    } catch (error) {
+      console.error("Failed to load vocabularies:", error);
+    }
   };
 
   const addPracticeQuestion = () => {
