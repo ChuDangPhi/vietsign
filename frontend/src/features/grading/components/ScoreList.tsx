@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Table, Input, Button, Tag, Spin } from "antd";
 import { useRouter } from "next/navigation";
-import { fetchAllExams } from "@/services/examService";
+import { fetchAllPracticalSubmissions } from "@/services/examService";
 
 export default function ScoreList() {
   const router = useRouter();
@@ -18,30 +18,19 @@ export default function ScoreList() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const userJson = localStorage.getItem("user");
-      const user = userJson ? JSON.parse(userJson) : null;
+      // Fetch real practical submissions
+      const submissions = await fetchAllPracticalSubmissions();
 
-      // Fetch exams. Ideally we want "Submissions".
-      // Current compromise: List Exams.
-      // Future improvement: List submissions.
-      const exams = await fetchAllExams({
-        exam_type: "PRACTICAL",
-        // teacherId: user?.id
-      });
-
-      // Mocking student submissions for demo purpose (Since backend missing 'getAllSubmissions')
-      // In real port, this should call apiGet('/exam/submissions')
-      const entries = exams.flatMap((exam) => [
-        {
-          examId: exam.id,
-          examName: exam.title,
-          examType: "Thực hành",
-          classRoomName: "Lớp demo",
-          userId: 999, // Placeholder
-          userName: "Nguyễn Văn A (Demo)",
-          status: "Pending",
-        },
-      ]);
+      const entries = submissions.map((sub: any) => ({
+        examId: sub.exam_id,
+        examName: sub.examName || "Bài thực hành",
+        examType: "Thực hành",
+        classRoomName: sub.classRoomName || "N/A",
+        userId: sub.studentId,
+        userName: sub.studentName,
+        status: "Pending",
+        attemptId: sub.attempt_id,
+      }));
 
       setDataList(entries);
     } catch (e) {

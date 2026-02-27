@@ -143,6 +143,16 @@ export async function fetchPracticeSubmission(examId: number, userId: number) {
   return await ExamModel.getPracticeExamSubmission(examId, userId);
 }
 
+export async function fetchAllPracticalSubmissions() {
+  try {
+    const response = await ExamModel.getAllPracticalSubmissions();
+    return response.data || response;
+  } catch (error) {
+    console.error("Error fetching practical submissions:", error);
+    return [];
+  }
+}
+
 export async function markPracticeSubmission(data: any) {
   return await ExamModel.markPracticeExam(data);
 }

@@ -47,11 +47,17 @@ const getExams = async (req, res) => {
     const class_room_id = req.query.class_room_id
       ? parseInt(req.query.class_room_id)
       : null;
+    const studentId = req.query.studentId || req.query.student_id;
+    const exam_type = req.query.exam_type || req.query.type;
+    const class_room_ids = req.query.class_room_ids;
 
     const result = await examService.getExams({
       limit,
       page,
       class_room_id,
+      studentId,
+      exam_type,
+      class_room_ids,
     });
 
     return res.status(200).json({
@@ -59,7 +65,7 @@ const getExams = async (req, res) => {
       data: result.data,
       total: result.total,
       limit: result.limit,
-      offset: result.offset,
+      page: result.page,
       message: "Exams retrieved successfully",
     });
   } catch (error) {
@@ -575,9 +581,20 @@ const markPracticeExam = async (req, res) => {
   }
 };
 
+const getAllPracticalSubmissions = async (req, res) => {
+  try {
+    const submissions = await examService.getAllPracticalSubmissions({});
+    return res.json({ success: true, data: submissions });
+  } catch (error) {
+    console.error("Get all submissions error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createExam,
   getExams,
+  getAllPracticalSubmissions,
   getExamById,
   getExamsByClassroom,
   getExamsByCreator,

@@ -59,6 +59,11 @@ export class ExamModel extends Base {
     return res.data;
   };
 
+  getAllPracticalSubmissions = async () => {
+    const res = await this.apiGet(`/practical-submissions`);
+    return res.data;
+  };
+
   markPracticeExam = async (data: any) => {
     // Backend route placeholder
     const res = await this.apiPost(`/mark-practice`, data);

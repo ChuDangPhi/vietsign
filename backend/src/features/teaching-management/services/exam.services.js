@@ -112,13 +112,7 @@ async function getExams(filters) {
       params.push(class_room_id);
     }
 
-    // Filter by exam_type
-    if (exam_type) {
-      whereClause += " AND e.exam_type = ?";
-      params.push(exam_type);
-    }
-
-    // Filter by multiple class_room_ids (comma-separated or array)
+    // Filter by Multiple Classrooms
     if (class_room_ids) {
       let classIdsArray = Array.isArray(class_room_ids)
         ? class_room_ids.map((id) => parseInt(id))
@@ -129,6 +123,15 @@ async function getExams(filters) {
         whereClause += ` AND e.class_room_id IN (${placeholders})`;
         params.push(...classIdsArray);
       }
+    }
+
+    // Since exam_type is not a column in 'exam' table, we filter using EXISTS in mappings
+    if (exam_type === "PRACTICAL") {
+      whereClause +=
+        " AND EXISTS (SELECT 1 FROM vocabulary_exam_mapping vem WHERE vem.exam_id = e.exam_id)";
+    } else if (exam_type === "MULTIPLE_CHOICE") {
+      whereClause +=
+        " AND EXISTS (SELECT 1 FROM question_exam_mapping qem WHERE qem.exam_id = e.exam_id)";
     }
 
     // Get total count
@@ -150,19 +153,82 @@ async function getExams(filters) {
         ORDER BY e.exam_id DESC 
         LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
       `;
-      params.unshift(studentId); // Add studentId at the beginning of params for the LEFT JOIN
+      params.unshift(studentId); // Add studentId at the beginning for the LEFT JOIN
     } else {
       query = `SELECT e.* FROM exam e ${whereClause} ORDER BY e.exam_id DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
     }
 
     const [exams] = await db.execute(query, params);
 
+    // Add inferred type to results
+    const examsWithType = await Promise.all(
+      exams.map(async (exam) => {
+        // Optimization: if we already filtered by type, we know it
+        if (exam_type) {
+          return { ...exam, exam_type };
+        }
+        // Otherwise infer
+        const [qMap] = await db.execute(
+          "SELECT 1 FROM question_exam_mapping WHERE exam_id = ? LIMIT 1",
+          [exam.exam_id],
+        );
+        const [vMap] = await db.execute(
+          "SELECT 1 FROM vocabulary_exam_mapping WHERE exam_id = ? LIMIT 1",
+          [exam.exam_id],
+        );
+        return {
+          ...exam,
+          exam_type:
+            qMap.length > 0
+              ? "MULTIPLE_CHOICE"
+              : vMap.length > 0
+                ? "PRACTICAL"
+                : "MULTIPLE_CHOICE",
+        };
+      }),
+    );
+
     return {
-      data: exams,
+      data: examsWithType,
       page: parseInt(page),
       limit: parseInt(limit),
       total: total,
     };
+  } catch (err) {
+    throw { status: 500, message: err.message };
+  }
+}
+
+/**
+ * Get all practical submissions for grading
+ */
+async function getAllPracticalSubmissions(filters = {}) {
+  try {
+    const { teacherId } = filters;
+    let query = `
+      SELECT 
+        ea.attempt_id,
+        ea.exam_id,
+        ea.user_id as studentId,
+        u.name as studentName,
+        e.name as examName,
+        cr.content as classRoomName,
+        ea.score,
+        ea.started_at,
+        ea.finished_at
+      FROM exam_attempt ea
+      JOIN exam e ON ea.exam_id = e.exam_id
+      JOIN user u ON ea.user_id = u.user_id
+      LEFT JOIN class_room cr ON e.class_room_id = cr.class_room_id
+      WHERE EXISTS (SELECT 1 FROM vocabulary_exam_mapping vem WHERE vem.exam_id = e.exam_id)
+      AND ea.score IS NULL
+    `;
+    // If teacherId is provided, should we filter by classroom?
+    // For now list all pending practical submissions
+    query += " ORDER BY ea.started_at DESC";
+
+    const [rows] = await db.execute(query);
+    return rows;
   } catch (err) {
     throw { status: 500, message: err.message };
   }
@@ -495,6 +561,24 @@ async function submitExam(examId, studentId, score, answers, timeSpent) {
 
     const attemptId = attemptResult.insertId;
 
+    // Also update user_exam_mapping for overall progress tracking
+    const [mappingExists] = await connection.execute(
+      "SELECT user_exam_id FROM user_exam_mapping WHERE exam_id = ? AND user_id = ?",
+      [examId, studentId],
+    );
+
+    if (mappingExists.length > 0) {
+      await connection.execute(
+        "UPDATE user_exam_mapping SET score = ?, is_finish = 1 WHERE user_exam_id = ?",
+        [score || 0, mappingExists[0].user_exam_id],
+      );
+    } else {
+      await connection.execute(
+        "INSERT INTO user_exam_mapping (exam_id, user_id, score, is_finish) VALUES (?, ?, ?, 1)",
+        [examId, studentId, score || 0],
+      );
+    }
+
     // Save individual question responses if provided
     if (Array.isArray(answers)) {
       for (const ans of answers) {
@@ -540,7 +624,7 @@ async function createPracticeAttempt(examId, studentId) {
       return { attemptId: existing[0].attempt_id };
     } else {
       const [attemptResult] = await connection.execute(
-        "INSERT INTO exam_attempt (exam_id, user_id, score, started_at, finished_at) VALUES (?, ?, 0, NOW(), NOW())",
+        "INSERT INTO exam_attempt (exam_id, user_id, score, started_at, finished_at) VALUES (?, ?, NULL, NOW(), NOW())",
         [examId, studentId],
       );
       return { attemptId: attemptResult.insertId };
@@ -636,6 +720,24 @@ async function markPracticeExam(examId, userId, score, details) {
       attemptId = attempt.insertId;
     }
 
+    // Also update user_exam_mapping for overall progress tracking
+    const [mappingExists] = await connection.execute(
+      "SELECT user_exam_id FROM user_exam_mapping WHERE exam_id = ? AND user_id = ?",
+      [examId, userId],
+    );
+
+    if (mappingExists.length > 0) {
+      await connection.execute(
+        "UPDATE user_exam_mapping SET score = ?, is_finish = 1 WHERE user_exam_id = ?",
+        [score || 0, mappingExists[0].user_exam_id],
+      );
+    } else {
+      await connection.execute(
+        "INSERT INTO user_exam_mapping (exam_id, user_id, score, is_finish) VALUES (?, ?, ?, 1)",
+        [examId, userId, score || 0],
+      );
+    }
+
     if (details && details.length > 0) {
       const [mappings] = await connection.execute(
         `SELECT question_exam_user_id FROM question_exam_user_mapping 
@@ -678,5 +780,6 @@ module.exports = {
   createPracticeAttempt,
   savePracticeQuestionVideo,
   getPracticeSubmission,
+  getAllPracticalSubmissions,
   markPracticeExam,
 };

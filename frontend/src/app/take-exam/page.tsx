@@ -24,7 +24,9 @@ export default function TakeExamList() {
         // Fetch exams. If student, backend filters based on role usually?
         // Or pass studentId if API supports.
         // For now fetch all available (VietSign fetchAllExams logic typically gets accessible ones)
-        const data = await fetchAllExams({ studentId: user?.id });
+        const data = await fetchAllExams({
+          studentId: user?.id || user?.user_id,
+        });
         setExams(data);
       } catch (error) {
         console.error(error);

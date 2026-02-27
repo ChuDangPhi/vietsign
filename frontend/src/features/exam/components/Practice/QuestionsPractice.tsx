@@ -196,7 +196,7 @@ const QuestionsPractice: React.FC = () => {
 
       await submitPracticeExam(formData);
       message.success("Nộp bài thành công!");
-      router.push("/exam");
+      router.push("/take-exam");
     } catch (err) {
       console.error(err);
       message.error("Nộp bài thất bại!");

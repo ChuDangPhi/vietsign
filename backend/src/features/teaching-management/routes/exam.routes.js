@@ -43,13 +43,14 @@ router.get(
   authRequired,
   examController.getPracticeSubmission,
 );
+router.get(
+  "/practical-submissions",
+  authRequired,
+  examController.getAllPracticalSubmissions,
+);
 router.post("/mark-practice", authRequired, examController.markPracticeExam);
 
-router.post(
-  "/:exam_id/submit",
-  authRequired,
-  examController.submitExam,
-);
+router.post("/:exam_id/submit", authRequired, examController.submitExam);
 router.get("/:exam_id/results", authRequired, examController.getExamResults);
 router.get(
   "/student/:student_id/attempts",

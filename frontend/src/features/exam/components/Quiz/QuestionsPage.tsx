@@ -84,8 +84,16 @@ export default function QuestionsPage() {
   const isCompleted = submitted || isReview;
 
   const showMediaModal = (answer: any) => {
-    const vLoc = answer.videoLocation || answer.video_location || answer.video || answer.videoUrl;
-    const iLoc = answer.imageLocation || answer.image_location || answer.image || answer.imageUrl;
+    const vLoc =
+      answer.videoLocation ||
+      answer.video_location ||
+      answer.video ||
+      answer.videoUrl;
+    const iLoc =
+      answer.imageLocation ||
+      answer.image_location ||
+      answer.image ||
+      answer.imageUrl;
 
     const videoUrl = getFullUrl(vLoc);
     const imageUrl = getFullUrl(iLoc);
@@ -108,8 +116,16 @@ export default function QuestionsPage() {
   };
 
   const renderAnswerContent = (answer: any) => {
-    const vLoc = answer.videoLocation || answer.video_location || answer.video || answer.videoUrl;
-    const iLoc = answer.imageLocation || answer.image_location || answer.image || answer.imageUrl;
+    const vLoc =
+      answer.videoLocation ||
+      answer.video_location ||
+      answer.video ||
+      answer.videoUrl;
+    const iLoc =
+      answer.imageLocation ||
+      answer.image_location ||
+      answer.image ||
+      answer.imageUrl;
     const hasMedia = vLoc || iLoc;
 
     if (!answer.content && hasMedia) {
@@ -165,8 +181,22 @@ export default function QuestionsPage() {
     mutationFn: async (payload: any) => {
       return await submitExam(Number(id), payload);
     },
-    onSuccess: () => {
-      message.success("Nộp bài thành công!");
+    onSuccess: (data: any) => {
+      Modal.success({
+        title: "Nộp bài thành công!",
+        content: (
+          <div className="py-4 text-center">
+            <p className="text-lg">Chúc mừng bạn đã hoàn thành bài kiểm tra.</p>
+            <p className="text-3xl font-bold text-blue-600 mt-2">
+              Điểm của bạn: {examScore?.toFixed(1)}/10
+            </p>
+          </div>
+        ),
+        okText: "Quay lại danh sách",
+        onOk: () => {
+          router.push("/take-exam");
+        },
+      });
       setSubmitted(true);
       setShowResults(true);
     },
@@ -296,35 +326,57 @@ export default function QuestionsPage() {
             }
           >
             {/* Media Display */}
-            {(currentQuestion.videoLocation || currentQuestion.video_location || currentQuestion.video || currentQuestion.videoUrl ||
-              currentQuestion.imageLocation || currentQuestion.image_location || currentQuestion.image || currentQuestion.imageUrl) && (
-                <div className="flex justify-center mb-6 bg-gray-100 p-4 rounded-lg">
-                  {(currentQuestion.videoLocation || currentQuestion.video_location || currentQuestion.video || currentQuestion.videoUrl) && (
-                    <video
-                      width="100%"
-                      style={{ maxWidth: 500, maxHeight: 300 }}
-                      controls
-                    >
-                      <source
-                        src={getFullUrl(currentQuestion.videoLocation || currentQuestion.video_location || currentQuestion.video || currentQuestion.videoUrl)}
-                        type="video/mp4"
-                      />
-                    </video>
-                  )}
-                  {(currentQuestion.imageLocation || currentQuestion.image_location || currentQuestion.image || currentQuestion.imageUrl) && (
-                    <img
-                      src={getFullUrl(currentQuestion.imageLocation || currentQuestion.image_location || currentQuestion.image || currentQuestion.imageUrl)}
-                      alt="Question Media"
-                      style={{
-                        maxWidth: 400,
-                        width: "100%",
-                        maxHeight: 300,
-                        objectFit: "contain",
-                      }}
+            {(currentQuestion.videoLocation ||
+              currentQuestion.video_location ||
+              currentQuestion.video ||
+              currentQuestion.videoUrl ||
+              currentQuestion.imageLocation ||
+              currentQuestion.image_location ||
+              currentQuestion.image ||
+              currentQuestion.imageUrl) && (
+              <div className="flex justify-center mb-6 bg-gray-100 p-4 rounded-lg">
+                {(currentQuestion.videoLocation ||
+                  currentQuestion.video_location ||
+                  currentQuestion.video ||
+                  currentQuestion.videoUrl) && (
+                  <video
+                    width="100%"
+                    style={{ maxWidth: 500, maxHeight: 300 }}
+                    controls
+                  >
+                    <source
+                      src={getFullUrl(
+                        currentQuestion.videoLocation ||
+                          currentQuestion.video_location ||
+                          currentQuestion.video ||
+                          currentQuestion.videoUrl,
+                      )}
+                      type="video/mp4"
                     />
-                  )}
-                </div>
-              )}
+                  </video>
+                )}
+                {(currentQuestion.imageLocation ||
+                  currentQuestion.image_location ||
+                  currentQuestion.image ||
+                  currentQuestion.imageUrl) && (
+                  <img
+                    src={getFullUrl(
+                      currentQuestion.imageLocation ||
+                        currentQuestion.image_location ||
+                        currentQuestion.image ||
+                        currentQuestion.imageUrl,
+                    )}
+                    alt="Question Media"
+                    style={{
+                      maxWidth: 400,
+                      width: "100%",
+                      maxHeight: 300,
+                      objectFit: "contain",
+                    }}
+                  />
+                )}
+              </div>
+            )}
 
             <Form.Item name={["answerList", currentPage - 1]} className="mb-0">
               {currentQuestion.questionType === "MULTIPLE_ANSWERS" ? (
@@ -343,10 +395,11 @@ export default function QuestionsPage() {
                     {currentQuestion.answerResList?.map((answer: any) => (
                       <div
                         key={answer.answerId}
-                        className={`p-4 rounded-lg border transition-colors ${showResults && answer.correct
-                          ? "bg-green-50 border-green-300"
-                          : "bg-white border-gray-200 hover:border-blue-300"
-                          }`}
+                        className={`p-4 rounded-lg border transition-colors ${
+                          showResults && answer.correct
+                            ? "bg-green-50 border-green-300"
+                            : "bg-white border-gray-200 hover:border-blue-300"
+                        }`}
                       >
                         <Checkbox value={answer.answerId} className="w-full">
                           {renderAnswerContent(answer)}
@@ -371,10 +424,11 @@ export default function QuestionsPage() {
                     {currentQuestion.answerResList?.map((answer: any) => (
                       <div
                         key={answer.answerId}
-                        className={`p-4 rounded-lg border transition-colors ${showResults && answer.correct
-                          ? "bg-green-50 border-green-300"
-                          : "bg-white border-gray-200 hover:border-blue-300"
-                          }`}
+                        className={`p-4 rounded-lg border transition-colors ${
+                          showResults && answer.correct
+                            ? "bg-green-50 border-green-300"
+                            : "bg-white border-gray-200 hover:border-blue-300"
+                        }`}
                       >
                         <Radio value={answer.answerId} className="w-full">
                           {renderAnswerContent(answer)}
