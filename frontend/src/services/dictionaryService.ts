@@ -32,26 +32,14 @@ function convertApiToDictionaryItem(item: any): DictionaryItem {
  * Convert DictionaryItem to API payload
  */
 function convertItemToApiPayload(data: any): any {
-  const stripBaseUrl = (url?: string) => {
-    if (!url) return null;
-    let cleanUrl = url;
-    if (API_BASE_URL && cleanUrl.startsWith(API_BASE_URL)) {
-      cleanUrl = cleanUrl.replace(API_BASE_URL, "");
-    }
-    if (API_BASE_URL_NODE && cleanUrl.startsWith(API_BASE_URL_NODE)) {
-      cleanUrl = cleanUrl.replace(API_BASE_URL_NODE, "");
-    }
-    return cleanUrl;
-  };
-
   return {
     content: data.word,
     description: data.description || data.meaning || "",
     topic_id: data.topic_id || data.topicId || null,
     classroom_id: data.class_room_id || data.classId || null,
     vocabulary_type: data.vocabularyType || data.vocabulary_type || "WORD",
-    images_path: stripBaseUrl(data.imageUrl),
-    videos_path: stripBaseUrl(data.videoUrl),
+    images_path: data.imageUrl,
+    videos_path: data.videoUrl,
     status: data.status === "published" ? "APPROVED" : "PENDING",
   };
 }
