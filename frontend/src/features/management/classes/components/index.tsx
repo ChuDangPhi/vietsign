@@ -841,7 +841,7 @@ export function ClassesManagement() {
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white"
                 required
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((level) => (
+                {[1, 2, 3, 4, 5].map((level) => (
                   <option key={level} value={String(level)}>
                     Lớp {level}
                   </option>

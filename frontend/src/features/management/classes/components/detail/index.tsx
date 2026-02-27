@@ -422,6 +422,32 @@ export function ClassManagementDetail() {
 
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">
+                Khối lớp
+              </label>
+              {isEditing ? (
+                <select
+                  value={editForm.classLevel || ""}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, classLevel: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white"
+                >
+                  <option value="">Chọn khối lớp</option>
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <option key={level} value={String(level)}>
+                      Lớp {level}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="px-4 py-3 bg-gray-50 rounded-xl text-gray-900">
+                  {classItem.classLevel ? `Lớp ${classItem.classLevel}` : "Chưa xác định"}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">
                 Trạng thái
               </label>
               {isEditing ? (
