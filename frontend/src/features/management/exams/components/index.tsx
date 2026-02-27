@@ -557,7 +557,13 @@ function CreateExamForm({
       );
       const organizationId = selectedClass?.organizationId || null;
 
-      console.log("Submitting exam:", formData);
+      const cleanedPracticeQuestions = practiceQuestions.map((pq) => ({
+        content: pq.content,
+        topicId: pq.topicId ? Number(pq.topicId) : null,
+        vocabularyId: pq.vocabularyId ? Number(pq.vocabularyId) : null,
+      }));
+
+      console.log("Submitting exam:", formData, cleanedPracticeQuestions);
       await createExam({
         name: formData.title,
         description: "",
@@ -569,7 +575,7 @@ function CreateExamForm({
         passingScore: 5,
         questionIds: formData.examType === "QUIZ" ? selectedQuestionIds : [],
         practiceQuestions:
-          formData.examType === "PRACTICE" ? practiceQuestions : [],
+          formData.examType === "PRACTICE" ? cleanedPracticeQuestions : [],
       });
       refresh();
       onClose();

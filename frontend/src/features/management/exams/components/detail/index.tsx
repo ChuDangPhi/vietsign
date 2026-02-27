@@ -158,6 +158,14 @@ export function ExamManagementDetail() {
           backendType = "PRACTICAL";
         }
 
+        const cleanedPracticeQuestions = (editForm.practiceQuestions || []).map(
+          (pq) => ({
+            content: pq.content,
+            topicId: pq.topicId ? Number(pq.topicId) : null,
+            vocabularyId: pq.vocabularyId ? Number(pq.vocabularyId) : null,
+          }),
+        );
+
         // Map back to backend fields
         await updateExam(exam.id, {
           name: editForm.title,
@@ -168,7 +176,7 @@ export function ExamManagementDetail() {
           total_points: editForm.questions,
           passing_score: editForm.passingScore,
           is_active: editForm.status === "ongoing",
-          practice_questions: editForm.practiceQuestions,
+          practice_questions: cleanedPracticeQuestions,
           question_ids: editForm.questionIds,
         });
       } catch (error) {
