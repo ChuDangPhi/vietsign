@@ -508,7 +508,7 @@ function CreateExamForm({
       const tid = Number(list[index].topicId);
       const vocab = vocabMap[tid]?.find((v) => v.id === vId);
       if (vocab && !list[index].content) {
-        list[index].content = `Em hãy biểu diễn - ${vocab.content}`;
+        list[index].content = `Em hãy biểu diễn - ${vocab.word}`;
       }
     }
 
@@ -760,7 +760,7 @@ function CreateExamForm({
                         {q.topicId &&
                           vocabMap[Number(q.topicId)]?.map((v) => (
                             <option key={v.id} value={v.id}>
-                              {v.content}
+                              {v.word}
                             </option>
                           ))}
                       </select>
