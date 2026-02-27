@@ -699,7 +699,7 @@ export function DictionaryManagementComponent() {
           </form>
         ) : (
           <div className="space-y-4">
-            <div className="max-h-[50vh] overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+            <div className="space-y-4 pr-2">
               {multipleData.map((item, index) => (
                 <div
                   key={index}

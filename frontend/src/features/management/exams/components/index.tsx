@@ -555,10 +555,7 @@ function CreateExamForm({
   };
 
   return (
-    <form
-      className="space-y-6 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar"
-      onSubmit={handleSubmit}
-    >
+    <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1.5 md:col-span-2">
           <label className="text-sm font-semibold text-gray-700">
