@@ -45,6 +45,7 @@ import { ConfirmModal } from "@/shared/components/common/ConfirmModal";
 import { Modal } from "@/shared/components/common/Modal";
 import { DictionaryItem } from "@/data/dictionaryData";
 import { fetchAllWords } from "@/services/dictionaryService";
+import { fetchAllTopics, TopicItem } from "@/services/topicService";
 
 const stepTypeOptions: { value: StepType; label: string }[] = [
   { value: "vocabulary", label: "Từ vựng" },
@@ -98,16 +99,19 @@ export function LearningManagementDetail() {
   >({});
 
   const [vocabularies, setVocabularies] = useState<DictionaryItem[]>([]);
+  const [topics, setTopics] = useState<TopicItem[]>([]);
 
   useEffect(() => {
     const initData = async () => {
       try {
-        const [foundCourse, vocabList] = await Promise.all([
+        const [foundCourse, vocabList, topicList] = await Promise.all([
           fetchCourseById(id),
           fetchAllWords(),
+          fetchAllTopics(),
         ]);
 
         setVocabularies(vocabList || []);
+        setTopics(topicList || []);
 
         if (foundCourse) {
           setCourse(foundCourse);
@@ -746,7 +750,50 @@ export function LearningManagementDetail() {
         onClose={() => setIsStepModalOpen(false)}
         title={editingStep ? "Chỉnh sửa bước học" : "Thêm bước học mới"}
       >
-        <div className="space-y-4">
+          {/* Universal Dictionary Picker Helper - Helps fill any step type */}
+          <div className="p-3 bg-blue-50/50 rounded-2xl border border-blue-100/50 mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[10px] font-bold text-blue-700 uppercase flex items-center gap-1">
+                <BookOpen size={10} /> Dữ liệu từ từ điển (Hỗ trợ nhập nhanh)
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                list="vocabularies-list-universal"
+                placeholder="Tìm từ vựng để lấy video/hình ảnh..."
+                className="flex-1 px-3 py-2 text-sm border border-blue-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const match = vocabularies.find((v) => v.word === val);
+                  if (match) {
+                    setStepFormData((prev) => ({
+                      ...prev,
+                      title: prev.title || match.word,
+                      word: match.word,
+                      sentence: match.word,
+                      question: match.word,
+                      correctAnswer: match.word,
+                      videoUrl: match.videoUrl || prev.videoUrl,
+                      imageUrl: match.imageUrl || prev.imageUrl,
+                      description: match.description || prev.description,
+                      // For quiz types that use questionVideoUrl
+                      ...(prev.type?.startsWith("quiz")
+                        ? { questionVideoUrl: match.videoUrl }
+                        : {}),
+                    }));
+                    toast.success(`Đã lấy dữ liệu cho "${match.word}"`);
+                  }
+                }}
+              />
+              <datalist id="vocabularies-list-universal">
+                {vocabularies.map((v) => (
+                  <option key={v.id} value={v.word} />
+                ))}
+              </datalist>
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-gray-700">
               Tiêu đề <span className="text-red-500">*</span>
@@ -786,39 +833,27 @@ export function LearningManagementDetail() {
 
           {/* Dynamic fields based on step type */}
           {(stepFormData.type === "vocabulary" ||
-            stepFormData.type === "sentence") && (
+            stepFormData.type === "sentence" ||
+            stepFormData.type === "practice-video") && (
             <>
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-gray-700">
-                  Từ vựng / Câu
+                  {stepFormData.type === "sentence" ? "Câu mẫu" : "Từ vựng mục tiêu"}
                 </label>
                 <input
                   type="text"
-                  list="vocabularies-list"
                   value={stepFormData.word || stepFormData.sentence || ""}
                   onChange={(e) => {
                     const val = e.target.value;
-                    const match = vocabularies.find((v) => v.word === val);
                     setStepFormData((prev) => ({
                       ...prev,
                       word: val,
                       sentence: val,
-                      ...(match && match.videoUrl
-                        ? { videoUrl: match.videoUrl }
-                        : {}),
-                      ...(match && match.imageUrl
-                        ? { imageUrl: match.imageUrl }
-                        : {}),
                     }));
                   }}
-                  placeholder="Nhập hoặc chọn từ vựng..."
+                  placeholder="Nhập từ vựng hoặc câu..."
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
                 />
-                <datalist id="vocabularies-list">
-                  {vocabularies.map((v) => (
-                    <option key={v.id} value={v.word} />
-                  ))}
-                </datalist>
 
                 {/* Media availability indicators */}
                 {(() => {
@@ -1153,9 +1188,37 @@ export function LearningManagementDetail() {
             stepFormData.type === "match-horizontal" ||
             stepFormData.type === "flip-card" ||
             stepFormData.type === "quiz-choice" ||
-            stepFormData.type === "practice-matrix") && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-gray-700 flex items-center justify-between">
+            stepFormData.type === "practice-matrix" ||
+            stepFormData.type === "match-video-to-text") && (
+            <div className="space-y-4">
+              <div className="p-3 bg-fuchsia-50 rounded-xl border border-fuchsia-100">
+                <label className="text-[10px] font-bold text-fuchsia-700 uppercase mb-2 block">
+                  Công cụ hỗ trợ JSON
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    list="vocabularies-list-json"
+                    placeholder="Chọn từ vựng để thêm vào mảng..."
+                    className="flex-1 px-3 py-2 text-sm border border-fuchsia-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const match = vocabularies.find((v) => v.word === val);
+                      if (match) {
+                        toast.success(`Gợi ý: Copy video URL ${match.videoUrl}`);
+                      }
+                    }}
+                  />
+                  <datalist id="vocabularies-list-json">
+                    {vocabularies.map((v) => (
+                      <option key={v.id} value={v.word} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700 flex items-center justify-between">
                 Dữ liệu JSON (Cặp nói / Tuỳ chọn / Ma trận)
                 <span className="text-xs font-normal text-gray-500">
                   Mảng JSON hợp lệ
@@ -1257,6 +1320,27 @@ export function LearningManagementDetail() {
               placeholder="Nhập tiêu đề bài học"
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-gray-700">Chủ đề (Topic)</label>
+            <select
+              value={lessonFormData.topicId || ""}
+              onChange={(e) =>
+                setLessonFormData({
+                  ...lessonFormData,
+                  topicId: Number(e.target.value),
+                })
+              }
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+            >
+              <option value="">Chọn chủ đề liên quan</option>
+              {topics.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-1.5">

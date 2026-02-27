@@ -91,9 +91,20 @@ const QuestionsPractice: React.FC = () => {
   }, [examId, isReview]);
 
   const handleStartRecording = () => {
+    const stream = webcamRef.current?.stream;
+    if (!stream) {
+      message.error("Vui lòng đợi camera sẵn sàng hoặc cho phép quyền truy cập camera.");
+      return;
+    }
+
     setIsRecording(true);
     recordedChunksRef.current = [];
-    const stream = webcamRef.current?.stream as MediaStream;
+    // Khởi tạo MediaRecorder
+    if (!stream || !(stream instanceof MediaStream)) {
+      message.error("Không thể khởi tạo luồng video (MediaStream). Vui lòng kiểm tra camera.");
+      return; // Or throw new Error("Không thể khởi tạo luồng video (MediaStream).");
+    }
+
     const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
 
     mediaRecorderRef.current = mediaRecorder;

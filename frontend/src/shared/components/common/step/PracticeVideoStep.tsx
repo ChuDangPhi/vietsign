@@ -54,6 +54,10 @@ export function PracticeVideoStep({
       }
 
       // Khởi tạo MediaRecorder
+      if (!stream || !(stream instanceof MediaStream)) {
+        throw new Error("Không thể khởi tạo luồng video (MediaStream).");
+      }
+
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];

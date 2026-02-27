@@ -627,6 +627,7 @@ const PracticeData: React.FC = () => {
                             handleStartRecording(startRecording, stopRecording);
                           }}
                           disabled={
+                            !webcamReady ||
                             isRecordingRef.current ||
                             filterParams.vocabulary === ""
                           }
