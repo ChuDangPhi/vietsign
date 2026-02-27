@@ -26,6 +26,7 @@ export interface SelfLearnLesson {
   order: number;
   completed?: boolean;
   stepsCount: number;
+  topicId?: number;
 }
 
 // Sample vocabulary words for lessons

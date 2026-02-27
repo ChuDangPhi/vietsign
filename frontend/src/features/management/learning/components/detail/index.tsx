@@ -750,6 +750,7 @@ export function LearningManagementDetail() {
         onClose={() => setIsStepModalOpen(false)}
         title={editingStep ? "Chỉnh sửa bước học" : "Thêm bước học mới"}
       >
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
           {/* Universal Dictionary Picker Helper - Helps fill any step type */}
           <div className="p-3 bg-blue-50/50 rounded-2xl border border-blue-100/50 mb-6">
             <div className="flex items-center justify-between mb-2">
@@ -1261,7 +1262,8 @@ export function LearningManagementDetail() {
                 placeholder='Ví dụ: [{"id": 1, "videoUrl": "...", "targetText": "..."}]'
               />
             </div>
-          )}
+          </div>
+        )}
 
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-gray-700">
@@ -1326,12 +1328,13 @@ export function LearningManagementDetail() {
             <label className="text-sm font-semibold text-gray-700">Chủ đề (Topic)</label>
             <select
               value={lessonFormData.topicId || ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : undefined;
                 setLessonFormData({
                   ...lessonFormData,
-                  topicId: Number(e.target.value),
-                })
-              }
+                  topicId: val,
+                });
+              }}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white"
             >
               <option value="">Chọn chủ đề liên quan</option>
