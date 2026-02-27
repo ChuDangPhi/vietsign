@@ -46,18 +46,26 @@ async function createExam(data, userId) {
     // are currently NOT in the database schema for 'exam' table.
     // They are ignored here to prevent SQL errors.
 
-    const [result] = await connection.execute(query, [
-      name,
-      class_room_id || null,
-      is_private ? 1 : 0,
-      userId || null,
-    ]);
+    // Create the Exam entry
+    let examId;
+    try {
+      const is_private_val = is_private === true || is_private === 1 || is_private === "true" ? 1 : 0;
+      const [result] = await connection.execute(query, [
+        name,
+        class_room_id || null,
+        is_private_val,
+        userId || null,
+      ]);
+      examId = result.insertId;
+    } catch (err) {
+      console.error("Database error creating exam:", err);
+      throw { status: 500, message: "Error creating exam record: " + err.message };
+    }
 
-    const examId = result.insertId;
-
-    // Handle Question Mappings if QUIZ
-    if (isQuiz && Array.isArray(question_ids)) {
-      for (const qId of question_ids) {
+    // Mapping for Quiz (Multiple Choice Questions)
+    const qIds = question_ids || data.questionIds || [];
+    if (isQuiz && Array.isArray(qIds)) {
+      for (const qId of qIds) {
         await connection.execute(
           "INSERT INTO question_exam_mapping (exam_id, question_id) VALUES (?, ?)",
           [examId, qId],
@@ -65,13 +73,20 @@ async function createExam(data, userId) {
       }
     }
 
-    // Handle Practice Questions if PRACTICE
-    if (isPractice && Array.isArray(practice_questions)) {
-      for (const pq of practice_questions) {
-        await connection.execute(
-          "INSERT INTO vocabulary_exam_mapping (exam_id, vocabulary_id, content, created_date) VALUES (?, ?, ?, NOW())",
-          [examId, pq.vocabularyId || null, pq.content || ""],
-        );
+    // Mapping for Practice (Vocabulary Questions)
+    const pqs = practice_questions || data.practiceQuestions || [];
+    if (isPractice && Array.isArray(pqs)) {
+      for (const pq of pqs) {
+        try {
+          // Supports both vocabularyId and vocabulary_id
+          const vId = pq.vocabularyId || pq.vocabulary_id || null;
+          await connection.execute(
+            "INSERT INTO vocabulary_exam_mapping (exam_id, vocabulary_id, content, created_date) VALUES (?, ?, ?, NOW())",
+            [examId, vId, pq.content || ""],
+          );
+        } catch (err) {
+          console.error("Error inserting practice question mapping:", err);
+        }
       }
     }
 
@@ -268,7 +283,7 @@ async function getExamById(examId) {
         `
         SELECT 
           vem.vocabulary_exam_id as id,
-          vem.content,
+          vem.content as contentFromExamVocabulary,
           vem.vocabulary_id as vocabularyId,
           v.topic_id as topicId,
           t.content as topic_name,
@@ -283,6 +298,7 @@ async function getExamById(examId) {
 
       return {
         ...exam,
+        exam_type: actualType,
         practiceQuestions,
       };
     } else {

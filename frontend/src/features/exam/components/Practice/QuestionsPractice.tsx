@@ -218,7 +218,10 @@ const QuestionsPractice: React.FC = () => {
               Câu hỏi {currentWordIndex + 1}/{practiceQuestions.length}
             </div>
             <div className="text-xl font-semibold text-gray-800">
-              {practiceQuestions[currentWordIndex]?.contentFromExamVocabulary}
+              {practiceQuestions[currentWordIndex]?.contentFromExamVocabulary || 
+               practiceQuestions[currentWordIndex]?.content || 
+               practiceQuestions[currentWordIndex]?.vocabulary_content ||
+               "Bài tập thực hành"}
             </div>
           </div>
           <div className="flex justify-between w-full gap-4 mt-4">

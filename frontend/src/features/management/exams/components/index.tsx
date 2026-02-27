@@ -489,28 +489,33 @@ function CreateExamForm({
 
   const loadTopics = async () => {
     try {
-      console.log("Loading general topics only...");
+      console.log("Loading common topics for practice exam...");
       let data: any[] = [];
 
-      // 1. Fetch all general topics (ignoring classroom)
-      data = await fetchAllTopics();
+      // 1. Fetch only common topics as requested
+      data = await fetchAllTopics({ is_common: "true" });
 
-      // 2. Fallback to learning service if empty
+      // 2. Fallback to all topics if common topics are empty (safety check)
+      if (!data || data.length === 0) {
+        console.log("Common topics empty, trying all topics...");
+        data = await fetchAllTopics();
+      }
+
+      // 3. Last resort fallback to legacy learning service
       if (!data || data.length === 0) {
         try {
           const learningTopics = await (
             await import("@/model/Learning")
           ).default.getAllTopics();
-          if (
-            learningTopics &&
-            (Array.isArray(learningTopics) || learningTopics.data)
-          ) {
+          
+          if (learningTopics) {
             const rawItems = Array.isArray(learningTopics)
               ? learningTopics
               : learningTopics.data || [];
+              
             data = rawItems.map((t: any) => ({
               id: t.topic_id || t.id,
-              name: t.name || t.content || t.title,
+              name: t.name || t.content || t.title || "Không có tên",
             }));
           }
         } catch (e) {
@@ -518,16 +523,19 @@ function CreateExamForm({
         }
       }
 
-      console.log("Loaded general topics count:", data?.length || 0);
+      console.log("Final loaded topics count:", data?.length || 0);
       setTopics(data || []);
     } catch (error) {
-      console.error("Failed to load topics:", error);
+      console.error("Total failure loading topics:", error);
     }
   };
 
   const loadVocabs = async (tid: number) => {
-    if (vocabMap[tid]) return;
+    if (!tid) return;
+    if (vocabMap[tid] && vocabMap[tid].length > 0) return;
+    
     try {
+      console.log(`Loading vocabularies for topic ${tid}...`);
       let data = await fetchVocabulariesByTopic(tid);
 
       // Fallback to learning service for vocabularies if empty
@@ -536,11 +544,11 @@ function CreateExamForm({
           const learningModel = (await import("@/model/Learning")).default;
           // Note: getVocabularyTopic returns data for a specific topic
           const res = await learningModel.getVocabularyTopic(tid);
-          if (res && (Array.isArray(res) || res.data)) {
+          if (res) {
             const rawItems = Array.isArray(res) ? res : res.data || [];
             data = rawItems.map((v: any) => ({
               id: v.vocabulary_id || v.id,
-              word: v.word || v.content,
+              word: v.word || v.content || "Không có nội dung",
             }));
           }
         } catch (e) {
@@ -548,9 +556,10 @@ function CreateExamForm({
         }
       }
 
+      console.log(`Loaded ${data?.length || 0} vocabularies for topic ${tid}`);
       setVocMap((prev) => ({ ...prev, [tid]: data || [] }));
     } catch (error) {
-      console.error("Failed to load vocabularies:", error);
+      console.error(`Failed to load vocabularies for topic ${tid}:`, error);
     }
   };
 

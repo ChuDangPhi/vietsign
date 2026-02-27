@@ -22,6 +22,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ReactMediaRecorder } from "react-media-recorder-2";
 import Webcam from "react-webcam";
 import * as XLSX from "xlsx";
+import { fetchAllTopics, fetchVocabulariesByTopic } from "@/services/topicService";
 const formatTime = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -144,13 +145,12 @@ const PracticeData: React.FC = () => {
   const { data: allTopics } = useQuery({
     queryKey: ["getAllTopics"],
     queryFn: async () => {
-      const res = await Learning.getAllTopics();
-      const topicsData = res?.data || res;
+      const topicsData = await fetchAllTopics();
       return (Array.isArray(topicsData) ? topicsData : []).map((item: any) => ({
-        id: item.id || item.topicId,
-        value: item.id || item.topicId,
-        label: item.name || item.content,
-        text: item.name || item.content,
+        id: item.id,
+        value: item.id,
+        label: item.name,
+        text: item.name,
       }));
     },
   });
@@ -159,16 +159,13 @@ const PracticeData: React.FC = () => {
   const { data: allVocabulary, isFetching: isFetchingVocabulary } = useQuery({
     queryKey: ["getVocabularyTopic", filterParams.topic],
     queryFn: async () => {
-      const res = await Learning.getVocabularyTopic(filterParams.topic);
-      const topicData = res?.data || res;
-      const vocabularies =
-        topicData?.vocabularies || (Array.isArray(topicData) ? topicData : []);
+      const vocabularies = await fetchVocabulariesByTopic(filterParams.topic);
 
       if (vocabularies.length > 0) {
         return vocabularies.map((item: any) => ({
-          id: item.id || item.vocabularyId,
-          value: item.id || item.vocabularyId,
-          label: item.word || item.content,
+          id: item.id,
+          value: item.id,
+          label: item.word,
           vocabularyImageResList: item.imageUrl
             ? [{ imageLocation: item.imageUrl, primary: true }]
             : item.vocabularyImageResList || [],

@@ -42,7 +42,9 @@ export class ExamModel extends Base {
 
   getDetailPracticeExam = async (examId: number) => {
     const res = await this.apiGet(`/${examId}`);
-    return res.data.practiceQuestions || res.data;
+    const body = res.data;
+    const data = body.data || body;
+    return data.practiceQuestions || data;
   };
 
   submitPracticeVideos = async (body: FormData) => {

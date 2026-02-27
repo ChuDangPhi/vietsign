@@ -42,38 +42,42 @@ export function WordPractice() {
     const loadData = async () => {
       setIsLoading(true);
       try {
+        console.log("Loading practice items from general dictionary...");
+        // Fetch published public words
         const [wordsData, questionsData] = await Promise.all([
-          fetchAllWords(),
+          fetchAllWords({ is_private: 0 }),
           fetchAllQuestions({ question_type: "PRACTICE" }),
         ]);
 
-        const fromDictionary: PracticeItem[] = wordsData
-          .filter((d) => d.videoUrl && d.status === "published")
+        const fromDictionary: PracticeItem[] = (wordsData || [])
+          .filter((d) => d.videoUrl) // Only items with videos are useful for practice
           .map((d) => ({
             id: `dict-${d.id}`,
             word: d.word,
-            description: `Ký hiệu "${d.word}" - thuộc danh mục ${d.category}.`,
-            category: d.category,
+            description: d.description || `Ký hiệu "${d.word}" - thuộc danh mục ${d.category}.`,
+            category: d.category || "Chung",
             videoUrl: d.videoUrl!,
             instructions: `Thực hiện ký hiệu cho từ "${d.word}"`,
             source: "dictionary" as const,
             views: d.views,
           }));
 
-        const fromQuestions: PracticeItem[] = questionsData
+        const fromQuestions: PracticeItem[] = (questionsData || [])
           .filter((q) => q.video || q.videoUrl)
           .map((q) => ({
             id: `q-${q.id}`,
             word: q.content || "Bài thực hành",
             description:
               q.description || q.explanation || `Bài thực hành: ${q.content}`,
-            category: q.category || "Khác",
+            category: q.category || "Bài tập",
             videoUrl: q.video || q.videoUrl || "",
             instructions: q.practiceInstructions,
             source: "question" as const,
           }));
 
-        setPracticeItems([...fromDictionary, ...fromQuestions]);
+        const combined = [...fromDictionary, ...fromQuestions];
+        console.log(`Loaded ${combined.length} practice items total`);
+        setPracticeItems(combined);
       } catch (error) {
         console.error("Failed to load practice items", error);
       } finally {
