@@ -15,8 +15,6 @@ import {
   Layers,
   FileText,
   Users,
-  PlayCircle,
-  Image as ImageIcon,
 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ExamItem, examStatusConfig } from "@/data/examsData";
@@ -615,65 +613,6 @@ export function ExamManagementDetail() {
                           </option>
                         ))}
                       </select>
-                      <div className="md:col-span-2 flex flex-wrap gap-2 items-center min-h-[24px] mt-1">
-                        {q.vocabularyId && (
-                          <>
-                            {(() => {
-                              const v = (
-                                vocabMap[Number(q.topicId)] || []
-                              ).find(
-                                (item) =>
-                                  String(item.id) === String(q.vocabularyId),
-                              );
-                              if (!v) return null;
-                              return (
-                                <>
-                                  {v.images_path ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-50 text-purple-700 rounded-lg text-[10px] font-bold border border-purple-100 animate-pulse">
-                                      <ImageIcon size={12} />
-                                      Hình ảnh sẵn sàng
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-medium border border-gray-100 italic">
-                                      <ImageIcon size={12} />
-                                      Chưa có hình ảnh
-                                    </span>
-                                  )}
-                                  {v.videos_path ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-lg text-[10px] font-bold border border-red-100 animate-pulse">
-                                      <PlayCircle size={12} />
-                                      Video mẫu sẵn sàng
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-medium border border-gray-100 italic">
-                                      <PlayCircle size={12} />
-                                      Chưa có video
-                                    </span>
-                                  )}
-                                  {v.word && q.content !== v.word && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const list = [
-                                          ...(editForm.practiceQuestions || []),
-                                        ];
-                                        list[idx].content = v.word;
-                                        setEditForm({
-                                          ...editForm,
-                                          practiceQuestions: list,
-                                        });
-                                      }}
-                                      className="text-[10px] text-primary-600 hover:text-primary-700 font-bold underline ml-auto"
-                                    >
-                                      Lấy "{v.word}" làm nội dung?
-                                    </button>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </>
-                        )}
-                      </div>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between">
@@ -681,43 +620,9 @@ export function ExamManagementDetail() {
                         <p className="font-semibold text-gray-900">
                           Câu {idx + 1}: {q.content}
                         </p>
-                        <p className="text-xs text-gray-500 flex items-center gap-3">
-                          <span>
-                            Chủ đề: {q.topic_name || "Mặc định"} • Từ vựng:{" "}
-                            {q.vocabulary_content || "N/A"}
-                          </span>
-                          <span className="flex items-center gap-2 border-l border-gray-200 pl-3 ml-1">
-                            {q.images_path ? (
-                              <span title="Có hình ảnh">
-                                <ImageIcon
-                                  size={14}
-                                  className="text-purple-500"
-                                />
-                              </span>
-                            ) : (
-                              <span title="Không có hình ảnh">
-                                <ImageIcon
-                                  size={14}
-                                  className="text-gray-300 opacity-50"
-                                />
-                              </span>
-                            )}
-                            {q.videos_path ? (
-                              <span title="Có video">
-                                <PlayCircle
-                                  size={14}
-                                  className="text-red-500"
-                                />
-                              </span>
-                            ) : (
-                              <span title="Không có video">
-                                <PlayCircle
-                                  size={14}
-                                  className="text-gray-300 opacity-50"
-                                />
-                              </span>
-                            )}
-                          </span>
+                        <p className="text-xs text-gray-500">
+                          Chủ đề: {q.topic_name || "Mặc định"} • Từ vựng:{" "}
+                          {q.vocabulary_content || "N/A"}
                         </p>
                       </div>
                     </div>

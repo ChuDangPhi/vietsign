@@ -12,8 +12,6 @@ import {
   Edit,
   Trash2,
   Loader2,
-  PlayCircle,
-  Image as ImageIcon,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -745,60 +743,6 @@ function CreateExamForm({
                         </option>
                       ))}
                     </select>
-                    <div className="md:col-span-2 flex flex-wrap gap-2 items-center min-h-[24px] mt-1">
-                      {q.vocabularyId && (
-                        <>
-                          {(() => {
-                            const v = (vocabMap[Number(q.topicId)] || []).find(
-                              (item) =>
-                                String(item.id) === String(q.vocabularyId),
-                            );
-                            if (!v) return null;
-                            return (
-                              <>
-                                {v.images_path ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-50 text-purple-700 rounded-lg text-[10px] font-bold border border-purple-100 animate-pulse">
-                                    <ImageIcon size={12} />
-                                    Hình ảnh sẵn sàng
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-medium border border-gray-100 italic">
-                                    <ImageIcon size={12} />
-                                    Chưa có hình ảnh
-                                  </span>
-                                )}
-                                {v.videos_path ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-lg text-[10px] font-bold border border-red-100 animate-pulse">
-                                    <PlayCircle size={12} />
-                                    Video mẫu sẵn sàng
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-medium border border-gray-100 italic">
-                                    <PlayCircle size={12} />
-                                    Chưa có video
-                                  </span>
-                                )}
-                                {v.word && q.content !== v.word && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      updatePracticeQuestion(
-                                        idx,
-                                        "content",
-                                        v.word,
-                                      )
-                                    }
-                                    className="text-[10px] text-primary-600 hover:text-primary-700 font-bold underline ml-auto"
-                                  >
-                                    Lấy "{v.word}" làm nội dung?
-                                  </button>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </>
-                      )}
-                    </div>
                   </div>
                   {practiceQuestions.length > 1 && (
                     <button
