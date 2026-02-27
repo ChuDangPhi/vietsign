@@ -33,9 +33,13 @@ app.use("/upload", uploadRoutes);
 const path = require("path");
 
 // Proxy /uploads to MinIO or serve local files (for transition)
-app.get("/uploads/:filename", async (req, res) => {
-  const filename = req.params.filename;
-  const localPath = path.join(__dirname, "../uploads", filename);
+app.get("/uploads/*", async (req, res) => {
+  const objectPath = req.params[0];
+  if (!objectPath) {
+    return res.status(400).send("Path required");
+  }
+
+  const localPath = path.join(__dirname, "../uploads", objectPath);
 
   // Try local first (existing files)
   const fs = require("fs");
@@ -45,7 +49,24 @@ app.get("/uploads/:filename", async (req, res) => {
 
   // Then try MinIO
   try {
-    const dataStream = await minioClient.getObject(bucketName, filename);
+    const dataStream = await minioClient.getObject(bucketName, objectPath);
+
+    // Set content type for better browser support
+    const extension = path.extname(objectPath).toLowerCase();
+    const mimeTypes = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".mp4": "video/mp4",
+      ".webm": "video/webm",
+      ".svg": "image/svg+xml",
+      ".webp": "image/webp",
+    };
+    if (mimeTypes[extension]) {
+      res.set("Content-Type", mimeTypes[extension]);
+    }
+
     dataStream.pipe(res);
   } catch (err) {
     if (err.code === "NoSuchKey") {

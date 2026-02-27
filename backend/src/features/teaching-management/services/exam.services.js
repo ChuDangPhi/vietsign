@@ -272,7 +272,9 @@ async function getExamById(examId) {
           vem.vocabulary_id as vocabularyId,
           v.topic_id as topicId,
           t.content as topic_name,
-          v.content as vocabulary_content
+          v.content as vocabulary_content,
+          v.images_path,
+          v.videos_path
         FROM vocabulary_exam_mapping vem
         LEFT JOIN vocabulary v ON vem.vocabulary_id = v.vocabulary_id
         LEFT JOIN topic t ON v.topic_id = t.topic_id

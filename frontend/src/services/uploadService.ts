@@ -12,8 +12,8 @@ export const uploadFile = async (
 
   const response = await http.post("/upload", formData);
 
-  // Prioritize URL (MinIO public URL)
-  // Backend now returns { path, url, filename }
-  if (response.data.url) return response.data.url;
-  return response.data.path;
+  // Prioritize the relative path (/uploads/...) to be stored.
+  // This allows the frontend to prepend API_BASE_URL consistently.
+  if (response.data.path) return response.data.path;
+  return response.data.url;
 };

@@ -60,6 +60,8 @@ export async function fetchVocabulariesByTopic(
       ? items.map((v: any) => ({
           id: v.vocabulary_id || v.id,
           word: v.word || v.content,
+          images_path: v.images_path,
+          videos_path: v.videos_path,
         }))
       : [];
   } catch (error) {
