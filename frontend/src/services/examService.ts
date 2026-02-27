@@ -6,13 +6,23 @@ export type { ExamItem };
 // Helper to normalize exam data from API
 function normalizeExam(exam: any): any {
   if (!exam) return null;
+
+  const rawType = exam.exam_type || exam.examType || "";
+  let friendlyType = rawType;
+  if (rawType === "MULTIPLE_CHOICE" || rawType === "QUIZ") {
+    friendlyType = "Trắc nghiệm";
+  } else if (rawType === "PRACTICAL" || rawType === "PRACTICE") {
+    friendlyType = "Thực hành";
+  }
+
   return {
     ...exam,
     id: exam.exam_id || exam.id,
     title: exam.name || exam.title || "",
     classId: exam.class_room_id || exam.classId,
     createdAt: exam.created_date || exam.created_at || exam.createdAt,
-    examType: exam.exam_type || exam.examType,
+    examType: rawType,
+    type: friendlyType,
     duration: exam.duration_minutes
       ? `${exam.duration_minutes} phút`
       : exam.duration || "60 phút",

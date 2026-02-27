@@ -539,21 +539,9 @@ async function getStudentExamAttempts(studentId, limit, offset) {
 async function submitExam(examId, studentId, score, answers, timeSpent) {
   const connection = await db.getConnection();
   try {
-    const [existing] = await connection.execute(
-      "SELECT attempt_id FROM exam_attempt WHERE exam_id = ? AND user_id = ?",
-      [examId, studentId],
-    );
-
-    if (existing.length > 0) {
-      throw {
-        status: 400,
-        message: "Bạn đã hoàn thành bài kiểm tra này rồi, không thể nộp lại.",
-      };
-    }
-
     await connection.beginTransaction();
 
-    // Insert into exam_attempt
+    // Insert into exam_attempt (always create a new attempt)
     const [attemptResult] = await connection.execute(
       "INSERT INTO exam_attempt (exam_id, user_id, score, started_at, finished_at) VALUES (?, ?, ?, NOW(), NOW())",
       [examId, studentId, score || 0],
@@ -612,23 +600,11 @@ async function submitExam(examId, studentId, score, answers, timeSpent) {
 async function createPracticeAttempt(examId, studentId) {
   const connection = await db.getConnection();
   try {
-    const [existing] = await connection.execute(
-      "SELECT attempt_id FROM exam_attempt WHERE exam_id = ? AND user_id = ?",
+    const [attemptResult] = await connection.execute(
+      "INSERT INTO exam_attempt (exam_id, user_id, score, started_at, finished_at) VALUES (?, ?, NULL, NOW(), NOW())",
       [examId, studentId],
     );
-    if (existing.length > 0) {
-      await connection.execute(
-        "UPDATE exam_attempt SET started_at = NOW() WHERE attempt_id = ?",
-        [existing[0].attempt_id],
-      );
-      return { attemptId: existing[0].attempt_id };
-    } else {
-      const [attemptResult] = await connection.execute(
-        "INSERT INTO exam_attempt (exam_id, user_id, score, started_at, finished_at) VALUES (?, ?, NULL, NOW(), NOW())",
-        [examId, studentId],
-      );
-      return { attemptId: attemptResult.insertId };
-    }
+    return { attemptId: attemptResult.insertId };
   } catch (err) {
     throw { status: 500, message: err.message };
   } finally {

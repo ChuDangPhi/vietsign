@@ -134,11 +134,21 @@ export function ExamManagementDetail() {
         setExam(updatedItem);
         setIsEditing(false);
 
+        // Map backend Functional Type
+        let backendType = "MULTIPLE_CHOICE";
+        if (
+          editForm.examType === "PRACTICE" ||
+          editForm.examType === "PRACTICAL" ||
+          editForm.type === "Thực hành"
+        ) {
+          backendType = "PRACTICAL";
+        }
+
         // Map back to backend fields
         await updateExam(exam.id, {
           name: editForm.title,
           description: editForm.description,
-          exam_type: editForm.type,
+          exam_type: backendType,
           class_room_id: editForm.classId,
           duration_minutes: parseInt(editForm.duration || "60"),
           total_points: editForm.questions,
@@ -319,9 +329,15 @@ export function ExamManagementDetail() {
               {isEditing ? (
                 <select
                   value={editForm.type || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, type: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditForm({
+                      ...editForm,
+                      type: val,
+                      examType:
+                        val === "Thực hành" ? "PRACTICAL" : "MULTIPLE_CHOICE",
+                    });
+                  }}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white"
                 >
                   <option value="Định kỳ">Định kỳ</option>
@@ -498,7 +514,9 @@ export function ExamManagementDetail() {
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Layers size={20} className="text-primary-600" />
               Nội dung bài thi{" "}
-              {exam.examType === "PRACTICE" ? "(Thực hành)" : "(Trắc nghiệm)"}
+              {exam.examType === "PRACTICE" || exam.examType === "PRACTICAL"
+                ? "(Thực hành)"
+                : "(Trắc nghiệm)"}
             </h3>
             {isEditing && (
               <button
@@ -506,7 +524,9 @@ export function ExamManagementDetail() {
                 onClick={() => {
                   if (
                     exam.examType === "PRACTICE" ||
-                    editForm.examType === "PRACTICE"
+                    exam.examType === "PRACTICAL" ||
+                    editForm.examType === "PRACTICE" ||
+                    editForm.examType === "PRACTICAL"
                   ) {
                     const current = editForm.practiceQuestions || [];
                     setEditForm({
@@ -524,14 +544,19 @@ export function ExamManagementDetail() {
               >
                 <Plus size={16} />{" "}
                 {exam.examType === "PRACTICE" ||
-                editForm.examType === "PRACTICE"
+                exam.examType === "PRACTICAL" ||
+                editForm.examType === "PRACTICE" ||
+                editForm.examType === "PRACTICAL"
                   ? "Thêm câu hỏi"
                   : "Thay đổi câu hỏi"}
               </button>
             )}
           </div>
 
-          {exam.examType === "PRACTICE" || editForm.examType === "PRACTICE" ? (
+          {exam.examType === "PRACTICE" ||
+          exam.examType === "PRACTICAL" ||
+          editForm.examType === "PRACTICE" ||
+          editForm.examType === "PRACTICAL" ? (
             <div className="space-y-4">
               {(isEditing
                 ? editForm.practiceQuestions || []

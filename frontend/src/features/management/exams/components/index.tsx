@@ -162,25 +162,8 @@ export function ExamsManagement() {
       // Fetch exams with query params
       const examsData = await fetchAllExams(examsQuery);
 
-      // Normalize exams data
-      const mappedExams = examsData.map((e: any) => ({
-        ...e,
-        id: e.exam_id || e.id,
-        title: e.name || e.title,
-        classId: e.class_room_id || e.classId,
-        date: new Date(e.created_at).toLocaleDateString("vi-VN"),
-        time: new Date(e.created_at).toLocaleTimeString("vi-VN", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        duration: (e.duration_minutes || 60) + " phút",
-        questions: e.total_points || 0,
-        students: 0,
-        status: e.is_active ? "ongoing" : "completed",
-        type: e.exam_type || "Định kỳ",
-      }));
-
-      setExams(mappedExams);
+      // examsData is already normalized by fetchAllExams which uses normalizeExam
+      setExams(examsData);
     } catch (error) {
       console.error("Failed to load data", error);
     } finally {

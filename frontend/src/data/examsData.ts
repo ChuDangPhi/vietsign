@@ -8,6 +8,7 @@ export type ExamType =
   | "multiple_choice"
   | "QUIZ"
   | "PRACTICE"
+  | "PRACTICAL"
   | "MULTIPLE_CHOICE";
 
 export interface ExamItem {
