@@ -7,7 +7,10 @@ export const VocabularyStep: React.FC<StepProps> = ({ step }) => (
   <div className="p-6 animate-in fade-in duration-300">
     <div className="flex flex-col lg:flex-row gap-6 items-center justify-center">
       {/* Video with fixed size */}
-      <VideoContainer videoUrl={step.videoUrl} size="lg" />
+      <VideoContainer
+        videoUrl={step.videoUrl || step.imageUrl || ""}
+        size="lg"
+      />
 
       {/* Info panel */}
       <div className="w-72 flex flex-col gap-4">

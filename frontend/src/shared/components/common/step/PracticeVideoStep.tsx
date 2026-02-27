@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { StepItem } from "@/data/lessonsData";
+import { VideoContainer } from "./VideoContainer";
 import {
   aiService,
   AIAssessmentResult,
@@ -134,12 +135,11 @@ export function PracticeVideoStep({
             <Video size={20} />
             <span>Video mẫu</span>
           </div>
-          <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-sm relative">
-            <iframe
-              src={step.videoUrl}
-              className="w-full h-full"
-              allow="autoplay; fullscreen; picture-in-picture"
-              title={step.title}
+          <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-sm relative flex items-center justify-center">
+            <VideoContainer
+              videoUrl={step.videoUrl || step.imageUrl || ""}
+              size="md"
+              showControls={true}
             />
           </div>
         </div>

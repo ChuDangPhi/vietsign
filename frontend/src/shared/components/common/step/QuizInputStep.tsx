@@ -27,7 +27,10 @@ export const QuizInputStep: React.FC<StepProps> = ({ step, onComplete }) => {
       <div className="flex flex-col lg:flex-row gap-6 items-center justify-center">
         {/* Video */}
         <div className="flex flex-col items-center gap-3">
-          <VideoContainer videoUrl={step.questionVideoUrl} size="lg" />
+          <VideoContainer
+            videoUrl={step.questionVideoUrl || step.imageUrl || ""}
+            size="lg"
+          />
         </div>
 
         {/* Input panel */}

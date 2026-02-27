@@ -24,7 +24,7 @@ export const FlipCardStep: React.FC<StepProps> = ({ step, onComplete }) => {
       cards.push({
         id: `video-${i}`,
         type: "video",
-        content: c.videoUrl,
+        content: c.videoUrl || c.imageUrl,
         matchId: i,
       });
     });

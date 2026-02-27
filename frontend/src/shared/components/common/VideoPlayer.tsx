@@ -374,9 +374,9 @@ export function VideoPlayer({
           )}
         </>
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-400 font-medium">
+        <div className="w-full h-full flex items-center justify-center text-gray-400 font-medium p-4 text-center">
           <div className="text-center">
-            <p>Không có video minh họa</p>
+            <p>Không có video hoặc hình ảnh minh họa</p>
           </div>
         </div>
       )}

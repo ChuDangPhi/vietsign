@@ -25,7 +25,10 @@ export const TrueFalseStep: React.FC<StepProps> = ({ step, onComplete }) => {
           <p className="text-sm text-gray-500">
             Video này biểu diễn từ dưới đây đúng hay sai?
           </p>
-          <VideoContainer videoUrl={step.statementVideoUrl} size="lg" />
+          <VideoContainer
+            videoUrl={step.statementVideoUrl || step.imageUrl || ""}
+            size="lg"
+          />
         </div>
 
         {/* Statement and buttons */}

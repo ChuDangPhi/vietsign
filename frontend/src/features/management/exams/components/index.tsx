@@ -441,6 +441,18 @@ function CreateExamForm({
   classes: any[];
   refresh: () => void;
 }) {
+  const { user } = useSelector((state: RootState) => state.admin);
+  const userRole = user?.role?.role || user?.code;
+  const isTeacher = userRole === "Teacher" || userRole === "TEACHER";
+  const userId = user?.id || (user as any)?.user_id;
+
+  const filteredClasses = useMemo(() => {
+    if (isTeacher && userId) {
+      return classes.filter((c: any) => Number(c.teacherId) === Number(userId));
+    }
+    return classes;
+  }, [classes, isTeacher, userId]);
+
   const [formData, setFormData] = useState({
     title: "",
     classId: "",
@@ -460,6 +472,16 @@ function CreateExamForm({
   // Mock available questions/topics for demo/selection
   const [topics, setTopics] = useState<TopicItem[]>([]);
   const [vocabMap, setVocMap] = useState<Record<number, any[]>>({});
+
+  useEffect(() => {
+    // If teacher has only one class, auto select it
+    if (isTeacher && filteredClasses.length > 0 && !formData.classId) {
+      setFormData((prev) => ({
+        ...prev,
+        classId: String(filteredClasses[0].id),
+      }));
+    }
+  }, [isTeacher, filteredClasses, formData.classId]);
 
   useEffect(() => {
     // If classId changes, fetch relevant topics
@@ -516,6 +538,15 @@ function CreateExamForm({
 
     if (!formData.title?.trim()) {
       alert("Tên bài kiểm tra là bắt buộc!");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (
+      formData.examType === "PRACTICE" &&
+      practiceQuestions.some((pq) => !pq.content?.trim())
+    ) {
+      alert("Vui lòng nhập nội dung cho tất cả các câu hỏi thực hành!");
       setIsSubmitting(false);
       return;
     }
@@ -582,11 +613,12 @@ function CreateExamForm({
             onChange={(e) =>
               setFormData({ ...formData, classId: e.target.value })
             }
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white disabled:bg-gray-50 disabled:text-gray-500"
             required
+            disabled={isTeacher && filteredClasses.length === 1}
           >
             <option value="">Chọn lớp học</option>
-            {classes.map((c: any) => (
+            {filteredClasses.map((c: any) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -701,12 +733,11 @@ function CreateExamForm({
                         updatePracticeQuestion(idx, "topicId", e.target.value)
                       }
                       className="px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none bg-white"
-                      required
                     >
                       <option value="">
                         {topics.length === 0
                           ? "Chưa có chủ đề (cần tạo trong Quản lý từ điển)"
-                          : "Chọn chủ đề"}
+                          : "Gắn với chủ đề (Tùy chọn)"}
                       </option>
                       {topics.map((t) => (
                         <option key={t.id} value={t.id}>
@@ -716,15 +747,20 @@ function CreateExamForm({
                     </select>
                     <select
                       value={q.vocabularyId}
-                      onChange={(e) =>
-                        updatePracticeQuestion(
-                          idx,
-                          "vocabularyId",
-                          e.target.value,
-                        )
-                      }
+                      onChange={(e) => {
+                        const vocabId = e.target.value;
+                        updatePracticeQuestion(idx, "vocabularyId", vocabId);
+                        // Auto-fill content if it's empty and a vocab is selected
+                        if (vocabId && !q.content) {
+                          const vocab = (
+                            vocabMap[Number(q.topicId)] || []
+                          ).find((v) => String(v.id) === String(vocabId));
+                          if (vocab) {
+                            updatePracticeQuestion(idx, "content", vocab.word);
+                          }
+                        }
+                      }}
                       className="px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none bg-white font-medium italic"
-                      required
                       disabled={!q.topicId}
                     >
                       <option value="">
@@ -732,7 +768,7 @@ function CreateExamForm({
                           ? "Chọn chủ đề trước"
                           : (vocabMap[Number(q.topicId)] || []).length === 0
                             ? "Chưa có từ vựng trong chủ đề này"
-                            : "Chọn từ vựng"}
+                            : "Chọn từ vựng (Tùy chọn)"}
                       </option>
                       {(vocabMap[Number(q.topicId)] || []).map((v) => (
                         <option key={v.id} value={v.id}>

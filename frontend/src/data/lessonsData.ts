@@ -30,6 +30,7 @@ export interface StepItem {
   // For vocabulary type
   word?: string;
   videoUrl?: string;
+  imageUrl?: string;
   description?: string;
 
   // For sentence type

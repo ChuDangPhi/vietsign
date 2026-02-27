@@ -59,7 +59,7 @@ export const MatchVideoToTextStep: React.FC<StepProps> = ({
               }`}
             >
               <VideoPlayer
-                videoUrl={pair.videoUrl}
+                videoUrl={pair.videoUrl || pair.imageUrl}
                 autoPlay={false}
                 loop={true}
                 showControls={false}

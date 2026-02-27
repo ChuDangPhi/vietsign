@@ -128,6 +128,20 @@ export function ExamManagementDetail() {
 
   const handleSave = async () => {
     if (exam && editForm) {
+      if (!editForm.title?.trim()) {
+        alert("Tên bài kiểm tra là bắt buộc!");
+        return;
+      }
+
+      if (
+        (editForm.examType === "PRACTICE" ||
+          editForm.examType === "PRACTICAL") &&
+        (editForm.practiceQuestions || []).some((pq) => !pq.content?.trim())
+      ) {
+        alert("Vui lòng nhập nội dung cho tất cả các câu hỏi thực hành!");
+        return;
+      }
+
       try {
         // Optimistic update
         const updatedItem = { ...exam, ...editForm } as ExamItem;
@@ -589,7 +603,7 @@ export function ExamManagementDetail() {
                         }}
                         className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
                       >
-                        <option value="">Chọn chủ đề</option>
+                        <option value="">Gắn với chủ đề (Tùy chọn)</option>
                         {topics.map((t) => (
                           <option key={t.id} value={t.id}>
                             {t.name}
@@ -599,14 +613,32 @@ export function ExamManagementDetail() {
                       <select
                         value={q.vocabularyId}
                         onChange={(e) => {
+                          const val = e.target.value;
                           const list = [...(editForm.practiceQuestions || [])];
-                          list[idx].vocabularyId = e.target.value;
+                          list[idx].vocabularyId = val;
+
+                          // Auto-fill content if it's empty
+                          if (val && !list[idx].content) {
+                            const vocab = (
+                              vocabMap[Number(q.topicId)] || []
+                            ).find((v) => String(v.id) === String(val));
+                            if (vocab) {
+                              list[idx].content = vocab.word;
+                            }
+                          }
+
                           setEditForm({ ...editForm, practiceQuestions: list });
                         }}
-                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white font-medium italic"
                         disabled={!q.topicId}
                       >
-                        <option value="">Chọn từ vựng</option>
+                        <option value="">
+                          {!q.topicId
+                            ? "Chọn chủ đề trước"
+                            : (vocabMap[Number(q.topicId)] || []).length === 0
+                              ? "Chưa có từ vựng"
+                              : "Chọn từ vựng (Tùy chọn)"}
+                        </option>
                         {(vocabMap[Number(q.topicId)] || []).map((v) => (
                           <option key={v.id} value={v.id}>
                             {v.word}
