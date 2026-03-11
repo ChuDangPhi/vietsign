@@ -10,11 +10,11 @@ const specs = {
   },
   servers: [
     {
-      url: "https://vietsignschoolbe-production.up.railway.app",
+      url: "https://vietsign.ibme.edu.vn/user-service",
       description: "Production Server",
     },
     {
-      url: "http://localhost:5000",
+      url: "http://localhost:8080",
       description: "Development Server",
     },
   ],
