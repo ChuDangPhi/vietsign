@@ -61,7 +61,10 @@ const orgScopeMiddleware = (allowRoles = []) => {
         req.query?.organization_id;
 
       // If orgId is missing but classroomId is present, resolve it from the classroom
-      const classroomId = req.params?.classroomId || req.body?.classroomId;
+      const classroomId =
+        req.params?.classroomId ||
+        req.body?.classroomId ||
+        req.body?.class_room_id;
       if (!orgId && classroomId) {
         const [classRows] = await db.query(
           "SELECT organization_id FROM class_room WHERE class_room_id = ? LIMIT 1",
@@ -78,8 +81,16 @@ const orgScopeMiddleware = (allowRoles = []) => {
         return next();
       }
 
-      // 3. For non-super-admins, organization ID is required
+      // 3. For non-super-admins, organization ID is required.
+      // If orgId is still not resolved, fall back to the user's own org from organization_manager.
       if (!orgId) {
+        const ownRole = userRoles.find((r) => allowRoles.includes(r.role_in_org));
+        if (ownRole) {
+          req.orgRole = ownRole.role_in_org;
+          req.organization_id = ownRole.organization_id;
+          req.managedOrgId = ownRole.organization_id;
+          return next();
+        }
         return res.status(400).json({ error: "Organization ID is required" });
       }
 
