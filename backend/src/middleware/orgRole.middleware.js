@@ -55,9 +55,9 @@ const orgScopeMiddleware = (allowRoles = []) => {
       );
 
       // Check multiple possible parameter names for organization_id
+      // IMPORTANT: Do NOT use req.params.id here - on user routes, :id is user_id, not org_id
       let orgId =
         req.params?.organization_id ||
-        req.params?.id ||
         req.body?.organization_id ||
         req.body?.organizationId ||
         req.body?.schoolId ||
