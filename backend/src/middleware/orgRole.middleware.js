@@ -35,6 +35,7 @@ const orgScopeMiddleware = (allowRoles = []) => {
       }
 
       const userId = req.user.user_id;
+      console.log(`📋 [checkOrgRole] userId: ${userId}, allowRoles:`, allowRoles);
 
       // 1. Get all roles of user across organizations
       const [userRoles] = await db.query(
@@ -45,6 +46,8 @@ const orgScopeMiddleware = (allowRoles = []) => {
             `,
         [userId],
       );
+
+      console.log(`📋 [checkOrgRole] userRoles found:`, userRoles);
 
       // 2. If SUPER_ADMIN anywhere, allow global access (bypass orgId requirement if missing)
       const isSuperAdmin = userRoles.some(
@@ -65,11 +68,15 @@ const orgScopeMiddleware = (allowRoles = []) => {
         req.params?.classroomId ||
         req.body?.classroomId ||
         req.body?.class_room_id;
+      
+      console.log(`📋 [checkOrgRole] orgId: ${orgId}, classroomId: ${classroomId}`);
+      
       if (!orgId && classroomId) {
         const [classRows] = await db.query(
           "SELECT organization_id FROM class_room WHERE class_room_id = ? LIMIT 1",
           [classroomId],
         );
+        console.log(`📋 [checkOrgRole] Resolved org from classroom:`, classRows);
         if (classRows.length > 0) {
           orgId = classRows[0].organization_id;
         }
@@ -85,12 +92,14 @@ const orgScopeMiddleware = (allowRoles = []) => {
       // If orgId is still not resolved, fall back to the user's own org from organization_manager.
       if (!orgId) {
         const ownRole = userRoles.find((r) => allowRoles.includes(r.role_in_org));
+        console.log(`📋 [checkOrgRole] No orgId, fallback ownRole:`, ownRole);
         if (ownRole) {
           req.orgRole = ownRole.role_in_org;
           req.organization_id = ownRole.organization_id;
           req.managedOrgId = ownRole.organization_id;
           return next();
         }
+        console.error(`❌ [checkOrgRole] 400 - No orgId and no matching role for user ${userId}. userRoles:`, userRoles);
         return res.status(400).json({ error: "Organization ID is required" });
       }
 

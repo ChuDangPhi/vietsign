@@ -75,9 +75,19 @@ export function QuestionsManagement() {
     try {
       // First load facilities and classes to build query params
       const [facilitiesData, classesData] = await Promise.all([
-        fetchAllOrganizations().catch(() => []),
-        fetchAllClasses().catch(() => []),
+        fetchAllOrganizations().catch((err) => {
+          console.error("❌ [loadData] Fetch organizations failed:", err);
+          return [];
+        }),
+        fetchAllClasses().catch((err) => {
+          console.error("❌ [loadData] Fetch classes failed:", err);
+          return [];
+        }),
       ]);
+
+      console.log("📋 [loadData] classesData received:", classesData);
+      console.log("📋 [loadData] classesData length:", classesData?.length);
+      console.log("📋 [loadData] User role:", userRole, "| userId:", userId, "| isTeacher:", isTeacher);
 
       setFacilities(facilitiesData || []);
 
@@ -107,6 +117,7 @@ export function QuestionsManagement() {
           }
         });
       }
+      console.log("📋 [loadData] uniqueClasses to set:", uniqueClasses.length, uniqueClasses.map((c: any) => ({ id: c.id, name: c.name })));      
       setClasses(uniqueClasses);
 
       // Build class maps

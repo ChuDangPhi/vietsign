@@ -12,7 +12,7 @@ services:
       # Map thư mục chứa file .sql vào đây để tự động chạy khi khởi tạo DB lần đầu
       - ./database:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       timeout: 20s
       retries: 10
 
@@ -25,6 +25,8 @@ services:
       - "8080:5000"
     environment:
       PORT: 5000
+      JWT_SECRET: vietsign-dev-secret-change-me
+      JWT_EXPIRES_IN: 1d
       DB_HOST: db
       DB_USER: root
       DB_PASSWORD: root
