@@ -37,6 +37,21 @@ const orgScopeMiddleware = (allowRoles = []) => {
       const userId = req.user.user_id;
       console.log(`📋 [checkOrgRole] userId: ${userId}, allowRoles:`, allowRoles);
 
+      // 0. Check if user has ADMIN code in user table (global admin bypass)
+      const [userCodeRows] = await db.query(
+        "SELECT code FROM `user` WHERE user_id = ? LIMIT 1",
+        [userId],
+      );
+      const userCode = userCodeRows[0]?.code;
+      console.log(`📋 [checkOrgRole] userCode from user table:`, userCode);
+
+      if (userCode === "ADMIN" || userCode === "SUPER_ADMIN") {
+        console.log(`📋 [checkOrgRole] Global admin bypass for user ${userId} (code: ${userCode})`);
+        req.orgRole = userCode === "ADMIN" ? "SUPER_ADMIN" : userCode;
+        req.organization_id = req.params?.organization_id || req.body?.organizationId || null;
+        return next();
+      }
+
       // 1. Get all roles of user across organizations
       const [userRoles] = await db.query(
         `
