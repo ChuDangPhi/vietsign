@@ -36,6 +36,7 @@ import { Modal } from "@/shared/components/common/Modal";
 import { ConfirmModal } from "@/shared/components/common/ConfirmModal";
 import { ModalChooseQuestions } from "./ModalChooseQuestions";
 import { QuestionItem } from "@/data/questionsData";
+import { repairVietnameseMojibake } from "@/shared/utils/text";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -562,7 +563,9 @@ function CreateExamForm({
               
             data = rawItems.map((t: any) => ({
               id: t.topic_id || t.id,
-              name: t.name || t.content || t.title || "Không có tên",
+              name: repairVietnameseMojibake(
+                t.name || t.content || t.title || "Không có tên",
+              ),
             }));
           }
         } catch (e) {
@@ -595,7 +598,9 @@ function CreateExamForm({
             const rawItems = Array.isArray(res) ? res : res.data || [];
             data = rawItems.map((v: any) => ({
               id: v.vocabulary_id || v.id,
-              word: v.word || v.content || "Không có nội dung",
+              word: repairVietnameseMojibake(
+                v.word || v.content || "Không có nội dung",
+              ),
             }));
           }
         } catch (e) {
